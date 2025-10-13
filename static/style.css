@@ -1,0 +1,168 @@
+html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif; }
+#map { height: calc(100% - 120px); }
+header { padding: 10px 14px; background:#0f172a; color:#fff; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.btn { padding:8px 12px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; }
+.btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+.pill { padding:6px 10px; border-radius:999px; font-size:12px; background:#f1f5f9; color:#0f172a; }
+.field{display:flex; gap:6px; align-items:center}
+input[type=email],input[type=password],input[type=text],input[type=file]{padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px}
+.legend { position:absolute; bottom:14px; left:14px; background:rgba(255,255,255,.95); padding:8px 10px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,.1); font-size:13px;}
+.toast { position: fixed; top: 16px; right: 16px; background: #111827; color:#fff; padding:12px 14px; border-radius:12px; display:none; box-shadow:0 2px 12px rgba(0,0,0,.25); max-width:360px;}
+.credit { position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,.9); padding:6px 8px; border-radius:10px; font-size:11px;}
+.fancy-pin { width: 34px; height: 42px; filter: drop-shadow(0 4px 10px rgba(0,0,0,.25)); }
+
+/* ===== モバイル最適化・共通調整 ===== */
+header{
+  position: sticky; top: 0; z-index: 1000;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 8px 10px; background: #fff; border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;          /* はみ出し時は横スクロール可 */
+  scrollbar-width: thin;     /* Firefox 細め */
+}
+header::-webkit-scrollbar{ height: 6px; }
+header::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:4px; }
+
+.btn{ white-space: nowrap; padding: 8px 10px; font-size: 14px; line-height: 1; }
+.pill{ white-space: nowrap; }
+.field{ display:flex; align-items:center; gap:6px; }
+.field input{ padding:6px 8px; font-size:14px; min-width: 180px; }
+
+/* 地図はヘッダー高に追従して全画面化 */
+#map{ height: calc(100dvh - var(--hdr, 64px)); }
+
+/* ===== スマホ向け（〜640px） ===== */
+@media (max-width: 640px){
+  header{ gap: 6px; padding: 8px; }
+  .btn{ padding: 8px 10px; font-size: 13px; }
+  .pill{ font-size: 12px; }
+  .field input{ min-width: 140px; }
+  /* ラベルは省略してコンパクトに */
+  .field label{ display:none; }
+
+  /* 検索ボックスが幅を取りすぎないように */
+  #csvQuery{ min-width: 180px; width: 54vw; }
+
+  /* 写真パネルや分析モーダルは端末横幅に合わせて余白調整 */
+  .photo-panel, .modal-card{
+    width: 96vw !important; max-width: 96vw !important;
+  }
+}
+
+/* ===== さらに小さい端末（〜360px） ===== */
+@media (max-width: 360px){
+  .btn{ font-size: 12px; padding: 7px 9px; }
+  #csvQuery{ min-width: 150px; width: 60vw; }
+}
+
+
+
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:9999;}
+.card{border:1px solid #e5e7eb;border-radius:10px;padding:8px;text-align:center;background:#fff;}
+.card img{max-width:100%;height:auto;image-rendering:pixelated;}
+.owned{opacity:1}
+.locked{opacity:.35;filter:grayscale(100%);}
+.badge{display:inline-block;padding:2px 6px;border-radius:9999px;font-size:12px;border:1px solid #e5e7eb;background:#f8fafc;color:#0f172a;}
+
+
+/* 検索パネル/写真パネル */
+.search-panel {
+  position:absolute; top:120px; right:14px; z-index:1000; width:360px; max-height:60%;
+  overflow:auto; background:rgba(255,255,255,.98); padding:10px; border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,.15); display:none;
+}
+.photo-panel {
+  position:absolute; top:120px; right:0; width:380px; max-width:90vw; height: calc(100% - 140px);
+  background:rgba(255,255,255,.98); box-shadow: -8px 0 24px rgba(0,0,0,.15);
+  transform: translateX(100%); transition: transform .25s ease; z-index:1001; display:flex; flex-direction:column;
+}
+.photo-panel.open { transform: translateX(0%); }
+.photo-panel__header { display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:1px solid #e5e7eb; }
+.photo-panel__uploader { padding:10px 12px; border-bottom:1px solid #e5e7eb; }
+.photo-grid { overflow:auto; padding: 8px 12px; gap:10px; display:grid; grid-template-columns: 1fr 1fr; }
+.photo-grid img { width:100%; border-radius:10px; border:1px solid #e5e7eb; }
+
+.hint { font-size:12px; color:#334155; }
+
+/* 4コマ横スプライト（256x256想定） */
+.sprite {
+  width: 256px; height: 256px;
+  background-repeat: no-repeat;
+  animation: walk 1s steps(4) infinite;
+  image-rendering: auto;
+}
+@keyframes walk { 100% { background-position: -1024px 0; } }
+
+/* 取得モーダル */
+#charModal {
+  position: fixed; inset: 0; display: none;
+  background: rgba(0,0,0,0.55);
+  align-items: center; justify-content: center; z-index: 9999;
+}
+#charCard {
+  background: #fff; padding: 16px; border-radius: 16px;
+  width: min(90vw, 420px); text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+#charName { font-weight: 700; font-size: 18px; margin-top: 8px; }
+
+/* ===== モーダルの共通修正 ===== */
+#charModal,
+#gotModal,
+#dashModal {
+  position: fixed;
+  inset: 0;
+  display: none;              /* JSでflexにする */
+  align-items: center;
+  justify-content: center;
+  padding: 16px;              /* 画面端でにじまない */
+  background: rgba(0,0,0,.45);
+  z-index: 9999;
+  overflow: hidden;           /* 内部のはみ出しを遮断 */
+}
+
+#charCard,
+.modal-card {
+  box-sizing: border-box;
+  width: clamp(320px, 90vw, 680px);   /* ★ 右にはみ出さない幅制限 */
+  max-height: 90vh;
+  overflow: auto;                     /* 中身が長い時は内側スクロール */
+}
+
+/* ARステージはカード幅に追従。aspect-ratioで確実に収まる */
+#arStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;               /* ★ はみ出し防止の決め手 */
+  max-height: min(70vh, 520px);
+  margin: 12px auto;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+/* 子要素は必ずステージ内に収める */
+#arVideo, #arCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;                     /* 行内隙間によるズレ防止 */
+}
+
+/* モーダル表示中は本体スクロールを止める（はみ出しのズレ補正） */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* モーダル中は本体のオーバースクロールを止める（引っ張って更新対策） */
+body.modal-open { overflow: hidden; overscroll-behavior: contain; }
+
+/* ARステージ内はブラウザのジェスチャーを無効化してCanvasに専有させる */
+#arStage, #arCanvas {
+  touch-action: none;       /* ← これが最重要：スクロール/ピンチを無効化 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* video は常に枠いっぱい（黒帯防止） */
+#arVideo { object-fit: cover; }

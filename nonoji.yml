@@ -1,0 +1,31 @@
+name: nonoji
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  # ← ここに geo系をcondaで
+  - geopandas
+  - pyproj
+  - shapely
+  - pyogrio
+  # 主要ライブラリ（condaで入るものはcondaで）
+  - numpy
+  - pandas
+  - sqlalchemy
+  - sqlmodel
+  - fastapi
+  - uvicorn
+  - jinja2
+  - httpx
+  - passlib
+  - python-jose
+  - python-multipart
+  - itsdangerous
+  - markupsafe
+  - websockets
+  - watchfiles
+  - pip:
+      - authlib==1.6.5
+      - pyngrok==7.4.0
