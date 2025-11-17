@@ -12,6 +12,9 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    display_name: Optional[str] = Field(default=None, max_length=32)
+
+
 
 class Stamp(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -65,3 +68,15 @@ class Comment(SQLModel, table=True):
     content: str = Field(max_length=500)
     parent_id: Optional[int] = Field(default=None, foreign_key="comment.id")
     created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    
+class UserQuestion(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int
+    stem: str                      # 問題文
+    choice1: str
+    choice2: str
+    choice3: str
+    choice4: str
+    correct_idx: int               # 0〜3
+    created_at: str
+    hint: Optional[str] = Field(default=None)    

@@ -1,0 +1,25 @@
+<!-- public/friend.html（簡易） -->
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="utf-8"><title>フレンドマッチ</title></head>
+<body>
+  <h1>フレンドマッチ</h1>
+  <button id="create">部屋を作成</button>
+  <div id="code"></div>
+  <div>
+    <input id="joinCode" placeholder="ルームコード" />
+    <button id="join">参加</button>
+  </div>
+  <script>
+    document.getElementById('create').onclick = async ()=>{
+      const r = await fetch('/api/quiz/create', {method:'POST'});
+      const j = await r.json();
+      document.getElementById('code').textContent = 'ルームコード: '+j.code;
+    };
+    document.getElementById('join').onclick = ()=>{
+      const c = document.getElementById('joinCode').value.trim();
+      if(c) location.href = `/quiz.html?code=${encodeURIComponent(c)}`;
+    };
+  </script>
+</body>
+</html>

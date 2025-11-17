@@ -93,27 +93,4 @@ class CheckinPayload(BaseModel):
     me_lat: float
     me_lon: float
 
-# @router.post("/api/checkin")
-# def api_checkin(payload: CheckinPayload, request: Request):
-#     user = get_current_user(request)
-#     login_required(user)
-#     d = haversine_m(payload.me_lat, payload.me_lon, payload.lat, payload.lon)
-#     if d > ARRIVAL_RADIUS_M:
-#         raise HTTPException(400, f"到達距離が不足: {int(d)}m > {int(ARRIVAL_RADIUS_M)}m")
-#     with Session(engine) as s:
-#         exists = s.exec(select(Stamp).where(
-#             (Stamp.user_id == user.id) & (Stamp.place_id == payload.place_id)
-#         )).first()
-#         if exists:
-#             return {"ok": True, "repeat": True, "msg": "既にスタンプ済み"}
-#         st = Stamp(
-#             user_id=user.id,
-#             place_id=payload.place_id,
-#             place_name=payload.place_name,
-#             kind=payload.kind or "地点",
-#             lat=payload.lat,
-#             lon=payload.lon
-#         )
-#         s.add(st); s.commit(); s.refresh(st)
-#     return {"ok": True, "repeat": False, "msg": "チェックイン成功"}
 

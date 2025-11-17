@@ -9,6 +9,8 @@ from sqlmodel import Session, select
 
 from config import ARRIVAL_RADIUS_M
 from models import engine, User, Stamp, Character, UserCharacter
+import random
+from auth import get_current_user as _auth_get_current_user, login_required
 
 router = APIRouter(prefix="/api", tags=["stamps"])
 
@@ -24,13 +26,16 @@ def get_session():
 # ---------------------------
 # 認証
 # ---------------------------
-def get_current_user(request: Request) -> User:
-    from auth import get_current_user as _get
-    user = _get(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="ログインが必要です")
-    return user
 
+def get_current_user(request: Request):
+    """
+    auth.py の get_current_user + login_required をそのまま使う。
+    ゲストログインもチェックインOKにしたいので allow_guest=True。
+    """
+    user = _auth_get_current_user(request)
+    # ここで「未ログイン」なら HTTPException(401) が飛ぶ
+    login_required(user, allow_guest=True)
+    return user
 
 # ---------------------------
 # 距離（メートル）
@@ -73,17 +78,23 @@ COOLDOWN_MINUTES = 30
 
 # ===== 図鑑カタログ（10種類） =====
 CHAR_CATALOG = [
-    {"code": "marmot",  "name": "マーモット", "sprite": "/static/characters/marmot.png",  "w": 256, "h": 256},
-    {"code": "tanuki",  "name": "タヌキ",     "sprite": "/static/characters/tanuki.png",  "w": 256, "h": 256},
-    {"code": "kitsune", "name": "キツネ",     "sprite": "/static/characters/kitsune.png", "w": 256, "h": 256},
-    {"code": "neko",    "name": "ネコ",       "sprite": "/static/characters/neko.png",    "w": 256, "h": 256},
-    {"code": "inu",     "name": "イヌ",       "sprite": "/static/characters/inu.png",     "w": 256, "h": 256},
-    {"code": "kappa",   "name": "カッパ",     "sprite": "/static/characters/kappa.png",   "w": 256, "h": 256},
-    {"code": "tori",    "name": "トリ",       "sprite": "/static/characters/tori.png",    "w": 256, "h": 256},
-    {"code": "usagi",   "name": "ウサギ",     "sprite": "/static/characters/usagi.png",   "w": 256, "h": 256},
-    {"code": "kanazawa","name": "かなざわ君", "sprite": "/static/characters/kanazawa.png","w": 256, "h": 256},
-    {"code": "nanao",   "name": "ななお君",   "sprite": "/static/characters/nanao.png",   "w": 256, "h": 256},
+    {"code": "marmot",  "name": "マーモット", "sprite": "/static/stamp/marmot.png",  "w": 256, "h": 256},
+    {"code": "tanuki",  "name": "タヌキ",     "sprite": "/static/stamp/tanuki.png",  "w": 256, "h": 256},
+    {"code": "kitsune", "name": "キツネ",     "sprite": "/static/stamp/kitsune.png", "w": 256, "h": 256},
+    {"code": "odoroki",    "name": "驚き",       "sprite": "/static/stamp/1.png",    "w": 256, "h": 256},
+    {"code": "naki",     "name": "泣き泣き",       "sprite": "/static/stamp/2.png",     "w": 256, "h": 256},
+    {"code": "sakibi",   "name": "叫び",     "sprite": "/static/stamp/3.png",   "w": 256, "h": 256},
+    {"code": "yorosiki",   "name": "よろしく",     "sprite": "/static/stamp/4.png",   "w": 256, "h": 256},
 ]
+from sqlmodel import Session, select, delete
+
+REMOVE_CODES = ["inu", "neko","kappa","tori","usagi","kanazawa","nanao"]
+
+with Session(engine) as s:
+    s.exec(delete(Character).where(Character.code.in_(REMOVE_CODES)))
+    s.commit()
+    
+ALLOWED_CHAR_CODES = {c["code"] for c in CHAR_CATALOG}
 
 from sqlmodel import select
 from models import Character
@@ -128,6 +139,36 @@ def ensure_char_catalog_safe(session: Session):
             changed = True
     if changed:
         session.commit()
+
+def ensure_min_stamps_for_user(session: Session, user_id: int, min_count: int = 5):
+    """
+    ユーザーが最低 min_count 個のスタンプを持つようにする。
+    足りないぶんはランダムに付与（重複は避ける）。
+    """
+    current = session.exec(
+        select(UserCharacter).where(UserCharacter.user_id == user_id)
+    ).all()
+    if len(current) >= min_count:
+        return
+
+    all_chars = session.exec(
+        select(Character).where(Character.code.in_(ALLOWED_CHAR_CODES))
+    ).all()
+    if not all_chars:
+        return
+
+    owned_ids = {uc.character_id for uc in current}
+    candidates = [c for c in all_chars if c.id not in owned_ids]
+
+    need = min_count - len(current)
+    pool = candidates if len(candidates) >= need else all_chars
+    if not pool:
+        return
+
+    chosen = random.sample(pool, k=min(need, len(pool)))
+    for ch in chosen:
+        session.add(UserCharacter(user_id=user_id, character_id=ch.id))
+    session.commit()
 
 
 # ===== ここを差し替え：全キャラ + 所持フラグ（必ず何か返す） =====
@@ -205,6 +246,18 @@ from models import UserCharacter, Stamp
 @router.post("/checkin")
 def checkin(req: CheckinIn, request: Request, session: Session = Depends(get_session)):
     user = get_current_user(request)
+    print(user)
+    # 0) スタンプカタログを安全にDBへシード
+    try:
+        ensure_char_catalog_safe(session)
+    except Exception as e:
+        print("[checkin] seed error:", repr(e))
+
+    # 0.5) ユーザーに最低5個のスタンプを持たせておく
+    try:
+        ensure_min_stamps_for_user(session, user.id, min_count=5)
+    except Exception as e:
+        print("[checkin] ensure_min_stamps_for_user error:", repr(e))
 
     # 1) 距離チェック
     dist = haversine_m(req.user_lat, req.user_lon, req.lat, req.lon)
@@ -214,7 +267,7 @@ def checkin(req: CheckinIn, request: Request, session: Session = Depends(get_ses
             detail=f"チェックインできる距離にいません（現在 {int(dist)}m / 必要 {int(ARRIVAL_RADIUS_M)}m 以内）",
         )
 
-    # 2) 30分クールダウン（UTC基準のローリング判定）
+    # 2) 30分クールダウン
     now_utc = datetime.utcnow()
     cutoff = now_utc - timedelta(minutes=COOLDOWN_MINUTES)
 
@@ -231,7 +284,7 @@ def checkin(req: CheckinIn, request: Request, session: Session = Depends(get_ses
     if last:
         elapsed_sec = int((now_utc - last.checked_at).total_seconds())
         remain_sec = COOLDOWN_MINUTES * 60 - max(elapsed_sec, 0)
-        remain_min = max(1, (remain_sec + 59) // 60)  # 表示用に切り上げ分
+        remain_min = max(1, (remain_sec + 59) // 60)
         return {
             "ok": True,
             "repeat": True,
@@ -240,80 +293,69 @@ def checkin(req: CheckinIn, request: Request, session: Session = Depends(get_ses
             "cooldown_sec": remain_sec,
             "last_checked_at": last.checked_at.isoformat() + "Z",
             "next_available_at": (now_utc + timedelta(seconds=remain_sec)).isoformat() + "Z",
-            # 毎回モーダル出すなら下2行は維持（演出的に出したくないなら False に）
-            "awarded": True,
-            "character": {
-                "code": "marmot",
-                "name": "マーモット",
-                "sprite": "/static/characters/marmot.png",
-                "frames": 1, "w": 512, "h": 512,
-                "image": "/static/characters/marmot.png",
-            },
+            # クールダウン中はスタンプ付与なし
+            "awarded": False,
         }
 
-    # 3) 新規記録
-    session.add(
-        Stamp(
-            user_id=user.id,
-            place_id=req.place_id,
-            place_name=req.place_name,
-            kind=req.kind or "地点",
-            lat=req.lat,
-            lon=req.lon,
-        )
+    # 3) チェックイン履歴レコードを追加
+    stamp_row = Stamp(
+        user_id=user.id,
+        place_id=req.place_id,
+        place_name=req.place_name,
+        kind=req.kind or "地点",
+        lat=req.lat,
+        lon=req.lon,
     )
+    session.add(stamp_row)
     session.commit()
+    session.refresh(stamp_row)
 
-    # 4) キャラ情報の自動生成／更新（シングル画像）
-    DESIRED_IMAGE = "/static/characters/marmot.png"
-    DESIRED_FRAMES = 1
-    DESIRED_W = 256
-    DESIRED_H = 256
+    # 4) ランダムにスタンプ（Characterレコード）を1つ選び、必要なら付与
+    all_chars = session.exec(
+        select(Character).where(Character.code.in_(ALLOWED_CHAR_CODES))
+    ).all()
 
-    char = session.exec(select(Character).where(Character.code == "marmot")).first()
-    if not char:
-        char = Character(
-            code="marmot",
-            name="マーモット",
-            sprite_path=DESIRED_IMAGE,
-            frames=DESIRED_FRAMES,
-            frame_w=DESIRED_W,
-            frame_h=DESIRED_H,
-        )
-        session.add(char); session.commit(); session.refresh(char)
-    else:
-        changed = False
-        if char.sprite_path != DESIRED_IMAGE:
-            char.sprite_path = DESIRED_IMAGE; changed = True
-        if char.frames != DESIRED_FRAMES or char.frame_w != DESIRED_W or char.frame_h != DESIRED_H:
-            char.frames = DESIRED_FRAMES; char.frame_w = DESIRED_W; char.frame_h = DESIRED_H; changed = True
-        if changed:
-            session.add(char); session.commit(); session.refresh(char)
+    award_char = None
+    is_new = False
 
-    # 5) ユーザーが未所持なら付与（重複登録はしない）
-    owned = session.exec(
-        select(UserCharacter).where(UserCharacter.user_id == user.id, UserCharacter.character_id == char.id)
-    ).first()
-    if not owned:
-        session.add(UserCharacter(user_id=user.id, character_id=char.id))
-        session.commit()
 
-    # 6) モーダル演出は毎回行う
-    return {
+    if all_chars:
+        # 既に持っているもの
+        user_chars = session.exec(
+            select(UserCharacter).where(UserCharacter.user_id == user.id)
+        ).all()
+        owned_ids = {uc.character_id for uc in user_chars}
+
+        # まだ持っていないスタンプを優先
+        not_owned = [c for c in all_chars if c.id not in owned_ids]
+        pool = not_owned if not_owned else all_chars
+
+        award_char = random.choice(pool)
+        if award_char.id not in owned_ids:
+            session.add(UserCharacter(user_id=user.id, character_id=award_char.id))
+            session.commit()
+            is_new = True
+
+    # 5) レスポンス（JSは js.awarded && js.character でモーダル表示）
+    resp = {
         "ok": True,
         "repeat": False,
         "message": "チェックイン完了",
         "distance_m": round(dist, 1),
-        "awarded": True,
-        "render": "single",
-        "is_sprite": False,
-        "character": {
-            "code": char.code,
-            "name": char.name,
-            "sprite": char.sprite_path,
-            "frames": char.frames,
-            "w": char.frame_w,
-            "h": char.frame_h,
-            "image": char.sprite_path,
-        },
+        "awarded": bool(award_char),
     }
+
+    if award_char:
+        sprite = getattr(award_char, "sprite_path", "/static/stamp/default.png")
+        resp["character"] = {  # JS 側のキー名はそのまま character を使う
+            "code": award_char.code,
+            "name": award_char.name,   # → スタンプ名
+            "sprite": sprite,
+            "image": sprite,
+            "frames": getattr(award_char, "frames", 1),
+            "w": getattr(award_char, "frame_w", 256),
+            "h": getattr(award_char, "frame_h", 256),
+            "is_new": is_new,          # 新規取得かどうか（使いたければフロントで）
+        }
+
+    return resp

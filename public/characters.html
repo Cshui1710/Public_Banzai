@@ -1,0 +1,18 @@
+<!-- public/characters.html（雛形） -->
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>所持キャラクター</title></head>
+<body>
+  <h1>所持キャラクター</h1>
+  <ul id="list"></ul>
+  <script>
+    // 既存の /api/characters を想定
+    fetch('/api/characters').then(r=>r.json()).then(j=>{
+      const ul = document.getElementById('list');
+      j.items.forEach(c=>{
+        const li = document.createElement('li');
+        li.textContent = `${c.name}（レア度:${c.rarity}）`;
+        ul.appendChild(li);
+      })
+    })
+  </script>
+</body></html>

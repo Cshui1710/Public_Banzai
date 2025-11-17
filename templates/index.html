@@ -9,6 +9,7 @@
 
   <!-- 外部CSS -->
   <link rel="stylesheet" href="/static/style.css" />
+
   <script>
     window.ARRIVAL_RADIUS = {{ (radius_m | default(50, true) | int) | tojson }};
   </script>
@@ -18,6 +19,7 @@
   <!-- Chart.js（分析グラフ） -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+  <!-- ヘッダ高さをCSS変数に反映 -->
   <script>
     function updateHeaderHeight(){
       const h = document.querySelector('header')?.offsetHeight || 64;
@@ -25,47 +27,58 @@
     }
     window.addEventListener('load', updateHeaderHeight);
     window.addEventListener('resize', updateHeaderHeight);
-    // モーダル開閉やログインUI切替でヘッダーが伸縮するケースにも対応したいとき：
     const ro = new ResizeObserver(updateHeaderHeight);
-    ro.observe(document.querySelector('header'));
+    window.addEventListener('DOMContentLoaded', () => {
+      const hdr = document.querySelector('header');
+      if (hdr) ro.observe(hdr);
+    });
   </script>
 
+  <!-- ★ ログイン情報をフロントにも渡す -->
+  <script>
+    window.__USER__ = {
+      id: {{ user.id }},
+      email: "{{ user.email or '' }}",
+      name: "{{ user.display_name or user.email or 'ユーザー' }}",
+      is_guest: {{ 'true' if user.is_guest else 'false' }}
+    };
+  </script>
+
+  <style>
+    /* 右上の表示をきれいに収めるための小調整（style.cssが優先されます） */
+    header { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb; }
+    header .right { margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .pill.success { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+    .pill.warn { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+  </style>
 </head>
 <body>
   <header>
     <div style="font-weight:700;">石川県 公共施設・公園マップ</div>
     <span class="pill">到達半径 {{ radius_m|int if radius_m is defined else 50000 }}m</span>
 
-    <!-- 認証UI -->
-    <div id="authArea">
-      <div class="field">
-        <label>メール</label><input id="email" type="email" placeholder="you@example.com"/>
-      </div>
-      <div class="field">
-        <label>パス</label><input id="password" type="password" placeholder="********"/>
-      </div>
-      <button class="btn" onclick="register()">登録</button>
-      <button class="btn primary" onclick="login()">ログイン</button>
-      <button class="btn" onclick="googleLogin()">Googleでログイン</button>
-      <button class="btn" onclick="lineLogin()">LINEでログイン</button>
-    </div>
-
-    <div id="loggedArea" style="display:none">
-      <span class="pill" id="whoami">ログイン中</span>
-      <button class="btn" onclick="logout()">ログアウト</button>
-      <button class="btn" onclick="openCharsAll()">図鑑</button>
-    </div>
-
+    <!-- 左側の操作群 -->
     <button id="locateBtn" class="btn">現在地</button>
     <button id="toggleParks" class="btn">公園 ON/OFF</button>
     <button id="toggleFacilities" class="btn">公共施設 ON/OFF</button>
 
-    <div class="field" style="gap:8px; margin-left:auto;">
+    <div class="field" style="gap:8px; margin-left:8px;">
       <input id="csvQuery" type="text" placeholder="CSV内を検索（名称/住所で部分一致）" style="min-width:260px;"/>
       <button class="btn" onclick="searchCSV()">検索</button>
     </div>
     <button id="openDash" class="btn">分析</button>
 
+    <!-- 右側：ログイン中表示・ホーム・ログアウト -->
+    <div class="right">
+      {% if user and not user.is_guest %}
+        <span class="pill success" id="whoami">{{ user.display_name or user.email }} さんログイン中</span>
+      {% else %}
+        <span class="pill warn">ゲスト表示中</span>
+      {% endif %}
+      <a class="btn" href="/home">ホーム</a>
+      <a class="btn" href="/auth/logout">ログアウト</a>
+      <button class="btn" onclick="openCharsAll()">所持スタンプ</button>
+    </div>
   </header>
 
   <div id="map"></div>
@@ -78,8 +91,6 @@
     <div id="searchResults" style="margin-top:8px; font-size:14px;"></div>
   </div>
 
- 
-  
   <div id="photoPanel" class="photo-panel">
     <div class="photo-panel__header">
       <div style="font-weight:700; flex:1;">写真（<span id="photoPanelTitle">未選択</span>）</div>
@@ -96,6 +107,7 @@
       </form>
     </div>
     <div id="photoList" class="photo-grid"></div>
+
     <!-- コメント欄 -->
     <div class="comments" style="border-top:1px solid #e5e7eb;margin-top:10px;padding-top:10px;">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
@@ -114,7 +126,6 @@
         </div>
       </form>
     </div>
-
   </div>
 
   <div class="legend">
@@ -128,17 +139,16 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <!-- キャラ獲得モーダル -->
+
   <!-- キャラ獲得モーダル -->
   <div id="charModal">
     <div id="charCard">
       <div style="font-weight:700; font-size:20px;">マーモットを捕まえよう！</div>
 
-      <!-- AR + ゲーム領域（videoの上にcanvasを重ねる） -->
+      <!-- AR + ゲーム領域 -->
       <div id="arStage" style="position:relative;width:min(92vw,480px);height:min(120vw,360px);margin:12px auto;border-radius:12px;overflow:hidden;background:#000;">
         <video id="arVideo" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>
         <canvas id="arCanvas" width="480" height="360" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-        <!-- ヒントUI -->
         <div id="arHint" style="position:absolute;left:8px;bottom:8px;color:#fff;background:rgba(0,0,0,.35);padding:6px 8px;border-radius:8px;font-size:12px;">
           逃げるマーモットをタップ！
         </div>
@@ -152,11 +162,10 @@
     </div>
   </div>
 
-
   <div id="charsModal" class="modal" style="display:none">
     <div class="modal-card" style="background:#fff;border-radius:12px;padding:16px;max-width:900px;width:96vw;max-height:85vh;overflow:auto;">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <div style="font-weight:700;font-size:18px;">キャラクター図鑑（全10種）</div>
+        <div style="font-weight:700;font-size:18px;">スタンプ一覧</div>
         <button class="btn" onclick="closeChars()">閉じる</button>
       </div>
       <div id="charsHeader" style="margin:8px 0;color:#334155;font-size:14px;"></div>
@@ -184,7 +193,6 @@
           </select>
         </label>
 
-        <!-- 時間帯プリセット -->
         <label>時間帯:
           <select id="dashTod">
             <option value="">指定なし</option>
@@ -200,7 +208,6 @@
         <a class="btn" id="geojsonLink" target="_blank" rel="noopener">GeoJSON</a>
       </div>
 
-      <!-- ヒートマップ調整UI（★ここに表示用スパンを追加） -->
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px;">
         <label>半径:
           <input id="heatRadius" type="range" min="5" max="60" step="1" value="20">
@@ -233,15 +240,13 @@
   <!-- ゲット確認モーダル -->
   <div id="gotModal" class="modal" style="display:none">
     <div class="modal-card" style="background:#fff;border-radius:14px;padding:16px;max-width:520px;width:92vw;text-align:center;">
-      <div style="font-weight:800;font-size:20px;margin-bottom:6px;">キャラをゲット！</div>
-
+      <div style="font-weight:800;font-size:20px;margin-bottom:6px;">スタンプをゲット！</div>
       <div style="display:flex;justify-content:center;margin:10px 0;">
         <img id="gotImg" src="" alt="キャラ画像" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
       </div>
       <div id="gotName" style="font-size:18px;font-weight:700;color:#0f172a;">???</div>
-
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-        <button class="btn primary" onclick="openCharsAll(); closeGotModal();">図鑑を見る</button>
+        <button class="btn primary" onclick="openCharsAll(); closeGotModal();">スタンプを見る</button>
         <button class="btn" onclick="shareGot()">共有する</button>
         <button class="btn" onclick="closeGotModal()">閉じる</button>
       </div>

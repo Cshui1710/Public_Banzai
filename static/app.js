@@ -3,8 +3,11 @@ const CENTER = [36.77, 136.90];
 const map = L.map('map').setView(CENTER, 9);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
 
-const meMarker = L.circleMarker(CENTER, {radius:7, color:'#0ea5e9', fillColor:'#0ea5e9', fillOpacity:0.9});
-let mePos = null;
+const meMarker = L.circleMarker(CENTER, {
+  radius:7, color:'#0ea5e9', fillColor:'#0ea5e9', fillOpacity:0.9
+});
+
+let mePos = null;  // まだ現在地は未取得
 
 const layerParks = L.layerGroup().addTo(map);
 const layerFacilities = L.layerGroup().addTo(map);
@@ -142,6 +145,14 @@ function addMarkersWithIcon(records, kind, group, iconFn){
   });
 }
 
+function updateMeMarker(lat, lon, zoom = 16) {
+  mePos = [lat, lon];
+  meMarker.setLatLng(mePos).addTo(map);
+  if (zoom) {
+    map.setView(mePos, zoom);
+  }
+}
+
 async function init(){
   try{
     const [parks, facilities] = await Promise.all([fetchPlaces("park"), fetchPlaces("facility")]);
@@ -159,30 +170,84 @@ async function init(){
     toast(`読み込み完了：${parks.length+facilities.length+nfac.length+npark.length}地点`);
   }catch(e){console.error(e);toast('データ読込エラー',false);}
   refreshAuthUI();
+  autoLocateOnLoad();
+}
+
+function autoLocateOnLoad(){
+  if (!navigator.geolocation) {
+    console.warn("Geolocation未対応");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      console.log("初回現在地取得成功:", p.coords);
+      updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
+    },
+    err => {
+      console.warn("初回現在地取得失敗:", err);
+      // ここでトーストも出してOK
+      toast("現在地の取得に失敗しました", false);
+    },
+    { enableHighAccuracy:true, timeout:10000 }
+  );
 }
 
 document.getElementById('locateBtn').onclick=()=>{
   if(!navigator.geolocation) return toast('位置情報未対応',false);
   navigator.geolocation.getCurrentPosition(p=>{
-    mePos=[p.coords.latitude,p.coords.longitude];
-    meMarker.setLatLng(mePos).addTo(map);
-    map.setView(mePos,16);
+    // ★ ここだけ書き換え
+    updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
   },()=>toast('現在地取得失敗',false));
 };
 document.getElementById('toggleParks').onclick=()=>{map.hasLayer(layerParks)?map.removeLayer(layerParks):layerParks.addTo(map)};
 document.getElementById('toggleFacilities').onclick=()=>{map.hasLayer(layerFacilities)?map.removeLayer(layerFacilities):layerFacilities.addTo(map)};
 
 async function refreshAuthUI(){
-  const js=await fetch('/me').then(r=>r.json()).catch(()=>({}));
-  if(js.authenticated){
-    document.getElementById('authArea').style.display='none';
-    document.getElementById('loggedArea').style.display='flex';
-    document.getElementById('whoami').textContent=`ログイン中: ${js.email}`;
-  }else{
-    document.getElementById('authArea').style.display='flex';
-    document.getElementById('loggedArea').style.display='none';
+  const authArea   = document.getElementById('authArea');
+  const loggedArea = document.getElementById('loggedArea');
+  const whoami     = document.getElementById('whoami');
+
+  // すでにテンプレートなどから設定されている __USER__ を尊重
+  const prevUser = window.__USER__ || { id: null, email: null, name: null };
+
+  let js = null;
+  try {
+    const r = await fetch('/me', {
+      method: 'GET',
+      credentials: 'include',   // ★ クッキーを必ず送る
+    });
+    js = await r.json();
+  } catch (e) {
+    console.warn('/me の取得に失敗しました', e);
+    js = null;  // 失敗したら無理に未ログイン扱いにしない
   }
+
+  // /me がちゃんと「ユーザーいるよ」と教えてくれた場合だけ UI を更新
+  if (js && js.authenticated) {
+    if (authArea)   authArea.style.display   = 'none';
+    if (loggedArea) loggedArea.style.display = 'flex';
+    if (whoami)     whoami.textContent       = `ログイン中: ${js.email}`;
+
+    window.__USER__ = {
+      id: js.id,
+      email: js.email,
+      name: js.email,
+    };
+  } else {
+    // ここでは UI をいじらない（サーバが描画したログイン表示をそのままにする）
+    window.__USER__ = prevUser;
+  }
+
+  console.log(
+    "refreshAuthUI: 現在のユーザー:",
+    window.__USER__?.email ?? '(未ログイン)',
+    "ID:",
+    window.__USER__?.id ?? 'なし'
+  );
 }
+
+
+
 async function register(){
   const email=document.getElementById('email').value.trim();
   const password=document.getElementById('password').value;
@@ -226,8 +291,12 @@ function haversineM(lat1, lon1, lat2, lon2){
 
 async function checkin(id, lat, lon, name, kind){
   // 1) 認証チェック
-  const me = await fetch('/me').then(r=>r.json()).catch(()=>({authenticated:false}));
-  if(!me.authenticated) return toast('ログインが必要です', false);
+  const me = (window.__USER__ || null);
+
+  // id が無ければ未ログイン扱い
+  if (!me || me.id == null) {
+    return toast('ログインが必要です', false);
+  }
 
   // 2) 現在地（未取得ならここで取る）
   if(!mePos){
@@ -237,8 +306,8 @@ async function checkin(id, lat, lon, name, kind){
         navigator.geolocation.getCurrentPosition(res, rej, {enableHighAccuracy:true, timeout:10000});
       });
       mePos = [p.coords.latitude, p.coords.longitude];
+      updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
     }catch(err){
-      // 位置情報エラー理由を出し分け
       if (err && typeof err.code !== 'undefined') {
         if (err.code === err.PERMISSION_DENIED)   return toast('位置情報の許可が必要です（ブラウザ設定を確認）', false);
         if (err.code === err.POSITION_UNAVAILABLE)return toast('位置情報を取得できませんでした', false);
@@ -248,13 +317,12 @@ async function checkin(id, lat, lon, name, kind){
     }
   }
 
-  // 3) 事前距離チェック（ユーザーの体感を良くする）
+  // （以下はそのままでOK）
   const clientDist = haversineM(mePos[0], mePos[1], lat, lon);
-  if (clientDist > ARRIVAL_RADIUS + 5) { // 少し余裕を持つ
+  if (clientDist > ARRIVAL_RADIUS + 5) {
     return toast(`チェックインできる距離にいません（現在 約${Math.round(clientDist)}m / 必要 ${ARRIVAL_RADIUS}m 以内）`, false);
   }
 
-  // 4) サーバへPOST（最終判定）
   const body = {
     place_id: id, place_name: name, kind,
     lat, lon,
@@ -265,6 +333,7 @@ async function checkin(id, lat, lon, name, kind){
   try{
     r = await fetch('/api/checkin', {
       method:'POST',
+      credentials: 'include', // つけておくとより安全
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(body)
     });
@@ -273,15 +342,12 @@ async function checkin(id, lat, lon, name, kind){
     return toast('サーバに接続できませんでした', false);
   }
 
-  // 5) ステータス別の出し分け
   if (r.status === 401) return toast('ログインが必要です', false);
   if (r.status === 422) return toast('入力が不正です（緯度経度などを確認）', false);
   if (!r.ok) {
-    // サーバが detail を返す場合はそれを出す
     return toast(js?.detail || 'チェックインに失敗しました', false);
   }
 
-  // 6) 成功
   if (js?.repeat) {
     toast(js?.message || '本日は既にチェックイン済みです');
     return;
@@ -293,10 +359,17 @@ async function checkin(id, lat, lon, name, kind){
   }
 }
 
+
 // どこか一度だけ
 window.checkin = checkin;
 window.openPhotoPanel = openPhotoPanel;
-
+console.log(
+  "現在のユーザー:",
+  window.__USER__ ? window.__USER__.name : '(未ログイン)',
+  "（ID:",
+  window.__USER__ ? window.__USER__.id : 'なし',
+  "）"
+);
 
 function searchCSV(){
   const q=document.getElementById('csvQuery').value.trim();
@@ -365,8 +438,11 @@ async function loadPhotos(placeId){
 
 async function submitPhoto(ev){
   ev.preventDefault();
-  const me=await fetch('/me').then(r=>r.json()).catch(()=>({authenticated:false}));
-  if(!me.authenticated){ toast('ログインが必要です', false); return false; }
+  const me = window.__USER__ || null;
+  if (!me || me.id == null) {
+    toast('ログインが必要です', false);
+    return false;
+  }
   const placeId = document.getElementById('photoPlaceId').value;
   const fileEl  = document.getElementById('photoFile');
   if(!fileEl.files || fileEl.files.length === 0){ toast('ファイルを選択してください', false); return false; }
@@ -389,8 +465,8 @@ function showCharacterModal(ch) {
   modal.style.display = "flex";
   document.body.classList.add('modal-open');  
   const character = {
-    name: ch?.name || 'マーモット',
-    image: ch?.image || ch?.sprite || '/static/characters/marmot.png'
+    name: ch?.name || 'スタンプ',
+    image: ch?.image || ch?.sprite || '/static/stamp/marmot.png'
   };
   startYamGame(character);  // ← サツマイモ投げ版を起動
 }
@@ -430,7 +506,7 @@ function renderCharsModalAll(data){
   const grid  = document.getElementById('charsGrid');
   const head  = document.getElementById('charsHeader');
 
-  head.textContent = `スタンプ：${data.stamp_count}件 / 図鑑：全${data.count}種（所持 ${data.items.filter(x=>x.owned).length}）`;
+  head.textContent = `チェックイン：${data.stamp_count}回 / 図鑑：全${data.count}種（所持 ${data.items.filter(x=>x.owned).length}）`;
 
   grid.innerHTML = data.items.map(it=>{
     const url = new URL(it.image, location.origin).href + `?v=${Date.now()}`;
@@ -485,9 +561,11 @@ function renderComments(items){
 
 async function submitComment(ev){
   ev.preventDefault();
-  const me = await fetch('/me').then(r=>r.json()).catch(()=>({authenticated:false}));
-  if(!me.authenticated) { toast('ログインが必要です', false); return false; }
-
+  const me = window.__USER__ || null;
+  if (!me || me.id == null) {
+    toast('ログインが必要です', false);
+    return false;
+  }
   const placeId = document.getElementById('photoPlaceId').value;
   const textEl  = document.getElementById('commentText');
   const content = (textEl.value || '').trim();
@@ -789,7 +867,7 @@ async function startYamGame(character){
 
   // ---------- 画像ロード ----------
   AR.marmotImg = await loadImage(AR.currentCharacter.image);
-  AR.yamImg    = await loadImage('/static/characters/yam.png').catch(()=>null); // なくてもOK（丸で代用）
+  AR.yamImg    = await loadImage('/static/stamp/yam.png').catch(()=>null); // なくてもOK（丸で代用）
 
   // ---------- Canvas DPI/サイズ ----------
   function resizeCanvas(){
@@ -1011,7 +1089,7 @@ function finishYamGame(success){
   const hint = document.getElementById('arHint');
   if (hint) hint.textContent = success ? '命中！ゲット🎉' : 'また挑戦してね';
   if (success){
-    toast('命中！キャラをゲット！');
+    toast('命中！スタンプをゲット！');
     // ★ ゲット確認を表示（図鑑へ誘導）
     openGotModal(AR.currentCharacter);
   }
@@ -1020,8 +1098,8 @@ function finishYamGame(success){
 
 function stopYamGame(){ finishYamGame(false); }
 function restartMarmotGame(){
-  const name = document.getElementById('charName')?.textContent?.replace(' を当てよう！','') || 'マーモット';
-  startYamGame({ name, image: AR?.marmotImg?.src || '/static/characters/marmot.png' });
+  const name = document.getElementById('charName')?.textContent?.replace(' を当てよう！','') || 'スタンプ';
+  startYamGame({ name, image: AR?.marmotImg?.src || '/static/stamp/marmot.png' });
 }
 
 function loadImage(url){
@@ -1039,8 +1117,8 @@ function loadImage(url){
 function openGotModal(ch){
   const m = document.getElementById('gotModal');
   if(!m) return;
-  document.getElementById('gotImg').src = ch?.image || ch?.sprite || '/static/characters/marmot.png';
-  document.getElementById('gotName').textContent = ch?.name || 'マーモット';
+  document.getElementById('gotImg').src = ch?.image || ch?.sprite || '/static/stamp/marmot.png';
+  document.getElementById('gotName').textContent = ch?.name || 'スタンプ';
   m.style.display = 'flex';
 }
 function closeGotModal(){
@@ -1049,7 +1127,7 @@ function closeGotModal(){
 }
 async function shareGot(){
   // Web Share API（対応端末のみ）。非対応ならクリップボードにコピー
-  const title = 'キャラをゲット！';
+  const title = 'スタンプをゲット！';
   const text  = document.getElementById('gotName').textContent + ' を手に入れたよ';
   const url   = location.href;
   if (navigator.share){
@@ -1061,7 +1139,9 @@ async function shareGot(){
   }
 }
 // ===== /ゲット確認モーダル =====
-
-
-
-init();
+// いちばん下にある `init();` を削除して、代わりにこれを追加
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}

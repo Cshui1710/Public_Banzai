@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>作問ページ | Ishikawa Facilities & Parks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8fafc; }
+    .card { border: 0; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+  </style>
+</head>
+<body>
+  <!-- ★ ナビゲーションバー（quiz.htmlと同じ構成） -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/home">Ishikawa Facilities & Parks</a>
+      <div class="ms-auto">
+        <a class="btn btn-outline-secondary btn-sm" href="/home">ホームへ</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div class="mb-4">
+      <h1 class="h4 mb-1">作問ページ</h1>
+      <p class="text-muted mb-0">あなたのオリジナル問題を登録して、みんなに挑戦させよう！</p>
+    </div>
+
+    <div class="card p-4 mb-4 bg-white">
+      <form id="qForm">
+        <div class="mb-3">
+          <label class="form-label">問題文</label>
+          <textarea name="stem" class="form-control" rows="2" required></textarea>
+        </div>
+      <div class="mb-3">
+        <label class="form-label">ヒント（任意）</label>
+        <textarea name="hint" class="form-control" rows="2"
+                  placeholder="例）北陸新幹線の起点駅がある市です など"></textarea>
+      </div>  
+        {% for i in range(4) %}
+        <div class="mb-3">
+          <label class="form-label">選択肢 {{ i+1 }}</label>
+          <input type="text" name="choice{{i+1}}" class="form-control" required>
+        </div>
+        {% endfor %}
+        <div class="mb-3">
+          <label class="form-label">正解の番号（1〜4）</label>
+          <input type="number" name="correct_idx" class="form-control" min="1" max="4" required>
+        </div>
+        <button class="btn btn-primary w-100">登録する</button>
+      </form>
+    </div>
+
+    <div class="card p-4 bg-white">
+      <h2 class="h5 mb-3">あなたの作った問題</h2>
+      <ul id="myQuestions" class="list-group"></ul>
+    </div>
+  </main>
+
+  <script>
+    const form = document.getElementById("qForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const r = await fetch("/api/quiz/maker/add", { method: "POST", body: fd });
+      const js = await r.json();
+      if (js.ok) {
+        alert("登録しました！");
+        form.reset();
+        loadList();
+      } else {
+        alert("エラー: " + (js.error || "登録に失敗しました"));
+      }
+    });
+
+    async function loadList() {
+      const r = await fetch("/api/quiz/maker/list");
+      const js = await r.json();
+      const list = document.getElementById("myQuestions");
+      list.innerHTML = "";
+      if (js.ok) {
+        if (js.questions.length === 0) {
+          list.innerHTML = "<li class='list-group-item text-muted'>まだ作問がありません。</li>";
+        } else {
+          js.questions.forEach((q) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            const hintHtml = q.hint
+              ? `<br><small class="text-muted">ヒント: ${q.hint}</small>`
+              : "";
+            li.innerHTML =
+              `<b>${q.stem}</b><br>` +
+              `${q.choices.map((c,i)=>`${i+1}: ${c}`).join(" / ")}` +
+              `<br><small class="text-muted">正解: ${q.correct_idx+1}</small>` +
+              hintHtml;
+            list.appendChild(li);
+          });
+        }
+      }
+    }
+    loadList();
+  </script>
+</body>
+</html>

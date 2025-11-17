@@ -9,16 +9,61 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlmodel import Session, select
 from authlib.integrations.starlette_client import OAuth
+import secrets
+from fastapi.templating import Jinja2Templates
 
 from config import (
     JWT_SECRET, JWT_ALG, JWT_EXPIRE_MIN, AUTH_COOKIE, MIN_PW, MAX_PW,
     BASE_URL, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, LINE_CLIENT_ID, LINE_CLIENT_SECRET
 )
-from models import User, OAuthAccount, engine
+from models import User, OAuthAccount, engine, Character, UserCharacter
 
 router = APIRouter()
 
+templates = Jinja2Templates(directory="templates")
+
 pwd_ctx = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+
+# ★ 最初から所持していてほしいキャラクターコード
+#   ※ Character.code に合わせてください（"kitune" ならそこに合わせる）
+DEFAULT_CHAR_CODES = ["marmot", "tanuki", "kitsune"]  # ←必要なら "kitune" に修正
+
+def _ensure_default_characters_for_user(user_id: int):
+    """
+    ログイン中のユーザーに、デフォルトキャラクター
+    (marmot / tanuki / kitsune) を「所持済み」として付与する。
+    すでに付与済みなら何もしない。
+    """
+    if not user_id or user_id <= 0:
+        return
+
+    with Session(engine) as s:
+        # コードが DEFAULT_CHAR_CODES のキャラクターを取得
+        chars = s.exec(
+            select(Character).where(Character.code.in_(DEFAULT_CHAR_CODES))
+        ).all()
+        if not chars:
+            # まだ Character テーブルにレコードが無い場合は何もしない
+            return
+
+        # すでに所持しているキャラIDを取得
+        existing = {
+            uc.character_id
+            for uc in s.exec(
+                select(UserCharacter).where(UserCharacter.user_id == user_id)
+            )
+        }
+
+        # 足りないものだけ追加
+        added = False
+        for ch in chars:
+            if ch.id not in existing:
+                s.add(UserCharacter(user_id=user_id, character_id=ch.id))
+                added = True
+
+        if added:
+            s.commit()
+
 
 def hash_pw(p: str) -> str:
     return pwd_ctx.hash(p)
@@ -34,27 +79,31 @@ def create_token(data: dict) -> str:
 def read_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
 
-def get_current_user(request: Request) -> Optional[User]:
-    token = request.cookies.get(AUTH_COOKIE)
-    if not token:
-        return None
-    try:
-        payload = read_token(token)
-        uid = int(payload.get("uid", 0))
-        with Session(engine) as s:
-            return s.get(User, uid)
-    except JWTError:
-        return None
 
-def login_required(user: Optional[User]):
-    if not user:
-        raise HTTPException(status_code=401, detail="ログインが必要です")
 
 def set_login_cookie(user_id: int) -> JSONResponse:
     token_jwt = create_token({"uid": user_id})
     res = JSONResponse({"ok": True, "msg": "ログイン成功"})
     res.set_cookie(AUTH_COOKIE, token_jwt, httponly=True, samesite="lax", secure=False, max_age=60*60*24*30)
     return res
+
+def _login_redirect(user_id: int, to="/home"):
+    resp = RedirectResponse(url=to, status_code=303)
+    resp.set_cookie(
+        AUTH_COOKIE,
+        create_token({"uid": user_id}),
+        httponly=True,
+        samesite="lax",
+        secure=False,          # 本番 https なら True に
+        max_age=60*60*24*30,
+        path="/",
+    )
+    return resp
+
+def _logout_response():
+    resp = RedirectResponse(url="/auth/login", status_code=303)
+    resp.delete_cookie(AUTH_COOKIE, httponly=True, samesite="lax", secure=False, path="/")
+    return resp
 
 # ===== Password auth =====
 class RegisterForm(BaseModel):
@@ -76,26 +125,147 @@ def register(form: RegisterForm):
         s.add(u); s.commit(); s.refresh(u)
         return {"ok": True, "msg": "登録完了"}
 
+@router.get("/auth/login")
+def login_page(request: Request):
+    # 既にログイン済みなら /home へ
+    token = request.cookies.get(AUTH_COOKIE)
+    if token:
+        try:
+            payload = read_token(token)
+            if int(payload.get("uid", 0)) > 0:
+                return RedirectResponse(url="/home", status_code=303)
+        except Exception:
+            pass
+    from main import templates
+    return templates.TemplateResponse("login.html", {"request": request})
+
+from fastapi import Body, Form, Request
+from urllib.parse import parse_qs
 @router.post("/auth/login")
-def login(form: LoginForm):
+async def login(
+    request: Request,
+    email: Optional[str] = Form(None),
+    password: Optional[str] = Form(None),
+    json: Optional[dict] = Body(None),
+):
+    # 1) JSONで来た場合
+    if (email is None or password is None) and json:
+        email = json.get("email")
+        password = json.get("password")
+
+    # 2) ヘッダが微妙でも raw body を form として読む
+    if email is None or password is None:
+        raw = (await request.body() or b"").decode("utf-8", errors="ignore")
+        if raw:
+            q = parse_qs(raw)
+            email = email or (q.get("email",[None])[0])
+            password = password or (q.get("password",[None])[0])
+
+    # 最終チェック
+    if not email or not password:
+        raise HTTPException(422, "email/password を指定してください")
+
     with Session(engine) as s:
-        u = s.exec(select(User).where(User.email == form.email)).first()
-        if not u or not verify_pw(form.password, u.password_hash):
+        u = s.exec(select(User).where(User.email == email)).first()
+        if not u or not verify_pw(password, u.password_hash):
             raise HTTPException(401, "メールまたはパスワードが違います")
-        return set_login_cookie(u.id)
+
+        # ★ ここでリダイレクト先を決める
+        target = "/home"
+        if not getattr(u, "display_name", None):
+            target = "/name"
+
+    print("[DEBUG] CT:", request.headers.get("content-type"))
+    print("[DEBUG] email:", repr(email), "password_len:", len(password) if password else None)
+
+    return _login_redirect(u.id, to=target)
+
+
+SESSION_KEYS_TO_CLEAR = [
+    # 既存実装で使っているキーをここに列挙
+    "user", "user_id", "email", "access_token", "refresh_token",
+    # ゲスト関連
+    "guest_id", "guest_created_at",
+]
+
+def _clear_session(req: Request):
+    # 指定キーを安全に削除
+    for k in SESSION_KEYS_TO_CLEAR:
+        if k in req.session:
+            try:
+                del req.session[k]
+            except Exception:
+                req.session.pop(k, None)
 
 @router.post("/auth/logout")
-def logout():
-    res = JSONResponse({"ok": True, "msg": "ログアウトしました"})
-    res.delete_cookie(AUTH_COOKIE)
-    return res
+def logout_post(request: Request):
+    _clear_session(request)  # あなたの既存ヘルパ
+    return _logout_response()
+
+@router.get("/auth/logout")
+def logout_get(request: Request):
+    _clear_session(request)  # あなたの既存ヘルパ
+    return _logout_response()
+
 
 @router.get("/me")
-def me(request: Request):
+def whoami(request: Request):
     u = get_current_user(request)
     if not u:
-        return {"authenticated": False}
-    return {"authenticated": True, "email": u.email, "created_at": u.created_at.isoformat()}
+        return JSONResponse({}, status_code=200)
+    return {
+        "id": getattr(u, "id", None),
+        "email": getattr(u, "email", None),
+        "is_guest": bool(getattr(u, "is_guest", False)),
+        "display_name": getattr(u, "display_name", None),
+    }
+
+
+@router.get("/name")
+def name_page(request: Request):
+    u = get_current_user(request)
+    login_required(u, allow_guest=False)  # ゲストはNG（本登録ユーザーのみ）
+    return templates.TemplateResponse(
+        "name.html",
+        {
+            "request": request,
+            "user": u,
+            "message": "",
+        },
+    )
+
+@router.post("/name")
+def name_update(
+    request: Request,
+    display_name: str = Form(...),
+):
+    u = get_current_user(request)
+    login_required(u, allow_guest=False)
+
+    dn = (display_name or "").strip()
+    if not (1 <= len(dn) <= 20):
+        # エラー時はページ再表示
+        return templates.TemplateResponse(
+            "name.html",
+            {
+                "request": request,
+                "user": u,
+                "message": "名前は1〜20文字で入力してください。",
+            },
+        )
+
+    from models import User
+    with Session(engine) as s:
+        dbu = s.get(User, u.id)
+        if not dbu:
+            raise HTTPException(404, "ユーザーが見つかりません")
+        dbu.display_name = dn
+        s.add(dbu)
+        s.commit()
+
+    # 変更後、/home に戻る
+    return RedirectResponse(url="/home", status_code=303)
+
 
 # ===== OAuth =====
 oauth = OAuth()
@@ -156,9 +326,26 @@ async def google_callback(request: Request):
     email = str(userinfo.get("email") or "").strip().lower()
     sub = str(userinfo.get("sub") or "").strip()
     user_id = _get_or_create_user_for_oidc("google", sub, email)
-    resp = RedirectResponse(url="/")
-    resp.set_cookie(AUTH_COOKIE, create_token({"uid": user_id}), httponly=True, samesite="lax", secure=False, max_age=60*60*24*30)
+
+    # ★ display_name の有無で行き先を決定
+    from models import User
+    with Session(engine) as s:
+        u = s.get(User, user_id)
+        target = "/home"
+        if not u or not getattr(u, "display_name", None):
+            target = "/name"
+
+    resp = RedirectResponse(url=target, status_code=303)
+    resp.set_cookie(
+        AUTH_COOKIE,
+        create_token({"uid": user_id}),
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=60*60*24*30,
+    )
     return resp
+
 
 @router.get("/auth/line/login")
 async def line_login(request: Request):
@@ -174,11 +361,137 @@ async def line_callback(request: Request):
     except Exception as e:
         raise HTTPException(400, f"LINE認証エラー: {e}")
     userinfo = token.get("userinfo") or await oauth.line.parse_id_token(request, token)
-    email = str(userinfo.get("email") or "").strip().lower()  # email未取得の可能性あり
+    email = str(userinfo.get("email") or "").strip().lower()
     sub = str(userinfo.get("sub") or "").strip()
     if not sub:
         raise HTTPException(400, "LINE: sub が取得できませんでした")
     user_id = _get_or_create_user_for_oidc("line", sub, email)
-    resp = RedirectResponse(url="/")
-    resp.set_cookie(AUTH_COOKIE, create_token({"uid": user_id}), httponly=True, samesite="lax", secure=False, max_age=60*60*24*30)
+
+    # ★ display_name の有無で行き先を決定
+    from models import User
+    with Session(engine) as s:
+        u = s.get(User, user_id)
+        target = "/home"
+        if not u or not getattr(u, "display_name", None):
+            target = "/name"
+
+    resp = RedirectResponse(url=target, status_code=303)
+    resp.set_cookie(
+        AUTH_COOKIE,
+        create_token({"uid": user_id}),
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=60*60*24*30,
+    )
     return resp
+
+
+
+# --- auth.py の 該当箇所 置き換え ---
+
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from fastapi import HTTPException
+import secrets
+from datetime import datetime
+
+GUEST_PREFIX = "guest_"
+
+class _SimpleUser:
+    def __init__(self, id, email, is_guest=False, display_name=None):
+        self.id = id
+        self.email = email
+        self.is_guest = is_guest
+        self.display_name = display_name
+        
+def _mk_guest_user(req: Request):
+    """
+    セッションにゲストIDを発行し、擬似ユーザー情報を dict で返す。
+    """
+    g = req.session.get("guest_id")
+    if not g:
+        g = GUEST_PREFIX + secrets.token_hex(4)  # 8桁
+        req.session["guest_id"] = g
+        req.session["guest_created_at"] = datetime.utcnow().isoformat()
+    # id は負数の安定値に（DBと衝突しないように）
+    gid = -abs(hash(g)) % (10**9)
+    pseudo_email = f"{g}@example.local"
+    pseudo_name  = f"ゲスト{str(gid)[-4:]}"
+    return {"id": gid, "email": f"{g}@example.local", "is_guest": True}
+
+@router.post("/auth/guest")
+def guest_login(request: Request):
+    guest = _mk_guest_user(request)
+    return JSONResponse({"ok": True, **guest})
+
+def _normalize_user(u) -> _SimpleUser | None:
+    if u is None or u is ...:
+        return None
+    # dict
+    if isinstance(u, dict):
+        uid = u.get("id")
+        if uid is None:
+            return None
+        return _SimpleUser(
+            id=uid,
+            email=u.get("email"),
+            is_guest=bool(u.get("is_guest")),
+            display_name=u.get("display_name"),
+        )
+    # SQLModel 等
+    uid = getattr(u, "id", None)
+    if uid is None:
+        return None
+    email = getattr(u, "email", None)
+    is_guest = bool(getattr(u, "is_guest", False))
+    display_name = getattr(u, "display_name", None)
+    return _SimpleUser(uid, email, is_guest, display_name)
+
+# まず、後半にある get_current_user / _normalize_user など
+# 「セッションだけを見る版」の重複定義は削除してください。
+# （_SimpleUser と _mk_guest_user はこのまま使います）
+
+def get_current_user(request: Request) -> Optional[_SimpleUser]:
+    # 1) JWT cookie
+    token = request.cookies.get(AUTH_COOKIE)
+    if token:
+        try:
+            payload = read_token(token)
+            uid = int(payload.get("uid", 0))
+            if uid > 0:
+                with Session(engine) as s:
+                    u = s.get(User, uid)
+                    if u:
+                        # ★ ログインしている本ユーザーにデフォルトキャラを付与
+                        _ensure_default_characters_for_user(u.id)
+                        return _SimpleUser(
+                            id=u.id,
+                            email=u.email,
+                            is_guest=False,
+                            display_name=getattr(u, "display_name", None),
+                        )
+        except JWTError:
+            pass
+
+    # 2) guest session
+    if request.session.get("guest_id"):
+        gdict = _mk_guest_user(request)
+        return _normalize_user(gdict)
+
+    # 3) 未ログイン
+    return None
+
+
+
+def login_required(u, *, allow_guest: bool = True):
+    """
+    認可ヘルパ：
+      - allow_guest=True ならゲストも通す（クイズ用）
+      - allow_guest=False にすれば本ログインのみ許可（写真投稿など）
+    """
+    if u is None:
+        raise HTTPException(status_code=401, detail="ログインが必要です")
+    if getattr(u, "is_guest", False) and not allow_guest:
+        raise HTTPException(status_code=401, detail="ゲストは許可されていません")
+    return True
