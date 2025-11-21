@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI, Request,Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -28,6 +29,7 @@ app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax"
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 templates = Jinja2Templates(directory="templates")
+templates.env.filters["tojson"] = lambda x: json.dumps(x).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026").replace("'", "\\u0027")
 
 @app.on_event("startup")
 def _startup():
@@ -52,10 +54,21 @@ def quiz_index(request: Request):
 def map_index(request: Request):
     from auth import get_current_user
     user = get_current_user(request)
-    return templates.TemplateResponse("index.html", {  # ←既存の index.html をそのまま使う
+    
+    user_json = None
+    if user:
+        user_json = {
+            "id": user.id,
+            "email": user.email,
+            "is_guest": user.is_guest,
+            "display_name": user.display_name
+        }
+        
+    return templates.TemplateResponse("index.html", {
         "request": request,
         "user": user,
-        "radius_m": ARRIVAL_RADIUS_M
+        "arrival_radius": ARRIVAL_RADIUS_M,
+        "user_json": user_json
     })
 
     

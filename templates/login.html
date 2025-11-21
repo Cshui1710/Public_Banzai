@@ -1,23 +1,80 @@
 <!-- templates/login.html -->
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>ログイン｜石川県 公共施設・公園クイズ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <link rel="stylesheet" href="/static/style.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/static/style.css?v=2" />
   <style>
-    body{display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f8fafc;}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px;max-width:640px;width:92vw;}
-    .btn{cursor:pointer;border:1px solid #cbd5e1;background:#fff;padding:10px 14px;border-radius:10px;}
-    .btn.primary{background:#2563eb;color:#fff;border-color:#2563eb;}
-    .row{display:flex;gap:12px;flex-wrap:wrap;}
-    .field{display:flex;gap:8px;align-items:center;}
-    input{padding:8px;border:1px solid #cbd5e1;border-radius:8px;}
-    .sep{display:flex;align-items:center;gap:8px;margin:12px 0;color:#64748b;}
-    .sep::before,.sep::after{content:"";flex:1;height:1px;background:#e5e7eb;}
+    body {
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 20px;
+      max-width: 640px;
+      width: 92vw;
+    }
+
+    .btn {
+      cursor: pointer;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+    }
+
+    .btn.primary {
+      background: #2563eb;
+      color: #fff;
+      border-color: #2563eb;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .field {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input {
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+
+    .sep {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0;
+      color: #64748b;
+    }
+
+    .sep::before,
+    .sep::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
   </style>
 </head>
+
 <body>
   <div class="card">
     <h2 style="margin-top:0">ログイン方法を選択</h2>
@@ -26,8 +83,10 @@
     <div class="row">
       <div style="flex:1 1 280px">
         <h3>既存アカウントでログイン</h3>
-        <div class="field"><label style="width:72px">メール</label><input id="email" type="email" placeholder="you@example.com" style="flex:1"/></div>
-        <div class="field" style="margin-top:6px"><label style="width:72px">パス</label><input id="password" type="password" placeholder="********" style="flex:1"/></div>
+        <div class="field"><label style="width:72px">メール</label><input id="email" type="email"
+            placeholder="you@example.com" style="flex:1" /></div>
+        <div class="field" style="margin-top:6px"><label style="width:72px">パス</label><input id="password"
+            type="password" placeholder="********" style="flex:1" /></div>
         <div class="row" style="margin-top:8px">
           <button class="btn" onclick="register()">登録</button>
           <button class="btn primary" onclick="login()">ログイン</button>
@@ -49,4 +108,5 @@
 
   <script src="/static/login.js?v=20251111"></script>
 </body>
+
 </html>

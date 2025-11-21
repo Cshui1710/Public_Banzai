@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <title>クイズ | Ishikawa Facilities & Parks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=2" />
   <style>
     /* Quiz specific styles */
     .choice-btn {
@@ -337,7 +337,7 @@
 
     <script>
       window.__PAGE_MODE__ = "play"; window.__ROOM_CODE__ = "{{ code }}";
-      window.__IS_RANDOM__ = {{ 'true' if is_random else 'false' }};
+      window.__IS_RANDOM__ = JSON.parse('{{ ("true" if is_random else "false") }}');
     </script>
     {% endif %}
 
@@ -358,17 +358,10 @@
   </main>
 
   <script>
-    window.__PAGE_MODE__ = {{ mode | tojson }};
-    window.__ROOM_CODE__ = {{ code | tojson }};
-    window.__IS_RANDOM__ = {{ (is_random | default (false)) | tojson }};
-    window.__USER__ = {{
-      {
-        "id": user.id if user else 0,
-          "email": user.email if user else None,
-            "display_name": (user.display_name if user else None),
-        "is_guest": (user.is_guest if user else True)
-      } | tojson | safe
-    }};
+    window.__PAGE_MODE__ = JSON.parse('{{ mode | tojson }}');
+    window.__ROOM_CODE__ = JSON.parse('{{ code | tojson }}');
+    window.__IS_RANDOM__ = JSON.parse('{{ (is_random | default (false)) | tojson }}');
+    window.__USER__ = JSON.parse('{{ { "id": (user.id if user else 0), "email": (user.email if user else None), "display_name": (user.display_name if user else None), "is_guest": (user.is_guest if user else True) } | tojson | safe }}');
   </script>
   <script src="/static/quiz.js"></script>
 </body>

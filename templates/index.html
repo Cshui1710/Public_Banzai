@@ -1,106 +1,70 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="utf-8" />
   <title>石川県 公共施設・公園マップ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- 外部CSS -->
-  <link rel="stylesheet" href="/static/style.css" />
-
+  <link rel="stylesheet" href="/static/style.css?v=3" />
   <script>
-    window.ARRIVAL_RADIUS = {{ (radius_m | default(50, true) | int) | tojson }};
+    window.ARRIVAL_RADIUS = JSON.parse('{{ arrival_radius|tojson|safe }}');
+    window.__USER__ = JSON.parse('{{ user_json|tojson|safe }}');
   </script>
-  <!-- heatmap.js + Leaflet.heat -->
-  <script src="https://unpkg.com/heatmap.js@2.0.5/build/heatmap.min.js"></script>
-  <script src="https://unpkg.com/leaflet-heatmap/leaflet-heatmap.js"></script>
-  <!-- Chart.js（分析グラフ） -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <!-- ヘッダ高さをCSS変数に反映 -->
-  <script>
-    function updateHeaderHeight(){
-      const h = document.querySelector('header')?.offsetHeight || 64;
-      document.documentElement.style.setProperty('--hdr', h + 'px');
-    }
-    window.addEventListener('load', updateHeaderHeight);
-    window.addEventListener('resize', updateHeaderHeight);
-    const ro = new ResizeObserver(updateHeaderHeight);
-    window.addEventListener('DOMContentLoaded', () => {
-      const hdr = document.querySelector('header');
-      if (hdr) ro.observe(hdr);
-    });
-  </script>
-
-  <!-- ★ ログイン情報をフロントにも渡す -->
-  <script>
-    window.__USER__ = {
-      id: {{ user.id }},
-      email: "{{ user.email or '' }}",
-      name: "{{ user.display_name or user.email or 'ユーザー' }}",
-      is_guest: {{ 'true' if user.is_guest else 'false' }}
-    };
-  </script>
-
-  <style>
-    /* 右上の表示をきれいに収めるための小調整（style.cssが優先されます） */
-    header { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb; }
-    header .right { margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .pill.success { background:#dcfce7; color:#166534; border:1px solid #86efac; }
-    .pill.warn { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
-  </style>
 </head>
+
 <body>
-  <header>
-    <div style="font-weight:700;">石川県 公共施設・公園マップ</div>
-    <span class="pill">到達半径 {{ radius_m|int if radius_m is defined else 50000 }}m</span>
-
-    <!-- 左側の操作群 -->
-    <button id="locateBtn" class="btn">現在地</button>
-    <button id="toggleParks" class="btn">公園 ON/OFF</button>
-    <button id="toggleFacilities" class="btn">公共施設 ON/OFF</button>
-
-    <div class="field" style="gap:8px; margin-left:8px;">
-      <input id="csvQuery" type="text" placeholder="CSV内を検索（名称/住所で部分一致）" style="min-width:260px;"/>
-      <button class="btn" onclick="searchCSV()">検索</button>
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">🗺️</div>
+      <div class="nav-brand-text">
+        <div class="nav-brand-title">Public Map</div>
+        <div class="nav-brand-subtitle">石川県 & 茅野市</div>
+      </div>
     </div>
-    <button id="openDash" class="btn">分析</button>
-
-    <!-- 右側：ログイン中表示・ホーム・ログアウト -->
-    <div class="right">
-      {% if user and not user.is_guest %}
-        <span class="pill success" id="whoami">{{ user.display_name or user.email }} さんログイン中</span>
-      {% else %}
-        <span class="pill warn">ゲスト表示中</span>
-      {% endif %}
-      <a class="btn" href="/home">ホーム</a>
-      <a class="btn" href="/auth/logout">ログアウト</a>
-      <button class="btn" onclick="openCharsAll()">所持スタンプ</button>
+    <div style="display:flex;gap:8px;">
+      <a href="/home" class="btn btn-primary btn-sm">
+        <span style="margin-right:4px;">🏠</span>ホーム
+      </a>
+      <button class="btn btn-secondary btn-sm" onclick="locateUser()">📍 現在地</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleSearch()">🔍 検索</button>
+      <button class="btn btn-secondary btn-sm" onclick="openDash()">📊 分析</button>
+      <button class="btn btn-accent btn-sm" onclick="openChars()">
+        <span style="margin-right:4px;">🧸</span>所持スタンプ
+      </button>
     </div>
   </header>
 
   <div id="map"></div>
 
   <div id="searchPanel" class="search-panel">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <div style="font-weight:700;">CSV 検索結果</div>
-      <button class="btn" onclick="document.getElementById('searchPanel').style.display='none'">閉じる</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-weight:700">施設検索</div>
+      <button class="btn sm" onclick="toggleSearch()">閉じる</button>
     </div>
-    <div id="searchResults" style="margin-top:8px; font-size:14px;"></div>
+    <input type="text" id="searchInput" placeholder="施設名で検索..."
+      style="width:100%;padding:10px;border-radius:8px;border:1px solid #cbd5e1;margin-bottom:12px;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <button class="btn primary btn-sm" onclick="searchCSV()" style="flex:1">検索</button>
+      <button class="btn btn-sm" onclick="clearSearch()" style="flex:1">クリア</button>
+    </div>
+    <div id="searchResults" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 
   <div id="photoPanel" class="photo-panel">
     <div class="photo-panel__header">
-      <div style="font-weight:700; flex:1;">写真（<span id="photoPanelTitle">未選択</span>）</div>
-      <button class="btn" onclick="closePhotoPanel()">閉じる</button>
+      <div style="font-weight:700">写真・コメント</div>
+      <button class="btn sm" onclick="closePhotoPanel()">閉じる</button>
     </div>
+
     <div class="photo-panel__uploader">
       <form id="photoForm" onsubmit="return submitPhoto(event)">
         <input type="hidden" id="photoPlaceId" />
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <input id="photoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif"/>
+          <input id="photoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif" />
           <button class="btn primary" type="submit">アップロード</button>
           <span class="hint">対応: png, jpg, jpeg, webp, gif / 上限 8MB</span>
         </div>
@@ -111,7 +75,7 @@
     <!-- コメント欄 -->
     <div class="comments" style="border-top:1px solid #e5e7eb;margin-top:10px;padding-top:10px;">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <div style="font-weight:700;">コメント</div>
+        <div style="font-weight:700">コメント</div>
         <small id="commentCount" style="color:#64748b;"></small>
       </div>
 
@@ -135,21 +99,26 @@
   </div>
 
   <div class="credit">
-    データ: 石川県全体CSV（{{ '170003_public_facility.csv' }}） / 茅野市CSV（202142_public_facility.csv / 202142_public_park.csv） / 写真はユーザー投稿（/uploads 保存）
+    データ: 石川県全体CSV（{{ '170003_public_facility.csv' }}） / 茅野市CSV（202142_public_facility.csv / 202142_public_park.csv） /
+    写真はユーザー投稿（/uploads 保存）
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <!-- キャラ獲得モーダル -->
+  <!--キャラ獲得モーダル -->
   <div id="charModal">
     <div id="charCard">
       <div style="font-weight:700; font-size:20px;">マーモットを捕まえよう！</div>
 
       <!-- AR + ゲーム領域 -->
-      <div id="arStage" style="position:relative;width:min(92vw,480px);height:min(120vw,360px);margin:12px auto;border-radius:12px;overflow:hidden;background:#000;">
-        <video id="arVideo" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>
-        <canvas id="arCanvas" width="480" height="360" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-        <div id="arHint" style="position:absolute;left:8px;bottom:8px;color:#fff;background:rgba(0,0,0,.35);padding:6px 8px;border-radius:8px;font-size:12px;">
+      <div id="arStage"
+        style="position:relative;width:min(92vw,480px);height:min(120vw,360px);margin:12px auto;border-radius:12px;overflow:hidden;background:#000;">
+        <video id="arVideo" autoplay playsinline muted
+          style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>
+        <canvas id="arCanvas" width="480" height="360"
+          style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
+        <div id="arHint"
+          style="position:absolute;left:8px;bottom:8px;color:#fff;background:rgba(0,0,0,.35);padding:6px 8px;border-radius:8px;font-size:12px;">
           逃げるマーモットをタップ！
         </div>
       </div>
@@ -163,18 +132,21 @@
   </div>
 
   <div id="charsModal" class="modal" style="display:none">
-    <div class="modal-card" style="background:#fff;border-radius:12px;padding:16px;max-width:900px;width:96vw;max-height:85vh;overflow:auto;">
+    <div class="modal-card"
+      style="background:#fff;border-radius:12px;padding:16px;max-width:900px;width:96vw;max-height:85vh;overflow:auto;">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
         <div style="font-weight:700;font-size:18px;">スタンプ一覧</div>
         <button class="btn" onclick="closeChars()">閉じる</button>
       </div>
       <div id="charsHeader" style="margin:8px 0;color:#334155;font-size:14px;"></div>
-      <div id="charsGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(150px,1fr));gap:12px;"></div>
+      <div id="charsGrid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(150px,1fr));gap:12px;">
+      </div>
     </div>
   </div>
 
   <div id="dashModal" class="modal" style="display:none">
-    <div class="modal-card" style="background:#fff;border-radius:12px;padding:16px;max-width:1000px;width:96vw;max-height:90vh;overflow:auto;">
+    <div class="modal-card"
+      style="background:#fff;border-radius:12px;padding:16px;max-width:1000px;width:96vw;max-height:90vh;overflow:auto;">
       <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;">
         <div style="font-weight:700;font-size:18px;">利用ヒートマップ・分析</div>
         <button class="btn" onclick="closeDash()">閉じる</button>
@@ -234,15 +206,25 @@
   </div>
 
   <style>
-    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:9999;}
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, .45);
+      z-index: 9999;
+    }
   </style>
 
   <!-- ゲット確認モーダル -->
   <div id="gotModal" class="modal" style="display:none">
-    <div class="modal-card" style="background:#fff;border-radius:14px;padding:16px;max-width:520px;width:92vw;text-align:center;">
+    <div class="modal-card"
+      style="background:#fff;border-radius:14px;padding:16px;max-width:520px;width:92vw;text-align:center;">
       <div style="font-weight:800;font-size:20px;margin-bottom:6px;">スタンプをゲット！</div>
       <div style="display:flex;justify-content:center;margin:10px 0;">
-        <img id="gotImg" src="" alt="キャラ画像" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
+        <img id="gotImg" src="" alt="キャラ画像"
+          style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
       </div>
       <div id="gotName" style="font-size:18px;font-weight:700;color:#0f172a;">???</div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
@@ -254,6 +236,7 @@
   </div>
 
   <!-- 外部JS -->
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=3"></script>
 </body>
+
 </html>
