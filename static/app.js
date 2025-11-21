@@ -122,14 +122,26 @@ async function fetchNagano(kind){
   return js.items || [];
 }
 
-function addMarkers(records,kind,group){
+function addMarkers(records, kind, group) {
   group.clearLayers();
-  records.forEach(r=>{
-    if(typeof r.lat!=="number" || typeof r.lon!=="number") return;
-    const m=L.marker([r.lat,r.lon],{icon:pinSVGIcon()});
-    m.bindPopup(popHtml(r,kind));
+  console.log(`[${kind}] データ追加開始: ${records.length}件`); // コンソールに件数を出す
+
+  records.forEach(r => {
+    // 厳密な型チェック(typeof)をやめて、数値変換を試みる
+    const lat = Number(r.lat);
+    const lon = Number(r.lon);
+
+    // 数値として不正(NaN)ならスキップ
+    if (isNaN(lat) || isNaN(lon)) {
+      console.warn(`[${kind}] 座標不正のためスキップ:`, r.name);
+      return;
+    }
+
+    const m = L.marker([lat, lon], { icon: pinSVGIcon() });
+    m.bindPopup(popHtml(r, kind));
     group.addLayer(m);
-    const rid = r.id ?? r["ID"] ?? `${kind}-${r.lat}-${r.lon}`;
+    
+    const rid = r.id ?? r["ID"] ?? `${kind}-${lat}-${lon}`;
     markerIndex.set(String(rid), m);
   });
 }
@@ -192,15 +204,13 @@ function autoLocateOnLoad(){
   );
 }
 
-document.getElementById('locateBtn').onclick=()=>{
+// HTMLの onclick="locateUser()" から呼ばれる関数として定義します
+function locateUser(){
   if(!navigator.geolocation) return toast('位置情報未対応',false);
   navigator.geolocation.getCurrentPosition(p=>{
-    // ★ ここだけ書き換え
     updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
   },()=>toast('現在地取得失敗',false));
-};
-document.getElementById('toggleParks').onclick=()=>{map.hasLayer(layerParks)?map.removeLayer(layerParks):layerParks.addTo(map)};
-document.getElementById('toggleFacilities').onclick=()=>{map.hasLayer(layerFacilities)?map.removeLayer(layerFacilities):layerFacilities.addTo(map)};
+}
 
 async function refreshAuthUI(){
   const authArea   = document.getElementById('authArea');
@@ -372,7 +382,10 @@ console.log(
 );
 
 function searchCSV(){
-  const q=document.getElementById('csvQuery').value.trim();
+  const element = document.getElementById('searchInput'); 
+  if (!element) return; // 安全のため、見つからなければ何もしない
+  const q = element.value.trim();
+  
   const list=document.getElementById('searchResults');
   const panel=document.getElementById('searchPanel');
   if(!q){ list.innerHTML='<div>検索語を入力してください</div>'; panel.style.display='block'; return; }
@@ -604,8 +617,7 @@ async function deleteComment(id){
 }
 
 
-// ========== 分析モーダル ==========
-document.getElementById('openDash').onclick = () => openDash();
+
 
 // ===================== ヒートマップ / ダッシュボード =====================
 let heatmapLayer, heatmapMap, tsChart, kindChart;
@@ -1144,4 +1156,27 @@ if (document.readyState === 'loading') {
   window.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+// 検索パネルの開閉
+function toggleSearch() {
+  const panel = document.getElementById('searchPanel');
+  if (!panel) return;
+
+  // 表示・非表示を切り替え
+  if (panel.style.display === 'block') {
+    panel.style.display = 'none';
+  } else {
+    panel.style.display = 'block';
+    // パネルを開いたら入力欄にカーソルを合わせる
+    const input = document.getElementById('searchInput');
+    if (input) input.focus();
+  }
+}
+
+// 検索のクリアボタン用
+function clearSearch() {
+  const input = document.getElementById('searchInput');
+  if (input) input.value = '';
+  const results = document.getElementById('searchResults');
+  if (results) results.innerHTML = '';
 }
