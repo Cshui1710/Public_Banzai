@@ -58,16 +58,6 @@ def map_index(request: Request):
         "radius_m": ARRIVAL_RADIUS_M
     })
 
-
-from auth import get_current_user, login_required
-
-@app.get("/map", response_class=HTMLResponse)
-async def map_page(request: Request, user=Depends(get_current_user)):
-    login_required(user, allow_guest=False)
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "user": user
-    })
     
 @app.get("/home", response_class=HTMLResponse)
 async def home(request: Request):

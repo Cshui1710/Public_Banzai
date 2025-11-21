@@ -30,7 +30,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 NEEDED_PLAYERS = 4         # 目標人数（ここまでCPUで補充）
-CPU_CORRECT_PROB = 0.40    # CPUの正解確率
+CPU_CORRECT_PROB = 0.85    # CPUの正解確率
 CPU_MIN_DELAY = 4.0        # 回答遅延（秒） 最小
 CPU_MAX_DELAY = 8.0        # 回答遅延（秒） 最大
 MM_GRACE_SEC = 10.0          # ← ここを追加：待機者が揃わなくてもこの秒数で切り上げ
@@ -397,9 +397,11 @@ class Room:
         return [uid for uid, pc in self.players.items() if not getattr(pc, "is_bot", False)]
 
     def can_start(self, by_user_id: int) -> bool:
-        # ランダムは自動開始（手動開始禁止）、フレンドはホストのみ
+        # ランダムは自動開始（手動開始禁止）だが、ゲーム終了後の再戦は許可する
         if self.is_random:
-            return False
+            # 実行中でなければ再戦OK（誰でも押せる）
+            return not self.running and not self.is_prestarting
+            
         return (self.host_id is not None and by_user_id == self.host_id
                 and not self.running and not self.is_prestarting)
 

@@ -30,15 +30,29 @@
     const box = j("#scoreboard");
     if (!box) return;
     box.innerHTML = "";
-    (members || [])
-      .slice()
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-      .forEach((m) => {
-        const row = document.createElement("div");
-        row.className = "score-row";
-        row.innerHTML = `<span>${m.name}</span><b>${m.score ?? 0}</b>`;
-        box.appendChild(row);
-      });
+
+    // ソートして順位を表示
+    const sorted = (members || []).slice().sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+    sorted.forEach((m, index) => {
+      const row = document.createElement("div");
+      row.className = "score-row";
+
+      // 順位アイコン/テキスト
+      let rankText = `${index + 1}位`;
+      if (index === 0) rankText = "🥇 1st";
+      if (index === 1) rankText = "🥈 2nd";
+      if (index === 2) rankText = "🥉 3rd";
+
+      row.innerHTML = `
+        <div style="display:flex; gap:8px; align-items:center;">
+          <span style="font-weight:bold; color:var(--primary); width:50px;">${rankText}</span>
+          <span>${m.name}</span>
+        </div>
+        <b>${m.score ?? 0}</b>
+      `;
+      box.appendChild(row);
+    });
   };
 
   // ========= 画面中央オーバーレイ =========
@@ -54,6 +68,28 @@
     const o = overlay();
     if (!o) return;
     o.style.display = "none";
+  };
+
+  // ========= O/X Feedback Overlay =========
+  const showFeedback = (isCorrect) => {
+    const el = document.getElementById("feedbackOverlay");
+    const mark = document.getElementById("feedbackMark");
+    if (!el || !mark) return;
+
+    // Reset animation
+    mark.className = "feedback-mark";
+    void mark.offsetWidth; // trigger reflow
+
+    mark.textContent = isCorrect ? "〇" : "×";
+    mark.classList.add(isCorrect ? "feedback-correct" : "feedback-wrong");
+
+    // Make visible (opacity handled by animation)
+    el.style.opacity = "1";
+
+    // Hide after animation
+    setTimeout(() => {
+      el.style.opacity = "0";
+    }, 1000);
   };
 
   // ========= 5→1 カウントダウン =========
@@ -127,7 +163,7 @@
           location.href = `/quiz?code=${encodeURIComponent(js.code)}`;
           return;
         }
-      } catch (e) {}
+      } catch (e) { }
       setTimeout(poll, 800);
     };
     poll();
@@ -139,7 +175,7 @@
     });
     return;
   }
-    
+
   // ========= ルーム作成 =========
   if (mode === "room-created") {
     j("#copyBtn")?.addEventListener("click", async () => {
@@ -148,7 +184,7 @@
         await navigator.clipboard.writeText(v);
         j("#copyBtn").textContent = "コピーしました";
         setTimeout(() => (j("#copyBtn").textContent = "コピー"), 1200);
-      } catch (e) {}
+      } catch (e) { }
     });
     return;
   }
@@ -181,7 +217,7 @@
       if (!body) return;
       body.style.display = stampCollapsed ? "none" : "block";
       stampToggleBtn.textContent = stampCollapsed ? "ひらく" : "たたむ";
-    });    
+    });
     // 開始ボタン（ランダムは非表示）
     if (isRandom) {
       const sb = document.getElementById("startBtn");
@@ -227,7 +263,7 @@
           disableAllChoices();
         }
       }, 100);
-    };    
+    };
     // ========= スタンプUI =========
     const stamp = { list: [], cooldownMs: 1500, lastSendAt: 0 };
 
@@ -287,19 +323,19 @@
         // パネル幅の90%（最大200px）で表示 → 以前よりグッと小さめ（≒1/4想定）
         w = Math.min(Math.max(Math.floor(r.width * 0.5), 120), 200);
         left = Math.max(8, Math.floor(r.left + r.width - w)); // パネル右端に合わせる
-        top  = Math.max(8, Math.floor(r.top - w - pad));      // パネルの少し上
+        top = Math.max(8, Math.floor(r.top - w - pad));      // パネルの少し上
       } else {
         // パネルが無い/まだ測れない時のフォールバック（右下付近）
         const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
         const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
         w = 160;
         left = vw - w - 24;
-        top  = vh - w - 120;
+        top = vh - w - 120;
       }
 
       img.style.width = `${w}px`;
-      img.style.left  = `${left}px`;
-      img.style.top   = `${top}px`;
+      img.style.left = `${left}px`;
+      img.style.top = `${top}px`;
 
       document.body.appendChild(img);
       setTimeout(() => img.remove(), 1200);
@@ -311,7 +347,7 @@
       j("#qStem").textContent = q.stem;
 
       // ★ ヒント処理
-      const hintBox  = j("#qHintBox");
+      const hintBox = j("#qHintBox");
       const hintText = j("#qHintText");
 
       // 前のヒントタイマーをクリア
@@ -376,7 +412,7 @@
       disableAllChoices();
       stopQuestionTimer(true);
       current.locked = true;
-      const hintBox  = j("#qHintBox");
+      const hintBox = j("#qHintBox");
       if (hintBox) {
         hintBox.style.display = "none";
       }
@@ -452,6 +488,10 @@
           if (mine) {
             const list = Array.from(document.querySelectorAll(".choice-btn"));
             const btn = list[m.choice_idx];
+
+            // Show O/X feedback
+            showFeedback(m.correct);
+
             if (btn) btn.classList.add(m.correct ? "choice-correct" : "choice-wrong");
           }
         }
@@ -469,7 +509,28 @@
           j("#startBtn")?.removeAttribute("disabled");
           setRoundInfo(null, null);
           j("#qStem").textContent = "ゲーム終了。もう一度「ゲーム開始」を押すと新しい問題が始まります。";
-          j("#choices").innerHTML = "";
+
+          // Add buttons below the message (in #choices)
+          const box = j("#choices");
+          box.innerHTML = `
+            <div class="flex gap-4 mt-4">
+              <a href="/home" class="btn btn-secondary flex-1 text-center">ホームへ戻る</a>
+              <button id="restartBtn" class="btn btn-primary flex-1">ゲーム開始</button>
+            </div>
+          `;
+
+          // Attach event listener to the new restart button
+          j("#restartBtn")?.addEventListener("click", () => {
+            // ランダムマッチの場合は新しいマッチングへ、フレンドマッチは同じ部屋で再戦
+            if (isRandom) {
+              location.href = "/quiz/random";
+            } else {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "start" }));
+              }
+            }
+          });
+
           stopQuestionTimer(true);
           current.locked = true;
         }
@@ -478,7 +539,7 @@
           showOverlay(`<div class="text-center">⚠ ${m.msg}</div>`);
           setTimeout(hideOverlay, 2500);
         }
-      } catch (e) {}
+      } catch (e) { }
     });
 
     ws.addEventListener("close", () => {
