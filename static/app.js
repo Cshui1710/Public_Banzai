@@ -385,7 +385,7 @@ function searchCSV(){
   const element = document.getElementById('searchInput'); 
   if (!element) return; // 安全のため、見つからなければ何もしない
   const q = element.value.trim();
-  
+
   const list=document.getElementById('searchResults');
   const panel=document.getElementById('searchPanel');
   if(!q){ list.innerHTML='<div>検索語を入力してください</div>'; panel.style.display='block'; return; }
@@ -1179,4 +1179,7 @@ function clearSearch() {
   if (input) input.value = '';
   const results = document.getElementById('searchResults');
   if (results) results.innerHTML = '';
+}
+function openChars() {
+  openCharsAll();
 }
