@@ -2,75 +2,82 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>作問ページ | Ishikawa Facilities & Parks</title>
+  <title>作問モード | Ishikawa Facilities & Parks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { background: #f8fafc; }
-    .card { border: 0; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
-  </style>
+  <link rel="stylesheet" href="/static/style.css?v=4">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- ★ ナビゲーションバー（quiz.htmlと同じ構成） -->
-  <nav class="navbar navbar-expand-lg bg-white border-bottom">
-    <div class="container">
-      <a class="navbar-brand fw-bold" href="/home">Ishikawa Facilities & Parks</a>
-      <div class="ms-auto">
-        <a class="btn btn-outline-secondary btn-sm" href="/home">ホームへ</a>
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">✏️</div>
+      <div class="nav-brand-title">Quiz Maker</div>
+    </div>
+    <a href="/home" class="btn btn-sm btn-secondary">ホームへ戻る</a>
+  </header>
+
+  <main class="container py-8">
+    <div class="mb-8 text-center">
+      <h1 class="text-3xl font-bold mb-2">オリジナル問題を作る</h1>
+      <p class="text-muted">あなたの知識をみんなに出題しよう！</p>
+    </div>
+
+    <div class="flex flex-col gap-6" style="max-width: 800px; margin: 0 auto;">
+      
+      <div class="card card-purple animate-fade-in">
+        <form id="qForm">
+          <div class="form-group">
+            <label class="form-label">問題文</label>
+            <input name="stem" class="input-dark" placeholder="例: 金沢駅にある有名な門の名前は？" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">ヒント（任意）</label>
+            <input name="hint" class="input-dark" placeholder="例: 「つ」から始まるよ">
+          </div>
+
+          <div class="grid-dashboard" style="grid-template-columns: 1fr 1fr; gap:16px;">
+            {% for i in range(4) %}
+            <div class="form-group">
+              <label class="form-label">選択肢 {{ i+1 }}</label>
+              <input type="text" name="choice{{i+1}}" class="input-dark" required>
+            </div>
+            {% endfor %}
+          </div>
+
+          <div class="form-group mt-4">
+            <label class="form-label">正解の番号（1〜4）</label>
+            <input type="number" name="correct_idx" class="input-dark" min="1" max="4" required style="width:100px;">
+          </div>
+
+          <button class="btn btn-white w-full mt-4">登録する</button>
+        </form>
       </div>
-    </div>
-  </nav>
 
-  <main class="container py-4">
-    <div class="mb-4">
-      <h1 class="h4 mb-1">作問ページ</h1>
-      <p class="text-muted mb-0">あなたのオリジナル問題を登録して、みんなに挑戦させよう！</p>
-    </div>
-
-    <div class="card p-4 mb-4 bg-white">
-      <form id="qForm">
-        <div class="mb-3">
-          <label class="form-label">問題文</label>
-          <textarea name="stem" class="form-control" rows="2" required></textarea>
-        </div>
-      <div class="mb-3">
-        <label class="form-label">ヒント（任意）</label>
-        <textarea name="hint" class="form-control" rows="2"
-                  placeholder="例）北陸新幹線の起点駅がある市です など"></textarea>
-      </div>  
-        {% for i in range(4) %}
-        <div class="mb-3">
-          <label class="form-label">選択肢 {{ i+1 }}</label>
-          <input type="text" name="choice{{i+1}}" class="form-control" required>
-        </div>
-        {% endfor %}
-        <div class="mb-3">
-          <label class="form-label">正解の番号（1〜4）</label>
-          <input type="number" name="correct_idx" class="form-control" min="1" max="4" required>
-        </div>
-        <button class="btn btn-primary w-100">登録する</button>
-      </form>
-    </div>
-
-    <div class="card p-4 bg-white">
-      <h2 class="h5 mb-3">あなたの作った問題</h2>
-      <ul id="myQuestions" class="list-group"></ul>
+      <div class="card card-dark animate-fade-in">
+        <h2 class="text-xl font-bold mb-4">作成した問題リスト</h2>
+        <div id="myQuestions" class="flex flex-col gap-4">
+          </div>
+      </div>
     </div>
   </main>
 
   <script>
     const form = document.getElementById("qForm");
+    function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const r = await fetch("/api/quiz/maker/add", { method: "POST", body: fd });
       const js = await r.json();
       if (js.ok) {
+        // 成功時のトーストの代わりにアラート（またはtoast関数があればそれを使う）
         alert("登録しました！");
         form.reset();
         loadList();
       } else {
-        alert("エラー: " + (js.error || "登録に失敗しました"));
+        alert("エラー: " + (js.error || "登録失敗"));
       }
     });
 
@@ -81,20 +88,20 @@
       list.innerHTML = "";
       if (js.ok) {
         if (js.questions.length === 0) {
-          list.innerHTML = "<li class='list-group-item text-muted'>まだ作問がありません。</li>";
+          list.innerHTML = "<div class='text-muted p-4'>まだ問題を作っていません。</div>";
         } else {
           js.questions.forEach((q) => {
-            const li = document.createElement("li");
-            li.className = "list-group-item";
-            const hintHtml = q.hint
-              ? `<br><small class="text-muted">ヒント: ${q.hint}</small>`
-              : "";
-            li.innerHTML =
-              `<b>${q.stem}</b><br>` +
-              `${q.choices.map((c,i)=>`${i+1}: ${c}`).join(" / ")}` +
-              `<br><small class="text-muted">正解: ${q.correct_idx+1}</small>` +
-              hintHtml;
-            list.appendChild(li);
+            const div = document.createElement("div");
+            div.className = "p-4 rounded border border-gray-700 bg-black/20";
+            div.innerHTML = `
+              <div class="font-bold mb-1">Q. ${esc(q.stem)}</div>
+              <div class="text-sm text-muted mb-2">
+                 選択肢: ${q.choices.map(c => esc(c)).join(" / ")} 
+                 <span class="text-primary ml-2">正解: ${q.correct_idx + 1}</span>
+              </div>
+              ${q.hint ? `<div class="text-xs text-blue-400">💡 ヒント: ${esc(q.hint)}</div>` : ''}
+            `;
+            list.appendChild(div);
           });
         }
       }

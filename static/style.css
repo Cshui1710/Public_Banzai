@@ -869,3 +869,72 @@ header {
   pointer-events: none;
   text-shadow: 0 0 2px white;
 }
+/* === 追加：フォーム & 入力欄のダークテーマ === */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.input-dark {
+  width: 100%;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.input-dark:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+}
+
+/* グリッドレイアウト（スタンプ用） */
+.grid-stamps {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+
+/* トグルスイッチ */
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.toggle-checkbox {
+  display: none;
+}
+.toggle-track {
+  width: 48px;
+  height: 26px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 99px;
+  position: relative;
+  transition: background 0.2s;
+}
+.toggle-checkbox:checked + .toggle-track {
+  background: var(--primary);
+}
+.toggle-thumb {
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+}
+.toggle-checkbox:checked + .toggle-track .toggle-thumb {
+  transform: translateX(22px);
+}

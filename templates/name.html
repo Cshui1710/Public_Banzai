@@ -1,72 +1,56 @@
-<!-- templates/name.html -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>名前の決定・変更 | Ishikawa Facilities & Parks</title>
+  <title>名前変更 | Ishikawa Facilities & Parks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css?v=4">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-light">
-  <nav class="navbar navbar-expand-lg bg-white border-bottom">
-    <div class="container">
-      <a class="navbar-brand fw-bold" href="/home">Ishikawa Facilities & Parks</a>
-      <div class="ms-auto">
-        <a class="btn btn-outline-secondary btn-sm" href="/home">ホームに戻る</a>
-      </div>
+<body>
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="nav-brand-icon">⚙️</div>
+      <div class="nav-brand-title">Player Settings</div>
     </div>
-  </nav>
+    <a href="/home" class="btn btn-sm btn-secondary">ホームへ戻る</a>
+  </header>
 
-  <main class="container py-4">
-    <div class="row justify-content-center">
-      <div class="col-md-6">
-        <div class="card shadow-sm">
-          <div class="card-body">
-            <h1 class="h4 mb-3">名前の決定・変更</h1>
-            <p class="text-muted">
-              早押し対戦中に表示されるニックネームを設定できます。
-            </p>
+  <main class="container py-8 flex justify-center">
+    <div class="card card-dark w-full animate-fade-in" style="max-width: 500px;">
+      <h1 class="text-2xl font-bold mb-2">名前の変更</h1>
+      <p class="text-muted mb-6">早押しクイズで表示される名前を設定します。</p>
 
-            {% if message %}
-              <div class="alert alert-warning py-2">{{ message }}</div>
-            {% endif %}
+      {% if message %}
+        <div style="background:rgba(239, 68, 68, 0.2); color:#fca5a5; padding:12px; border-radius:8px; margin-bottom:20px;">
+          {{ message }}
+        </div>
+      {% endif %}
 
-            <form method="post" action="/name">
-              <div class="mb-3">
-                <label class="form-label">現在の名前</label>
-                <div class="form-control-plaintext">
-                  {{ user.display_name or '未設定（メールアドレスが表示されます）' }}
-                </div>
-              </div>
-
-              <div class="mb-3">
-                <label for="display_name" class="form-label">新しい名前</label>
-                <input
-                  type="text"
-                  id="display_name"
-                  name="display_name"
-                  class="form-control"
-                  maxlength="20"
-                  required
-                  placeholder="例: ののいちクイズ王"
-                  value="{{ user.display_name or '' }}"
-                >
-                <div class="form-text">
-                  1〜20文字。実名である必要はありません。
-                </div>
-              </div>
-
-              <div class="d-flex justify-content-between">
-                <a href="/home" class="btn btn-outline-secondary">キャンセル</a>
-                <button type="submit" class="btn btn-primary">保存する</button>
-              </div>
-            </form>
+      <form method="post" action="/name">
+        <div class="form-group">
+          <label class="form-label">現在の名前</label>
+          <div style="padding:14px; color:var(--primary); font-weight:bold;">
+            {{ user.display_name or '（未設定）' }}
           </div>
         </div>
-      </div>
+
+        <div class="form-group">
+          <label for="display_name" class="form-label">新しい名前</label>
+          <input type="text" id="display_name" name="display_name" 
+                 class="input-dark" 
+                 maxlength="20" required 
+                 placeholder="例: ののいち太郎"
+                 value="{{ user.display_name or '' }}">
+          <p class="text-xs text-muted mt-4">※ 1〜20文字以内で入力してください。</p>
+        </div>
+
+        <div class="flex gap-4 mt-4">
+          <a href="/home" class="btn btn-secondary w-full">キャンセル</a>
+          <button type="submit" class="btn btn-primary w-full">保存する</button>
+        </div>
+      </form>
     </div>
   </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
