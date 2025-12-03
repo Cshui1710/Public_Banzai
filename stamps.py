@@ -85,6 +85,7 @@ CHAR_CATALOG = [
     {"code": "naki",     "name": "泣き泣き",       "sprite": "/static/stamp/2.png",     "w": 256, "h": 256},
     {"code": "sakibi",   "name": "叫び",     "sprite": "/static/stamp/3.png",   "w": 256, "h": 256},
     {"code": "yorosiki",   "name": "よろしく",     "sprite": "/static/stamp/4.png",   "w": 256, "h": 256},
+    {"code": "banzai",   "name": "バンザイ",     "sprite": "/static/stamp/banzai.png",   "w": 256, "h": 256},
 ]
 from sqlmodel import Session, select, delete
 

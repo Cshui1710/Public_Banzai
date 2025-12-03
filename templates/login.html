@@ -5,47 +5,375 @@
   <meta charset="utf-8"/>
   <title>ログイン｜石川県 公共施設・公園クイズ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+  <!-- 既存の共通CSS -->
   <link rel="stylesheet" href="/static/style.css"/>
+
   <style>
-    body{display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f8fafc;}
-    .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px;max-width:640px;width:92vw;}
-    .btn{cursor:pointer;border:1px solid #cbd5e1;background:#fff;padding:10px 14px;border-radius:10px;}
-    .btn.primary{background:#2563eb;color:#fff;border-color:#2563eb;}
-    .row{display:flex;gap:12px;flex-wrap:wrap;}
-    .field{display:flex;gap:8px;align-items:center;}
-    input{padding:8px;border:1px solid #cbd5e1;border-radius:8px;}
-    .sep{display:flex;align-items:center;gap:8px;margin:12px 0;color:#64748b;}
-    .sep::before,.sep::after{content:"";flex:1;height:1px;background:#e5e7eb;}
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --accent: #6366f1;
+      --card-radius: 1.4rem;
+      --shadow-soft: 0 18px 40px rgba(15,23,42,0.20);
+      --border-subtle: rgba(148,163,184,0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 35%, #f9fafb 70%);
+      color: #0f172a;
+    }
+
+    /* 画面全体のレイアウト */
+    .page-root {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.8rem 1.2rem 2.4rem;
+    }
+
+    /* ブランドロゴ（home系と共通） */
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    .nav-glass {
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+    }
+
+    .btn-soft {
+      border-radius: 999px;
+      padding-inline: 1rem;
+      font-size: .8rem;
+    }
+
+    /* ログインカード */
+    .login-card {
+      background: rgba(255,255,255,0.98);
+      border-radius: var(--card-radius);
+      max-width: 880px;
+      width: 100%;
+      padding: 1.8rem 1.8rem 1.9rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148,163,184,0.35);
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr);
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .login-card {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 1.4rem 1.3rem 1.6rem;
+      }
+    }
+
+    .login-left-header {
+      margin-bottom: 1rem;
+    }
+    .login-tagline {
+      font-size: .78rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: 700;
+      margin-bottom: .25rem;
+    }
+    .login-left-header h1 {
+      font-size: 1.3rem;
+      margin: 0 0 .35rem;
+      font-weight: 800;
+    }
+    .login-left-header p {
+      font-size: .9rem;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    .login-highlight {
+      background: linear-gradient(110deg,#6366f1,#ec4899);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: .8rem;
+      font-size: .9rem;
+    }
+    .field-label-inline {
+      font-size: .82rem;
+      color: #6b7280;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    .field-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 1px rgba(129,140,248,0.6);
+    }
+
+    .login-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: .6rem;
+    }
+
+    .btn-base {
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 7px 14px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      font-size: .85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background .12s ease, box-shadow .12s ease, transform .06s ease;
+    }
+    .btn-base:hover {
+      background: #f9fafb;
+      box-shadow: 0 2px 6px rgba(15,23,42,0.15);
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-google {
+      border-color: #e5e7eb;
+    }
+    .btn-line {
+      border-color: #16a34a;
+      color: #166534;
+      background:#dcfce7;
+    }
+    .btn-line:hover {
+      background:#bbf7d0;
+    }
+
+    .help-text {
+      font-size: .78rem;
+      color: #6b7280;
+      margin-top: .35rem;
+    }
+
+    .sep {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin:12px 0;
+      color:#64748b;
+      font-size: .78rem;
+    }
+    .sep::before,
+    .sep::after {
+      content:"";
+      flex:1;
+      height:1px;
+      background:#e5e7eb;
+    }
+
+    /* 右側：ゲスト＆説明 */
+    .guest-panel {
+      border-radius: 1.1rem;
+      background: radial-gradient(circle at top left,#eef2ff 0,#f9fafb 55%);
+      border: 1px solid rgba(191,219,254,0.9);
+      padding: 1rem 1rem 1.1rem;
+      font-size: .9rem;
+    }
+    .guest-panel h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .3rem;
+    }
+    .guest-panel p {
+      font-size: .86rem;
+      color: #4b5563;
+      margin-bottom: .5rem;
+    }
+    .guest-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0 0 .7rem;
+      font-size: .8rem;
+      color: #6b7280;
+    }
+    .guest-list li::before {
+      content: "• ";
+    }
+
+    .pill-note {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      border-radius: 999px;
+      background: #fef9c3;
+      color: #854d0e;
+      font-size: .75rem;
+      padding: .15rem .6rem;
+      margin-bottom: .4rem;
+    }
+
+    .link-row {
+      margin-top: .6rem;
+      display:flex;
+      flex-direction:column;
+      gap:.4rem;
+      font-size:.82rem;
+      color:#6b7280;
+    }
+    .link-row button {
+      align-self:flex-start;
+    }
+
+    @media (max-width: 768px) {
+      .guest-panel {
+        order: -1;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2 style="margin-top:0">ログイン方法を選択</h2>
-    <p style="color:#475569">既存アカウントでログインすると、あなたが集めたキャラクターをクイズ中の「スタンプ」として使えます。</p>
+  <!-- シンプルナビバー -->
+  <nav class="nav-glass" style="padding:.5rem 1rem;">
+    <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+      <a href="/home" class="brand-mark">
+        <span class="brand-logo">IF</span>
+        <span>石川県 公共施設・公園クイズ</span>
+      </a>
+      <button class="btn-base" onclick="location.href='/'">
+        🏠 トップ（クイズ）に戻る
+      </button>
+    </div>
+  </nav>
 
-    <div class="row">
-      <div style="flex:1 1 280px">
-        <h3>既存アカウントでログイン</h3>
-        <div class="field"><label style="width:72px">メール</label><input id="email" type="email" placeholder="you@example.com" style="flex:1"/></div>
-        <div class="field" style="margin-top:6px"><label style="width:72px">パス</label><input id="password" type="password" placeholder="********" style="flex:1"/></div>
-        <div class="row" style="margin-top:8px">
-          <button class="btn" onclick="register()">登録</button>
-          <button class="btn primary" onclick="login()">ログイン</button>
-          <button class="btn" onclick="googleLogin()">Google</button>
-          <button class="btn" onclick="lineLogin()">LINE</button>
+  <main class="page-root">
+    <section class="login-card">
+      <!-- 左：メール & OAuth ログイン -->
+      <div>
+        <div class="login-left-header">
+          <div class="login-tagline">SIGN IN</div>
+          <h1><span class="login-highlight">ログイン方法</span> を選択</h1>
+          <p>
+            ログインしてプレイすると、集めたスタンプや作った問題が保存されます。  
+            いつもの端末から続きのデータで遊べます。
+          </p>
+        </div>
+
+        <div class="field-row">
+          <span class="field-label-inline">メールアドレス</span>
+          <input
+            id="email"
+            type="email"
+            class="field-input"
+            placeholder="you@example.com"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="field-row">
+          <span class="field-label-inline">パスワード</span>
+          <input
+            id="password"
+            type="password"
+            class="field-input"
+            placeholder="********"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <div class="login-actions">
+          <button class="btn-base" onclick="register()">新規登録</button>
+          <button class="btn-base btn-primary" onclick="login()">ログイン</button>
+        </div>
+
+        <div class="help-text">
+          ※ 新規登録後は、そのメールアドレスでログインできます。
+        </div>
+
+        <div class="sep">または</div>
+
+        <div class="login-actions">
+          <button class="btn-base btn-google" onclick="googleLogin()">
+            <span>🔵</span><span>Googleでログイン</span>
+          </button>
+          <button class="btn-base btn-line" onclick="lineLogin()">
+            <span>🟢</span><span>LINEでログイン</span>
+          </button>
         </div>
       </div>
 
-      <div style="flex:1 1 240px">
-        <h3>ゲストで開始</h3>
-        <p class="muted">※スタンプ機能は使えませんが、クイズ参加は可能です。</p>
-        <button class="btn" onclick="guestStart()">ゲストとしてはじめる</button>
-      </div>
-    </div>
+      <!-- 右：ゲストスタート & 説明 -->
+      <div>
+        <div class="guest-panel">
+          <div class="pill-note">
+            ⚠ ゲストプレイの注意
+          </div>
+          <h2>ゲストでクイズをはじめる</h2>
+          <p>
+            ログインせずに、すぐにクイズ対戦を体験できます。  
+            スタンプ収集や作問の保存はできませんが、遊び心地を試したいときに便利です。
+          </p>
+          <ul class="guest-list">
+            <li>スタンプ・チェックインの記録は <strong>保存されません</strong></li>
+            <li>ランキングや認知率の分析には <strong>カウントされない</strong> 場合があります</li>
+          </ul>
+          <button class="btn-base" onclick="guestStart()">
+            🎮 ゲストとしてはじめる
+          </button>
+        </div>
 
-    <div class="sep">または</div>
-    <button class="btn" onclick="location.href='/'">トップ（クイズ）へ戻る</button>
-  </div>
+        <div class="link-row">
+          <span>あとから「マイアカウント」を作成すると、ゲストから引き継いで遊ぶこともできます。</span>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script src="/static/login.js?v=20251111"></script>
 </body>

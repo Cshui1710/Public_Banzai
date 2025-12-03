@@ -218,6 +218,7 @@ def whoami(request: Request):
         "email": getattr(u, "email", None),
         "is_guest": bool(getattr(u, "is_guest", False)),
         "display_name": getattr(u, "display_name", None),
+        "role": getattr(u, "role", "normal"),  
     }
 
 
@@ -399,11 +400,13 @@ from datetime import datetime
 GUEST_PREFIX = "guest_"
 
 class _SimpleUser:
-    def __init__(self, id, email, is_guest=False, display_name=None):
+    def __init__(self, id, email, is_guest=False, display_name=None, role="normal"):
         self.id = id
         self.email = email
         self.is_guest = is_guest
         self.display_name = display_name
+        self.role = role  # ★ 追加
+
         
 def _mk_guest_user(req: Request):
     """
@@ -418,7 +421,7 @@ def _mk_guest_user(req: Request):
     gid = -abs(hash(g)) % (10**9)
     pseudo_email = f"{g}@example.local"
     pseudo_name  = f"ゲスト{str(gid)[-4:]}"
-    return {"id": gid, "email": f"{g}@example.local", "is_guest": True}
+    return {"id": gid, "email": f"{g}@example.local", "is_guest": True,"role": "guest"}
 
 @router.post("/auth/guest")
 def guest_login(request: Request):
@@ -438,6 +441,7 @@ def _normalize_user(u) -> _SimpleUser | None:
             email=u.get("email"),
             is_guest=bool(u.get("is_guest")),
             display_name=u.get("display_name"),
+            role=u.get("role", "normal"),
         )
     # SQLModel 等
     uid = getattr(u, "id", None)
@@ -446,7 +450,8 @@ def _normalize_user(u) -> _SimpleUser | None:
     email = getattr(u, "email", None)
     is_guest = bool(getattr(u, "is_guest", False))
     display_name = getattr(u, "display_name", None)
-    return _SimpleUser(uid, email, is_guest, display_name)
+    role = getattr(u, "role", "normal")
+    return _SimpleUser(uid, email, is_guest, display_name, role)
 
 # まず、後半にある get_current_user / _normalize_user など
 # 「セッションだけを見る版」の重複定義は削除してください。
@@ -470,6 +475,7 @@ def get_current_user(request: Request) -> Optional[_SimpleUser]:
                             email=u.email,
                             is_guest=False,
                             display_name=getattr(u, "display_name", None),
+                            role=getattr(u, "role", "normal"),    # ★ ここ！
                         )
         except JWTError:
             pass
@@ -484,6 +490,7 @@ def get_current_user(request: Request) -> Optional[_SimpleUser]:
 
 
 
+
 def login_required(u, *, allow_guest: bool = True):
     """
     認可ヘルパ：
@@ -495,3 +502,23 @@ def login_required(u, *, allow_guest: bool = True):
     if getattr(u, "is_guest", False) and not allow_guest:
         raise HTTPException(status_code=401, detail="ゲストは許可されていません")
     return True
+
+from fastapi import Depends  # すでにあれば不要
+
+def require_research_role(user: _SimpleUser = Depends(get_current_user)) -> _SimpleUser:
+    """
+    認知率・分析データなど「研究者向けAPI」にアクセスできるかチェックする。
+    - 未ログイン → 401
+    - ゲスト → 401
+    - user.role が "researcher" または "admin" のみ通す
+    """
+    if user is None:
+        raise HTTPException(status_code=401, detail="ログインが必要です")
+    if getattr(user, "is_guest", False):
+        raise HTTPException(status_code=401, detail="ゲストは許可されていません")
+
+    allowed = {"researcher", "admin"}
+    if getattr(user, "role", "normal") not in allowed:
+        raise HTTPException(status_code=403, detail="このデータには研究者権限が必要です")
+
+    return user

@@ -25,7 +25,7 @@ LINE_CLIENT_SECRET = (os.getenv("LINE_CLIENT_SECRET", "") or "").strip()
 BASE_DIR = Path(__file__).parent
 
 # ここを data/ 配下に変更（絶対パスで安全に）
-LOCAL_CSV_PATH = str(BASE_DIR / "data" / "170003_public_facility.csv")
+LOCAL_CSV_PATH = str(BASE_DIR / "data" / "public_facility.csv")
 NAGANO_FAC_CSV = str(BASE_DIR / "data" / "202142_public_facility.csv")
 NAGANO_PARK_CSV = str(BASE_DIR / "data" / "202142_public_park.csv")
 

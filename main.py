@@ -20,6 +20,7 @@ from auth import get_current_user
 from quiz_maker import router as quiz_maker_router
 from auth import get_current_user, _SimpleUser  # 既に import 済みならこの行は不要
 from fastapi.responses import RedirectResponse
+from recognition import router as recognition_router
 
 app = FastAPI(title="Ishikawa Facilities & Parks")
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax", https_only=False)
@@ -107,6 +108,20 @@ async def chars_page(request: Request, user: _SimpleUser = Depends(get_current_u
             "user": user,
         },
     )
+
+@app.get("/data/checkins", response_class=HTMLResponse)
+async def data_checkins(request: Request, user=Depends(get_current_user)):
+    """
+    データ提供その2：時間・期間別チェックインページ
+    """
+    return templates.TemplateResponse(
+        "data_checkins.html",
+        {
+            "request": request,
+            "user": user,  # home や map などと同じように user を渡す
+        },
+    )
+    
     
 # Health
 @app.get("/health")
@@ -151,3 +166,4 @@ app.include_router(analytics_router)
 app.include_router(comments_router)
 app.include_router(quiz_router)
 app.include_router(quiz_maker_router)
+app.include_router(recognition_router)

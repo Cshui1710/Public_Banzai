@@ -166,3 +166,8 @@ body.modal-open { overflow: hidden; overscroll-behavior: contain; }
 
 /* video は常に枠いっぱい（黒帯防止） */
 #arVideo { object-fit: cover; }
+
+#qHintBox {
+  min-height: 2.2em;        /* 1〜2行ぶん。必要なら調整 */
+  transition: opacity 0.2s ease;
+}

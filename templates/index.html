@@ -4,22 +4,38 @@
   <meta charset="utf-8" />
   <title>石川県 公共施設・公園マップ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Leaflet 本体 -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- MarkerCluster（ピンが多いときのパフォーマンス＆見た目改善） -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+  />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <!-- 外部CSS -->
   <link rel="stylesheet" href="/static/style.css" />
 
+  <!-- 到達半径（サーバから渡す） -->
   <script>
     window.ARRIVAL_RADIUS = {{ (radius_m | default(50, true) | int) | tojson }};
   </script>
+
   <!-- heatmap.js + Leaflet.heat -->
   <script src="https://unpkg.com/heatmap.js@2.0.5/build/heatmap.min.js"></script>
   <script src="https://unpkg.com/leaflet-heatmap/leaflet-heatmap.js"></script>
+
   <!-- Chart.js（分析グラフ） -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <!-- ヘッダ高さをCSS変数に反映 -->
+  <!-- ヘッダ高さをCSS変数に反映（#map の高さ調整用） -->
   <script>
     function updateHeaderHeight(){
       const h = document.querySelector('header')?.offsetHeight || 64;
@@ -34,7 +50,7 @@
     });
   </script>
 
-  <!-- ★ ログイン情報をフロントにも渡す -->
+  <!-- ログイン情報をフロントにも渡す -->
   <script>
     window.__USER__ = {
       id: {{ user.id }},
@@ -45,44 +61,418 @@
   </script>
 
   <style>
-    /* 右上の表示をきれいに収めるための小調整（style.cssが優先されます） */
-    header { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff; border-bottom:1px solid #e5e7eb; }
-    header .right { margin-left:auto; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .pill.success { background:#dcfce7; color:#166534; border:1px solid #86efac; }
-    .pill.warn { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --accent: #6366f1;
+      --accent-soft: #4f46e5;
+      --card-radius: 1rem;
+      --shadow-soft: 0 10px 30px rgba(15,23,42,0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    /* 全体レイアウト（home.html と合わせた雰囲気） */
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background:
+        radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      color: #0f172a;
+    }
+
+    /* ブランドロゴ（home.html と共通デザイン） */
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    header.topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid rgba(148,163,184,0.45);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar-left,
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .topbar-title {
+      font-weight: 700;
+      white-space: nowrap;
+      font-size: .9rem;
+      color: #4b5563;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #0f172a;
+      white-space: nowrap;
+      gap: 4px;
+    }
+
+    .pill.success {
+      background:#dcfce7;
+      color:#166534;
+      border-color:#86efac;
+    }
+    .pill.warn {
+      background:#fef3c7;
+      color:#92400e;
+      border-color:#fed7aa;
+    }
+
+    .btn {
+      cursor: pointer;
+      border-radius: 999px;
+      padding: 4px 12px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      font-size: 12px;
+      line-height: 1.4;
+      transition: background 0.12s ease, box-shadow 0.12s ease,
+        transform 0.06s ease, border-color 0.12s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: #f9fafb;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+    }
+    .btn.primary {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+    .btn.primary:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+    }
+
+    .field {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #csvQuery {
+      min-width: 220px;
+      max-width: 320px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid #cbd5e1;
+      font-size: 13px;
+      background: #f9fafb;
+    }
+
+    #csvQuery:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.4);
+      background: #ffffff;
+    }
+
+    #map {
+      width: 100%;
+      height: calc(100vh - var(--hdr, 56px));
+    }
+
+    .legend,
+    .credit {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      max-width: 340px;
+      background: rgba(255,255,255,0.94);
+      border-radius: 14px;
+      padding: 8px 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #4b5563;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+      z-index: 500;
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .legend {
+      bottom: 96px;
+    }
+    .credit {
+      bottom: 16px;
+    }
+
+    /* トースト（home と揃えた丸カプセル） */
+    .toast,
+    #toast {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 16px !important;
+      background: #111827 !important;
+      color: #f9fafb !important;
+      font-size: 13px;
+      border-radius: 999px !important;
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.4);
+      z-index: 9999;
+      display: none;
+      white-space: nowrap;
+      max-width: 80vw;
+      width: auto !important;
+      height: auto !important;
+    }
+
+    /* CSV検索結果パネル（カードっぽく） */
+    .search-panel {
+      position: fixed;
+      right: 14px;
+      top: calc(var(--hdr, 56px) + 16px);
+      width: min(420px, 90vw);
+      max-height: calc(100vh - var(--hdr, 56px) - 32px);
+      overflow: auto;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+      padding: 12px;
+      font-size: 13px;
+      z-index: 3000;
+      display: none;
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+
+    /* 写真＋コメントパネル（右からスライド） */
+    .photo-panel {
+      position: fixed;
+      top: calc(var(--hdr, 56px) + 10px);
+      right: 10px;
+      width: min(430px, 94vw);
+      max-height: calc(100vh - var(--hdr, 56px) - 20px);
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(15,23,42,0.3);
+      padding: 12px;
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 4000;
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .photo-panel.open {
+      display: flex;
+    }
+    .photo-panel__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .photo-grid img {
+      width: 100%;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .comments {
+      font-size: 12px;
+    }
+
+    /* モーダル共通（図鑑・分析・ゲット確認） */
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 5000;
+      padding: 16px;
+    }
+    .modal-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 16px;
+      max-width: 1000px;
+      width: 96vw;
+      max-height: 90vh;
+      overflow: auto;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148,163,184,0.4);
+    }
+
+    /* 図鑑モーダル内カード */
+    #charsGrid .card {
+      border-radius: 12px;
+      padding: 8px;
+      border: 1px solid #e5e7eb;
+      text-align: center;
+      background: #f9fafb;
+      font-size: 12px;
+      position: relative;
+    }
+    #charsGrid .card img {
+      width: 100%;
+      max-width: 160px;
+      height: auto;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+    #charsGrid .card .badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #0f172a;
+      color: #f9fafb;
+    }
+    #charsGrid .card.locked {
+      opacity: 0.45;
+    }
+
+    /* ヒートマップ領域（PC/スマホ対応サイズ） */
+    #heatwrap {
+      width: 100%;
+      height: min(320px, 45vh);
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 14px;
+      background: #f9fafb;
+    }
+
+    /* スマホ向けレイアウト調整 */
+    @media (max-width: 768px) {
+      header.topbar {
+        align-items: flex-start;
+      }
+      .topbar-left {
+        flex: 1 1 100%;
+        order: 1;
+      }
+      .topbar-right {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+        order: 2;
+      }
+      .topbar-title {
+        font-size: 13px;
+      }
+      #csvQuery {
+        min-width: 180px;
+        max-width: min(60vw, 260px);
+      }
+      .legend,
+      .credit {
+        max-width: 280px;
+        left: 10px;
+        right: 10px;
+        font-size: 10px;
+      }
+      .legend {
+        bottom: 90px;
+      }
+      .credit {
+        bottom: 10px;
+      }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div style="font-weight:700;">石川県 公共施設・公園マップ</div>
-    <span class="pill">到達半径 {{ radius_m|int if radius_m is defined else 50000 }}m</span>
+  <header class="topbar">
+    <div class="topbar-left">
+      <a class="brand-mark" href="/home">
+        <span class="brand-logo">IF</span>
+        <span>Ishikawa Facilities &amp; Parks</span>
+      </a>
+      <span class="topbar-title">公共施設・公園マップ</span>
+      <span class="pill">
+        📏 到達半径 {{ radius_m|int if radius_m is defined else 50 }}m
+      </span>
 
-    <!-- 左側の操作群 -->
-    <button id="locateBtn" class="btn">現在地</button>
-    <button id="toggleParks" class="btn">公園 ON/OFF</button>
-    <button id="toggleFacilities" class="btn">公共施設 ON/OFF</button>
+      <button id="locateBtn" class="btn">📍 現在地</button>
+      <button id="toggleParks" class="btn">🌳 公園 ON/OFF</button>
+      <button id="toggleFacilities" class="btn">🏛 公共施設 ON/OFF</button>
 
-    <div class="field" style="gap:8px; margin-left:8px;">
-      <input id="csvQuery" type="text" placeholder="CSV内を検索（名称/住所で部分一致）" style="min-width:260px;"/>
-      <button class="btn" onclick="searchCSV()">検索</button>
+      <div class="field" style="gap:8px; margin-left:4px;">
+        <input id="csvQuery" type="text"
+               placeholder="CSV内を検索（名称/住所で部分一致）" />
+        <button class="btn" onclick="searchCSV()">検索</button>
+      </div>
+
+      <button id="openDash" class="btn">📊 分析</button>
     </div>
-    <button id="openDash" class="btn">分析</button>
 
-    <!-- 右側：ログイン中表示・ホーム・ログアウト -->
-    <div class="right">
+    <!-- 右側：ログイン中表示・ホーム・ログアウト・スタンプ -->
+    <div class="topbar-right">
       {% if user and not user.is_guest %}
-        <span class="pill success" id="whoami">{{ user.display_name or user.email }} さんログイン中</span>
+        <span class="pill success" id="whoami">
+          ✅ {{ user.display_name or user.email }} さんログイン中
+        </span>
       {% else %}
-        <span class="pill warn">ゲスト表示中</span>
+        <span class="pill warn">ゲスト表示中（チェックイン不可）</span>
       {% endif %}
-      <a class="btn" href="/home">ホーム</a>
+      <a class="btn" href="/home">🏠 ホーム</a>
       <a class="btn" href="/auth/logout">ログアウト</a>
-      <button class="btn" onclick="openCharsAll()">所持スタンプ</button>
+      <button class="btn" onclick="openCharsAll()">🦫 所持スタンプ</button>
     </div>
   </header>
 
   <div id="map"></div>
 
+  <!-- CSV検索結果パネル -->
   <div id="searchPanel" class="search-panel">
     <div style="display:flex; justify-content:space-between; align-items:center;">
       <div style="font-weight:700;">CSV 検索結果</div>
@@ -91,21 +481,26 @@
     <div id="searchResults" style="margin-top:8px; font-size:14px;"></div>
   </div>
 
+  <!-- 写真＋コメントパネル -->
   <div id="photoPanel" class="photo-panel">
     <div class="photo-panel__header">
       <div style="font-weight:700; flex:1;">写真（<span id="photoPanelTitle">未選択</span>）</div>
       <button class="btn" onclick="closePhotoPanel()">閉じる</button>
     </div>
+
     <div class="photo-panel__uploader">
       <form id="photoForm" onsubmit="return submitPhoto(event)">
         <input type="hidden" id="photoPlaceId" />
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <input id="photoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif"/>
           <button class="btn primary" type="submit">アップロード</button>
-          <span class="hint">対応: png, jpg, jpeg, webp, gif / 上限 8MB</span>
+          <span class="hint" style="font-size:11px;color:#64748b;">
+            対応: png, jpg, jpeg, webp, gif / 上限 8MB
+          </span>
         </div>
       </form>
     </div>
+
     <div id="photoList" class="photo-grid"></div>
 
     <!-- コメント欄 -->
@@ -118,8 +513,10 @@
       <div id="commentList" style="display:flex;flex-direction:column;gap:8px;margin:8px 0;"></div>
 
       <form id="commentForm" onsubmit="return submitComment(event)" style="display:flex;flex-direction:column;gap:8px;">
-        <textarea id="commentText" rows="2" placeholder="この場所にコメント（500文字まで）" maxlength="500"
-          style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;"></textarea>
+        <textarea id="commentText" rows="2"
+          placeholder="この場所にコメント（500文字まで）"
+          maxlength="500"
+          style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></textarea>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button class="btn" type="button" onclick="refreshComments()">再読み込み</button>
           <button class="btn primary" type="submit">送信</button>
@@ -128,6 +525,7 @@
     </div>
   </div>
 
+  <!-- 凡例＆クレジット -->
   <div class="legend">
     <div>● 公共施設・公園（統一ピン：石川県CSV）</div>
     <div><span style="color:#f59e0b;">●</span> 茅野市CSV（金ピン：施設・公園）</div>
@@ -135,35 +533,17 @@
   </div>
 
   <div class="credit">
-    データ: 石川県全体CSV（{{ '170003_public_facility.csv' }}） / 茅野市CSV（202142_public_facility.csv / 202142_public_park.csv） / 写真はユーザー投稿（/uploads 保存）
+    データ: 石川県全体CSV（{{ '170003_public_facility.csv' }}） /
+    茅野市CSV（202142_public_facility.csv / 202142_public_park.csv） /
+    写真はユーザー投稿（/uploads 保存）
   </div>
 
+  <!-- トースト -->
   <div id="toast" class="toast"></div>
 
-  <!-- キャラ獲得モーダル -->
-  <div id="charModal">
-    <div id="charCard">
-      <div style="font-weight:700; font-size:20px;">マーモットを捕まえよう！</div>
-
-      <!-- AR + ゲーム領域 -->
-      <div id="arStage" style="position:relative;width:min(92vw,480px);height:min(120vw,360px);margin:12px auto;border-radius:12px;overflow:hidden;background:#000;">
-        <video id="arVideo" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"></video>
-        <canvas id="arCanvas" width="480" height="360" style="position:absolute;inset:0;width:100%;height:100%;"></canvas>
-        <div id="arHint" style="position:absolute;left:8px;bottom:8px;color:#fff;background:rgba(0,0,0,.35);padding:6px 8px;border-radius:8px;font-size:12px;">
-          逃げるマーモットをタップ！
-        </div>
-      </div>
-
-      <div id="charName" style="margin-top:4px;">???</div>
-      <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
-        <button class="btn" onclick="restartMarmotGame()">もう一度</button>
-        <button class="btn primary" onclick="closeCharModal()">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="charsModal" class="modal" style="display:none">
-    <div class="modal-card" style="background:#fff;border-radius:12px;padding:16px;max-width:900px;width:96vw;max-height:85vh;overflow:auto;">
+  <!-- スタンプ図鑑モーダル -->
+  <div id="charsModal" class="modal">
+    <div class="modal-card" style="max-width:900px;">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
         <div style="font-weight:700;font-size:18px;">スタンプ一覧</div>
         <button class="btn" onclick="closeChars()">閉じる</button>
@@ -173,19 +553,20 @@
     </div>
   </div>
 
-  <div id="dashModal" class="modal" style="display:none">
-    <div class="modal-card" style="background:#fff;border-radius:12px;padding:16px;max-width:1000px;width:96vw;max-height:90vh;overflow:auto;">
+  <!-- 利用ヒートマップ・分析モーダル -->
+  <div id="dashModal" class="modal">
+    <div class="modal-card">
       <div style="display:flex;gap:8px;align-items:center;justify-content:space-between;">
         <div style="font-weight:700;font-size:18px;">利用ヒートマップ・分析</div>
         <button class="btn" onclick="closeDash()">閉じる</button>
       </div>
 
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">
-        <label>期間:
+        <label style="font-size:13px;">期間:
           <input id="dashFrom" type="datetime-local">
           〜 <input id="dashTo" type="datetime-local">
         </label>
-        <label>種別:
+        <label style="font-size:13px;">種別:
           <select id="dashKind">
             <option value="">すべて</option>
             <option value="公園">公園</option>
@@ -193,7 +574,7 @@
           </select>
         </label>
 
-        <label>時間帯:
+        <label style="font-size:13px;">時間帯:
           <select id="dashTod">
             <option value="">指定なし</option>
             <option value="morning">朝 (05–10)</option>
@@ -205,10 +586,9 @@
         </label>
 
         <button class="btn primary" onclick="loadDashboard()">更新</button>
-        <a class="btn" id="geojsonLink" target="_blank" rel="noopener">GeoJSON</a>
       </div>
 
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px;font-size:13px;">
         <label>半径:
           <input id="heatRadius" type="range" min="5" max="60" step="1" value="20">
           <span id="heatRadiusVal">20</span>
@@ -224,25 +604,22 @@
         <button class="btn" onclick="applyHeatConfig()">ヒート更新</button>
       </div>
 
-      <div id="heatwrap" style="height:420px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;"></div>
+      <div id="heatwrap"></div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px;">
-        <canvas id="tsChart" height="180"></canvas>
-        <canvas id="kindChart" height="180"></canvas>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;">
+        <div style="height:200px;"><canvas id="tsChart"></canvas></div>
+        <div style="height:200px;"><canvas id="kindChart"></canvas></div>
       </div>
     </div>
   </div>
 
-  <style>
-    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:9999;}
-  </style>
-
-  <!-- ゲット確認モーダル -->
-  <div id="gotModal" class="modal" style="display:none">
-    <div class="modal-card" style="background:#fff;border-radius:14px;padding:16px;max-width:520px;width:92vw;text-align:center;">
+  <!-- スタンプをゲット確認モーダル -->
+  <div id="gotModal" class="modal">
+    <div class="modal-card" style="max-width:520px;text-align:center;">
       <div style="font-weight:800;font-size:20px;margin-bottom:6px;">スタンプをゲット！</div>
       <div style="display:flex;justify-content:center;margin:10px 0;">
-        <img id="gotImg" src="" alt="キャラ画像" style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
+        <img id="gotImg" src="" alt="キャラ画像"
+             style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
       </div>
       <div id="gotName" style="font-size:18px;font-weight:700;color:#0f172a;">???</div>
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">

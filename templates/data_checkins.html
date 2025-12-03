@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>データ提供その2 | 時間・期間別チェックイン</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Chart.js（簡易ダッシュボード用） -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --accent: #6366f1;
+      --card-radius: 1rem;
+      --shadow-soft: 0 14px 30px rgba(15,23,42,0.12);
+      --border-subtle: rgba(148,163,184,0.4);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ブランド系（home.html と共通テイスト） */
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    .nav-glass {
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.96);
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+      padding: .55rem 1rem;
+    }
+
+    .nav-inner {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .pill-beta {
+      border-radius: 999px;
+      padding: .25rem .75rem;
+      font-size: .75rem;
+      background: #eef2ff;
+      color: #4338ca;
+      border: 1px solid rgba(129,140,248,0.5);
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+    }
+
+    .btn-soft {
+      border-radius: 999px;
+      font-size: .8rem;
+      padding-inline: 1rem;
+    }
+
+    main.page-root {
+      flex: 1;
+      padding: 1.8rem 1.2rem 2.6rem;
+    }
+
+    .container-narrow {
+      max-width: 1100px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: .75rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .section-label {
+      font-size: .78rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: 700;
+    }
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      margin: 0;
+    }
+    .section-sub {
+      font-size: .86rem;
+      color: #6b7280;
+      margin: 0.1rem 0 0;
+    }
+
+    .card {
+      border-radius: var(--card-radius);
+      border: 0;
+      box-shadow: var(--shadow-soft);
+      background: rgba(255,255,255,0.98);
+    }
+
+    pre.csv-preview {
+      background:#0f172a;
+      color:#e5e7eb;
+      padding:8px 12px;
+      border-radius:8px;
+      font-size:12px;
+      max-height:220px;
+      overflow:auto;
+      white-space:pre;
+    }
+
+    .badge-pill {
+      border-radius:999px;
+      padding:.25rem .7rem;
+      font-size:.8rem;
+    }
+
+    @media (max-width: 576px) {
+      main.page-root {
+        padding-top: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ナビバー -->
+  <header class="nav-glass">
+    <div class="nav-inner">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <a href="/home" class="brand-mark">
+          <span class="brand-logo">IF</span>
+          <span>Ishikawa Facilities &amp; Parks</span>
+        </a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <a href="/home" class="btn btn-outline-secondary btn-sm btn-soft">
+            ← ホーム
+          </a>
+          <span class="pill-beta">
+            📊 データ提供その2：時間・期間別チェックイン
+          </span>
+        </div>
+      </div>
+      <span class="pill-beta">
+        β版・研究目的での利用を想定
+      </span>
+    </div>
+  </header>
+
+  <main class="page-root">
+    <div class="container container-narrow">
+
+      <!-- 上部タイトル & 説明 -->
+      <div class="section-head">
+        <div>
+          <div class="section-label">ANALYTICS LINE</div>
+          <h1 class="section-title">時間・期間別チェックインダッシュボード</h1>
+          <p class="section-sub">
+            アプリのチェックイン履歴から、施設別の利用タイミングを可視化します。
+            条件を変えながら、どの市町・施設がいつ使われているか探ってみてください。
+          </p>
+        </div>
+      </div>
+
+      <!-- 説明カード -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="h6 mb-2">概要</h2>
+          <p class="mb-2 text-muted">
+            このページでは、アプリ利用者のチェックイン履歴をもとに、
+            <strong>施設 × 日付 × 時間帯</strong>ごとのチェックイン回数を
+            CSV形式で提供します。あわせて簡単なダッシュボードで傾向を確認できます。
+          </p>
+          <p class="mb-0 small text-muted">
+            例）「2025年4月〜6月」「夕方」「公園のみ」などを条件にして、
+            どの施設がよく利用されているか、時間帯ごとの傾向を把握できます。
+          </p>
+        </div>
+      </div>
+
+      <!-- 条件指定 + CSV ダウンロード -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="h6 mb-3">① 集計条件の指定 &amp; CSVダウンロード</h2>
+
+          <div class="row g-3 align-items-end">
+
+            <div class="col-md-4">
+              <label class="form-label">期間（開始日）</label>
+              <input id="df" type="date" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">期間（終了日）</label>
+              <input id="dt" type="date" class="form-control">
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">種別</label>
+              <select id="kind" class="form-select">
+                <option value="">すべて</option>
+                <option value="公園">公園のみ</option>
+                <option value="公共施設">公共施設のみ</option>
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">時間帯</label>
+              <select id="tod" class="form-select">
+                <option value="">指定なし</option>
+                <option value="morning">朝 (05–10)</option>
+                <option value="noon">昼 (10–15)</option>
+                <option value="evening">夕方 (15–19)</option>
+                <option value="night">夜 (19–23)</option>
+                <option value="late">深夜 (23–05)</option>
+              </select>
+            </div>
+
+            <div class="col-md-8">
+              <label class="form-label">施設名・市町村で絞り込み（任意）</label>
+              <input id="q" type="text" class="form-control"
+                     placeholder="例：金沢市、兼六園、野々市市役所 など">
+            </div>
+
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button class="btn btn-primary btn-soft" id="btnRefresh">この条件で集計</button>
+            <a id="csvLink" class="btn btn-outline-secondary btn-soft" href="#" download>
+              CSVをダウンロード
+            </a>
+            <small class="text-muted ms-auto">
+              形式：UTF-8 / カンマ区切り（ヘッダ行あり）
+            </small>
+          </div>
+        </div>
+      </div>
+
+      <!-- CSV プレビュー & ダッシュボード -->
+      <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h2 class="h6 mb-2">② CSVプレビュー（先頭20行）</h2>
+              <p class="small text-muted mb-2">
+                ダウンロードされるCSVファイルのイメージです。
+              </p>
+              <pre id="csvPreview" class="csv-preview">まだデータが読み込まれていません。</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h2 class="h6 mb-2">③ 簡易ダッシュボード</h2>
+              <p class="small text-muted mb-2">
+                同じ条件で集計したデータから、日別のチェックイン件数と
+                時間帯ごとの内訳をグラフ表示します。
+              </p>
+
+              <div class="mb-3" style="height: 180px;">
+                <canvas id="chartDaily"></canvas>
+              </div>
+              <div style="height: 180px;">
+                <canvas id="chartTod"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CSV形式の説明 -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <h2 class="h6 mb-3">提供するCSVの形式</h2>
+          <p class="small mb-2">
+            1行が「施設 × 日付 × 時間帯」の組み合わせを表し、そこに属する
+            チェックイン件数が <code>checkins</code> カラムに記録されます。
+          </p>
+
+          <pre class="csv-preview">
+date, hour_band, tod, place_id, place_name, kind, municipality, lat, lon, checkins
+2025-04-01, "05-10", morning, "170001-001", "兼六園", "公園", "金沢市", 36.5611, 136.6623, 12
+2025-04-01, "10-15", noon,    "170001-001", "兼六園", "公園", "金沢市", 36.5611, 136.6623, 35
+2025-04-01, "15-19", evening, "170045-010", "野々市市役所", "公共施設", "野々市市", 36.5290, 136.6098, 5
+...
+          </pre>
+
+          <ul class="small text-muted mb-0">
+            <li><code>date</code>：チェックイン日（JST）</li>
+            <li><code>hour_band</code>：時間帯の時刻範囲（文字列）</li>
+            <li><code>tod</code>：時間帯カテゴリ（morning / noon / evening / night / late）</li>
+            <li><code>place_id</code>：施設ID（アプリ内部で利用しているID）</li>
+            <li><code>place_name</code>：施設名称</li>
+            <li><code>kind</code>：公園 / 公共施設 など</li>
+            <li><code>municipality</code>：市町村名</li>
+            <li><code>lat, lon</code>：施設の座標（WGS84）</li>
+            <li><code>checkins</code>：その条件に該当するチェックイン件数</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    const csvBaseUrl = '/api/export/checkins_summary.csv';  // CSV API（サーバ側で実装）
+    let chartDaily = null;
+    let chartTod   = null;
+
+    function buildQuery() {
+      const df  = document.getElementById('df').value;
+      const dt  = document.getElementById('dt').value;
+      const kind= document.getElementById('kind').value;
+      const tod = document.getElementById('tod').value;
+      const q   = document.getElementById('q').value.trim();
+
+      const params = new URLSearchParams();
+      if (df)   params.set('date_from', df);
+      if (dt)   params.set('date_to',   dt);
+      if (kind) params.set('kind', kind);
+      if (tod)  params.set('tod', tod);
+      if (q)    params.set('q', q);
+      return params;
+    }
+
+    function setCsvLink() {
+      const params = buildQuery();
+      const href = csvBaseUrl + (params.toString() ? ('?' + params.toString()) : '');
+      document.getElementById('csvLink').href = href;
+    }
+
+    // ごく簡単な CSV パーサ（カンマと改行のみ対応、ダブルクオートは最小限）
+    function parseCsv(text) {
+      const lines = text.trim().split(/\r?\n/);
+      if (!lines.length) return { header: [], rows: [] };
+      const header = lines[0].split(',');
+      const rows = lines.slice(1).map(line => {
+        // "..." を簡易除去（本格的にやるならライブラリ）
+        const cols = [];
+        let cur = '', inQ = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"' ) {
+            inQ = !inQ;
+          } else if (ch === ',' && !inQ) {
+            cols.push(cur); cur = '';
+          } else {
+            cur += ch;
+          }
+        }
+        cols.push(cur);
+        return cols;
+      });
+      return { header, rows };
+    }
+
+    function updatePreview(text) {
+      const lines = text.trim().split(/\r?\n/).slice(0, 21); // ヘッダ + 20行
+      document.getElementById('csvPreview').textContent = lines.join('\n');
+    }
+
+    function updateCharts(text) {
+      const { header, rows } = parseCsv(text);
+      if (!header.length) return;
+
+      const idxDate  = header.indexOf('date');
+      const idxTod   = header.indexOf('tod');
+      const idxCnt   = header.indexOf('checkins');
+      if (idxDate < 0 || idxTod < 0 || idxCnt < 0) return;
+
+      const dailyMap = new Map();  // date -> sum
+      const todMap   = new Map();  // tod -> sum
+
+      for (const cols of rows) {
+        const d   = cols[idxDate];
+        const tod = cols[idxTod] || '(不明)';
+        const c   = Number(cols[idxCnt] || 0);
+        dailyMap.set(d,   (dailyMap.get(d)   || 0) + c);
+        todMap.set(tod,   (todMap.get(tod)   || 0) + c);
+      }
+
+      const dailyLabels = Array.from(dailyMap.keys()).sort();
+      const dailyValues = dailyLabels.map(d => dailyMap.get(d));
+
+      const todLabels   = Array.from(todMap.keys());
+      const todValues   = todLabels.map(k => todMap.get(k));
+
+      const ctxDaily = document.getElementById('chartDaily').getContext('2d');
+      const ctxTod   = document.getElementById('chartTod').getContext('2d');
+
+      if (chartDaily) chartDaily.destroy();
+      if (chartTod)   chartTod.destroy();
+
+      chartDaily = new Chart(ctxDaily, {
+        type: 'line',
+        data: {
+          labels: dailyLabels,
+          datasets: [{
+            label: '日別チェックイン件数',
+            data: dailyValues
+          }]
+        },
+        options: {
+          responsive:true,
+          maintainAspectRatio:false,
+          scales: { x: { ticks: { maxTicksLimit: 8 } } }
+        }
+      });
+
+      chartTod = new Chart(ctxTod, {
+        type: 'bar',
+        data: {
+          labels: todLabels,
+          datasets: [{
+            label: '時間帯別チェックイン件数',
+            data: todValues
+          }]
+        }
+      ...
+      });
+    }
+
+    async function refreshAll() {
+      setCsvLink();
+      const params = buildQuery();
+      const url = csvBaseUrl + (params.toString() ? ('?' + params.toString()) : '');
+      try {
+        const res = await fetch(url);
+        if (!res.ok) {
+          document.getElementById('csvPreview').textContent = 'データ取得に失敗しました。';
+          return;
+        }
+        const text = await res.text();
+        if (!text.trim()) {
+          document.getElementById('csvPreview').textContent = '条件に該当するデータがありません。';
+          return;
+        }
+        updatePreview(text);
+        updateCharts(text);
+      } catch (e) {
+        console.error(e);
+        document.getElementById('csvPreview').textContent = 'データ取得中にエラーが発生しました。';
+      }
+    }
+
+    // 初期化
+    window.addEventListener('DOMContentLoaded', () => {
+      // デフォルト期間：直近30日
+      const today = new Date();
+      const from  = new Date(today.getTime() - 29*24*60*60*1000);
+      const pad = n => String(n).padStart(2, '0');
+      const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      document.getElementById('df').value = fmt(from);
+      document.getElementById('dt').value = fmt(today);
+
+      setCsvLink();
+      document.getElementById('btnRefresh').addEventListener('click', refreshAll);
+
+      // 初回読み込み
+      refreshAll();
+    });
+  </script>
+
+</body>
+</html>

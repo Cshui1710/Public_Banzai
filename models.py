@@ -13,7 +13,11 @@ class User(SQLModel, table=True):
     password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     display_name: Optional[str] = Field(default=None, max_length=32)
-
+    # ★ 追加: ユーザーのロール
+    #   - "normal"     : ふつうのプレイヤー（デフォルト）
+    #   - "researcher" : 認知率データを見られる人
+    #   - "admin"      : 開発者・先生など
+    role: str = Field(default="normal", max_length=16, index=True)
 
 
 class Stamp(SQLModel, table=True):
@@ -80,3 +84,43 @@ class UserQuestion(SQLModel, table=True):
     correct_idx: int               # 0〜3
     created_at: str
     hint: Optional[str] = Field(default=None)    
+    
+class FacilityStat(SQLModel, table=True):
+    """
+    施設ごとの認知率・出題統計
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    facility_key: str = Field(index=True, unique=True, max_length=128)  # 例: "170003-00123" or "金沢市::兼六園"
+    name: str = Field(max_length=128)   # 施設名（兼六園など）
+    city: str = Field(max_length=64)    # 金沢市・野々市市など
+    kind: str = Field(max_length=64)    # 公園 / 公共施設 / 図書館…ざっくり分類
+
+    total_shown: int = Field(default=0)      # その施設の問題を「見た」人間プレイヤー数の累計
+    total_answered: int = Field(default=0)   # そのうち回答した人数
+    total_correct: int = Field(default=0)    # そのうち正解した人数
+
+    last_played_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CityStat(SQLModel, table=True):
+    """
+    市ごとの認知率・出題統計
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+    city: str = Field(index=True, unique=True, max_length=64)  # 金沢市・野々市市など
+
+    total_shown: int = Field(default=0)      # その市の施設をテーマにした問題を「見た」人数
+    total_answered: int = Field(default=0)   # そのうち回答した人数
+    total_correct: int = Field(default=0)    # そのうち正解した人数
+
+    last_played_at: datetime = Field(default_factory=datetime.utcnow)
+
+# models.py のどこかに追加済み想定
+class RecognitionStat(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    place_id: str = Field(index=True)
+    place_name: str
+    city: str = Field(index=True)
+    correct_count: int = Field(default=0)
+    total_count: int = Field(default=0)
+    last_answered_at: datetime = Field(default_factory=datetime.utcnow)

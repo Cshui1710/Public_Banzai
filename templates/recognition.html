@@ -1,0 +1,413 @@
+<!-- templates/recognition.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>認知率ダッシュボード | Ishikawa Facilities & Parks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --accent: #6366f1;
+      --accent-soft: #4f46e5;
+      --card-radius: 1.1rem;
+      --shadow-soft: 0 14px 30px rgba(15,23,42,0.12);
+      --border-subtle: rgba(148,163,184,0.45);
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ────────────────────────────
+        1) ブランド / ナビゲーション
+       ──────────────────────────── */
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+    .nav-glass {
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.96) !important;
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #0f172a;
+    }
+    .btn-soft {
+      border-radius: 999px !important;
+      padding-inline: 1rem;
+      font-size: .8rem;
+    }
+
+    /* ────────────────────────────
+        2) ページ構造
+       ──────────────────────────── */
+    main.page-root {
+      flex: 1;
+      padding-top: 2rem;
+      padding-bottom: 2.6rem;
+    }
+
+    .page-header {
+      margin-bottom: 1.6rem;
+    }
+    .page-header .tagline {
+      font-size: .78rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: 700;
+      margin-bottom: .3rem;
+    }
+    .page-header h1 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: .35rem;
+    }
+    .chip-note {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4f46e5;
+      font-size: .78rem;
+      padding: .25rem .7rem;
+      margin-top: .4rem;
+    }
+
+    /* ────────────────────────────
+        3) パネル（余白改善）
+       ──────────────────────────── */
+    .panel {
+      background: #ffffff;
+      border-radius: var(--card-radius);
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: var(--shadow-soft);
+    }
+    .card-analytic {
+      background: #ffffff;
+      border-radius: var(--card-radius);
+      border: 1px solid rgba(148,163,184,0.35);
+      box-shadow: var(--shadow-soft);
+    }
+
+    /* ★ 重要：ここで余白を最適化！ */
+    .card-analytic .card-body {
+      padding-top: 1.55rem !important;
+      padding-bottom: 1.35rem !important;
+      padding-left: 1.5rem !important;
+      padding-right: 1.5rem !important;
+    }
+
+    .section-subtitle {
+      font-size: .78rem;
+      letter-spacing: .18em;
+      color: #9ca3af;
+      margin-bottom: .35rem;
+      font-weight: 600;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 360px;
+    }
+
+    @media (min-width: 992px) {
+      .chart-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 1.4rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      main.page-root {
+        padding-top: 1.6rem;
+      }
+      .card-analytic .card-body {
+        padding-top: 1.35rem !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ナビバー -->
+  <nav class="navbar navbar-expand-lg nav-glass">
+    <div class="container">
+      <a class="navbar-brand brand-mark" href="/home">
+        <span class="brand-logo">IF</span>
+        <span>Ishikawa Facilities & Parks</span>
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+        <span class="pill">
+          👤 {{ user.display_name or user.email }} / {{ user.role }}
+        </span>
+        <a href="/home" class="btn btn-outline-secondary btn-sm btn-soft">🏠 ホームへ</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container page-root">
+    <!-- ヘッダ -->
+    <header class="page-header">
+      <div class="tagline">RECOGNITION LINE</div>
+      <h1>認知率ダッシュボード</h1>
+      <p class="text-muted">
+        クイズの正解率をもとに、「施設単位」「市町単位」での認知率を可視化します。
+      </p>
+      <div class="chip-note">🎯 どこが知られているか一目でわかる</div>
+    </header>
+
+    <!-- フィルタ -->
+    <section class="panel mb-4">
+      <div class="card-body py-3 px-3 px-md-4 d-flex flex-wrap align-items-center gap-2">
+        <div class="input-group" style="max-width: 280px;">
+          <label class="input-group-text" for="minTotalInput" style="font-size:.8rem;">最小回答数</label>
+          <input id="minTotalInput" type="number" class="form-control" value="3" min="1" max="999">
+        </div>
+
+        <button id="reloadBtn" class="btn btn-outline-primary btn-sm btn-soft">🔄 再読み込み</button>
+        <a href="/api/recognition/export.csv" class="btn btn-outline-secondary btn-sm btn-soft">⬇ CSVダウンロード</a>
+
+        <span id="statusText" class="ms-2 small text-muted"></span>
+      </div>
+    </section>
+
+    <!-- グラフ -->
+    <section class="chart-grid">
+      <!-- 施設別 -->
+      <div class="card-analytic mb-3">
+        <div class="card-body">
+          <div class="section-subtitle">BY FACILITY</div>
+          <h2 class="h5 mb-1">施設別認知率（％）</h2>
+          <p class="small text-muted mb-2">
+            回答数が多いほど信頼度が高くなります。
+          </p>
+          <div class="chart-container">
+            <canvas id="facilityChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- 市別 + 分布 -->
+      <div class="d-flex flex-column gap-3">
+        <div class="card-analytic">
+          <div class="card-body">
+            <div class="section-subtitle">BY CITY</div>
+            <h2 class="h6 mb-1">市別認知率（％）</h2>
+            <p class="small text-muted mb-2">
+              市単位での「知られ具合」を比較できます。
+            </p>
+            <div class="chart-container" style="height: 260px;">
+              <canvas id="cityChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-analytic">
+          <div class="card-body">
+            <div class="section-subtitle">DISTRIBUTION</div>
+            <h2 class="h6 mb-1">施設認知率の分布（件数）</h2>
+            <p class="small text-muted mb-2">
+              高：80%以上 / 中：50〜80% / 低：50%未満
+            </p>
+            <div class="chart-container" style="height: 200px;">
+              <canvas id="distChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Chart.js + ロジック（元のまま） -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    (function() {
+      const facilityCtx = document.getElementById("facilityChart");
+      const cityCtx     = document.getElementById("cityChart");
+      const distCtx     = document.getElementById("distChart");
+      const minTotalInput = document.getElementById("minTotalInput");
+      const reloadBtn     = document.getElementById("reloadBtn");
+      const statusText    = document.getElementById("statusText");
+
+      let facilityChart = null;
+      let cityChart = null;
+      let distChart = null;
+
+      const fmtRate = (r) => r.toFixed(1) + "%";
+
+      async function fetchSummary() {
+        const minTotal = parseInt(minTotalInput.value || "3", 10);
+        statusText.textContent = "読み込み中...";
+        try {
+          const url = `/api/recognition/summary?min_total=${encodeURIComponent(minTotal)}`;
+          const r = await fetch(url);
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const js = await r.json();
+          statusText.textContent =
+            `施設: ${js.facilities.length}件 / 市: ${js.cities.length}件（min_total=${js.min_total}）`;
+          return js;
+        } catch (e) {
+          statusText.textContent = "読み込みに失敗しました";
+          return null;
+        }
+      }
+
+      function renderFacilityChart(data) {
+        if (!facilityCtx) return;
+        if (facilityChart) facilityChart.destroy();
+
+        const labels = data.facilities.map(f => `${f.place_name}（${f.city || "不明"}）`);
+        const rates  = data.facilities.map(f => f.rate);
+        const totals = data.facilities.map(f => f.total);
+        const corrects = data.facilities.map(f => f.correct);
+
+        facilityChart = new Chart(facilityCtx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{
+              label: "認知率",
+              data: rates,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, max: 100 }
+            },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const idx = ctx.dataIndex;
+                    return `${fmtRate(rates[idx])}（${corrects[idx]} / ${totals[idx]}）`;
+                  }
+                }
+              },
+              legend: { display: false }
+            }
+          }
+        });
+      }
+
+      function renderCityChart(data) {
+        if (!cityCtx) return;
+        if (cityChart) cityChart.destroy();
+
+        const labels = data.cities.map(c => c.city);
+        const rates  = data.cities.map(c => c.rate);
+        const totals = data.cities.map(c => c.total);
+        const corrects = data.cities.map(c => c.correct);
+
+        cityChart = new Chart(cityCtx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{
+              label: "認知率",
+              data: rates,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, max: 100 }
+            },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => {
+                    const idx = ctx.dataIndex;
+                    return `${fmtRate(rates[idx])}（${corrects[idx]} / ${totals[idx]}）`;
+                  }
+                }
+              },
+              legend: { display: false }
+            }
+          }
+        });
+      }
+
+      function renderDistChart(data) {
+        if (!distCtx) return;
+        if (distChart) distChart.destroy();
+
+        const labels = ["高（80%以上）", "中（50〜80%）", "低（50%未満）"];
+        const vals   = [data.dist.high || 0, data.dist.mid || 0, data.dist.low || 0];
+
+        distChart = new Chart(distCtx, {
+          type: "bar",
+          data: {
+            labels,
+            datasets: [{ label: "施設数", data: vals }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true }
+            },
+            plugins: {
+              legend: { display: false }
+            }
+          }
+        });
+      }
+
+      async function reloadAll() {
+        const js = await fetchSummary();
+        if (!js) return;
+        renderFacilityChart(js);
+        renderCityChart(js);
+        renderDistChart(js);
+      }
+
+      reloadBtn.addEventListener("click", reloadAll);
+
+      reloadAll();
+    })();
+  </script>
+</body>
+</html>

@@ -1,17 +1,182 @@
 # analytics.py — チェックイン可視化/分析用 API
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query,Request
 from sqlmodel import Session, select, func
 
 from models import engine, Stamp
+from auth import require_research_role   # ★ 追加
+from sqlalchemy import Integer, and_, or_, case
+from fastapi.responses import StreamingResponse
+from sqlmodel import col
+from models import engine, Stamp 
+from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
 
 router = APIRouter(prefix="/api", tags=["analytics"])
-
+templates = Jinja2Templates(directory="templates")
 def get_session():
     with Session(engine) as s:
         yield s
 
+@router.get("/checkins/summary", response_class=HTMLResponse)
+async def checkins_summary_page(
+    request: Request,
+    # 必要なら権限チェックも:
+    # user = Depends(require_research_role),
+):
+    return templates.TemplateResponse(
+        "checkins_summary.html",
+        {"request": request}
+    )
+
+    
+from datetime import datetime
+
+@router.get("/checkins/summary/data")
+async def api_checkins_summary(
+    date_from: str | None = Query(None, description="ISO8601形式の開始日時"),
+    date_to:   str | None = Query(None, description="ISO8601形式の終了日時"),
+    kind:      str | None = Query(None, description="公園/公共施設 等"),
+    session: Session = Depends(get_session),
+):
+    """
+    施設ごとのチェックイン数を集計して返すJSON API。
+    Stamp テーブルを集計対象とする。
+    """
+    q = select(
+        Stamp.place_id,
+        Stamp.place_name,
+        Stamp.kind,
+        func.count(Stamp.id).label("count"),
+        func.min(Stamp.checked_at).label("first_ts"),
+        func.max(Stamp.checked_at).label("last_ts"),
+    )
+
+    # 日時フィルタ（checked_at を対象）
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at >= dt_from)
+        except Exception:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at <= dt_to)
+        except Exception:
+            pass
+
+    # 種別フィルタ
+    if kind:
+        q = q.where(Stamp.kind == kind)
+
+    q = q.group_by(Stamp.place_id, Stamp.place_name, Stamp.kind)
+    q = q.order_by(func.count(Stamp.id).desc())
+
+    rows = session.exec(q).all()
+
+    total_count = sum(r.count for r in rows) if rows else 0
+    facility_count = len(rows)
+
+    # 期間（日数）
+    all_first = [r.first_ts for r in rows if r.first_ts is not None]
+    all_last  = [r.last_ts for r in rows if r.last_ts is not None]
+    if all_first and all_last:
+        span_days = (max(all_last) - min(all_first)).days + 1
+    else:
+        span_days = None
+
+    items = [
+        {
+            "place_id":   r.place_id,
+            "place_name": r.place_name,
+            "kind":       r.kind,
+            "count":      r.count,
+            "first_ts":   r.first_ts.isoformat() if r.first_ts else None,
+            "last_ts":    r.last_ts.isoformat()  if r.last_ts else None,
+        }
+        for r in rows
+    ]
+
+    return JSONResponse({
+        "ok": True,
+        "items": items,
+        "total_count": total_count,
+        "facility_count": facility_count,
+        "day_span": span_days,
+    })
+    
+import io
+import csv
+
+@router.get("/export/checkins_summary.csv")
+async def export_checkins_summary_csv(
+    date_from: str | None = Query(None),
+    date_to:   str | None = Query(None),
+    kind:      str | None = Query(None),
+    session: Session = Depends(get_session),
+):
+    """
+    チェックイン集計結果を CSV としてダウンロードするエンドポイント。
+    集計対象は Stamp（チェックインログ）。
+    """
+    q = select(
+        Stamp.place_id,
+        Stamp.place_name,
+        Stamp.kind,
+        func.count(Stamp.id).label("count"),
+        func.min(Stamp.checked_at).label("first_ts"),
+        func.max(Stamp.checked_at).label("last_ts"),
+    )
+
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at >= dt_from)
+        except Exception:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at <= dt_to)
+        except Exception:
+            pass
+    if kind:
+        q = q.where(Stamp.kind == kind)
+
+    q = q.group_by(Stamp.place_id, Stamp.place_name, Stamp.kind)
+    q = q.order_by(func.count(Stamp.id).desc())
+
+    rows = session.exec(q).all()
+
+    bom = "\ufeff"  # ★ これが BOM
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["place_id", "place_name", "kind", "count", "first_ts", "last_ts"])
+    for r in rows:
+        writer.writerow([
+            r.place_id,
+            r.place_name,
+            r.kind,
+            r.count,
+            r.first_ts.isoformat() if r.first_ts else "",
+            r.last_ts.isoformat()  if r.last_ts else "",
+        ])
+
+    buf.seek(0)
+    text = bom + buf.getvalue() 
+    
+    headers = {
+      "Content-Disposition": 'attachment; filename="checkins_summary.csv"'
+    }
+    return StreamingResponse(
+        iter([text]),
+        media_type="text/csv; charset=utf-8",
+        headers=headers,
+    )
+
+        
 def parse_iso(dt: Optional[str], default: Optional[datetime]) -> datetime:
     if dt:
         try:
@@ -35,6 +200,7 @@ def stats_heatmap(
     tod: Optional[str] = Query(None, description="morning/noon/evening/night/late"),
     hour_from: Optional[int] = None,
     hour_to:   Optional[int] = None,
+    user = Depends(require_research_role),   # ★ 追加
 ):
     now = datetime.utcnow()
     dt_from = parse_iso(date_from, now - timedelta(days=30))
@@ -71,6 +237,7 @@ def stats_timeseries(
     kind: Optional[str] = None,
 
     tod: Optional[str] = None, hour_from: Optional[int] = None, hour_to: Optional[int] = None,
+    user = Depends(require_research_role),   # ★ 追加
 ):
     now = datetime.utcnow()
     dt_from = parse_iso(date_from, now - timedelta(days=30))
@@ -112,6 +279,7 @@ def stats_by_kind(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     tod: Optional[str] = None, hour_from: Optional[int] = None, hour_to: Optional[int] = None,
+    user = Depends(require_research_role),   # ★ 追加
 ):
     now = datetime.utcnow()
     dt_from = parse_iso(date_from, now - timedelta(days=30))
@@ -143,7 +311,8 @@ def export_geojson(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     kind: Optional[str] = None,
-    limit: int = Query(50000, ge=1000, le=200000)
+    limit: int = Query(50000, ge=1000, le=200000),
+    user = Depends(require_research_role),   # ★ 追加
 ):
     now = datetime.utcnow()
     dt_from = parse_iso(date_from, now - timedelta(days=90))
@@ -197,3 +366,193 @@ def hour_extract_expr():
         return func.cast(func.strftime("%H", Stamp.checked_at), Integer)  # 0..23
     else:
         return func.extract("hour", Stamp.checked_at)  # 0..23 (float扱いなのでCASTしてもOK)
+
+# ====== 5) 施設別チェックイン集計（時間帯ごと） ======
+@router.get("/stats/facility-checkins")
+def stats_facility_checkins(
+    session: Session = Depends(get_session),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    place_id: Optional[str] = None,
+    min_total: int = Query(1, ge=0, description="この件数以上の施設のみ返す（フィルタ）"),
+    limit: int = Query(5000, ge=1, le=50000),
+):
+    """
+    施設ごとのチェックイン数（期間内）を、時間帯別に集計して返す。
+      - band_0_8   : 0〜8時
+      - band_8_16  : 8〜16時
+      - band_16_24 : 16〜24時
+      - total      : 期間内の総チェックイン
+    """
+    now = datetime.utcnow()
+    dt_from = parse_iso(date_from, now - timedelta(days=30))
+    dt_to   = parse_iso(date_to,   now)
+
+    ts_col = Stamp.checked_at
+    hcol = hour_extract_expr()
+
+    # 時間帯ごとの CASE 集計
+    band_0_8 = func.sum(
+        case(
+            (and_(hcol >= 0,  hcol < 8), 1),
+            else_=0,
+        )
+    ).label("band_0_8")
+
+    band_8_16 = func.sum(
+        case(
+            (and_(hcol >= 8,  hcol < 16), 1),
+            else_=0,
+        )
+    ).label("band_8_16")
+
+    band_16_24 = func.sum(
+        case(
+            (and_(hcol >= 16, hcol < 24), 1),
+            else_=0,
+        )
+    ).label("band_16_24")
+
+    total = func.count().label("total")
+
+    q = (
+        select(
+            Stamp.place_id,
+            Stamp.place_name,
+            band_0_8,
+            band_8_16,
+            band_16_24,
+            total,
+        )
+        .where(ts_col >= dt_from, ts_col < dt_to)
+    )
+
+    if place_id:
+        q = q.where(Stamp.place_id == place_id)
+
+    q = q.group_by(Stamp.place_id, Stamp.place_name)
+    # total の多い順に上位施設から
+    q = q.having(total >= min_total).order_by(total.desc()).limit(limit)
+
+    rows = session.exec(q).all()
+
+    items = []
+    for r in rows:
+        pid, name, c0_8, c8_16, c16_24, tot = r
+        items.append({
+            "place_id": pid,
+            "place_name": name,
+            "band_0_8": int(c0_8 or 0),
+            "band_8_16": int(c8_16 or 0),
+            "band_16_24": int(c16_24 or 0),
+            "total": int(tot or 0),
+        })
+
+    return {
+        "ok": True,
+        "from": dt_from.isoformat() + "Z",
+        "to": dt_to.isoformat() + "Z",
+        "items": items,
+        "count": len(items),
+    }
+
+# ====== 6) 施設別チェックイン集計 CSV エクスポート ======
+@router.get("/export/facility_checkins.csv")
+def export_facility_checkins_csv(
+    session: Session = Depends(get_session),
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    place_id: Optional[str] = None,
+    min_total: int = Query(1, ge=0),
+    limit: int = Query(50000, ge=1, le=200000),
+):
+    """
+    施設ごとのチェックイン数（時間帯別）を CSV でエクスポートする。
+    カラム:
+      place_id, place_name, band_0_8, band_8_16, band_16_24, total
+    """
+    now = datetime.utcnow()
+    dt_from = parse_iso(date_from, now - timedelta(days=30))
+    dt_to   = parse_iso(date_to,   now)
+
+    ts_col = Stamp.checked_at
+    hcol = hour_extract_expr()
+
+    band_0_8 = func.sum(
+        case(
+            (and_(hcol >= 0,  hcol < 8), 1),
+            else_=0,
+        )
+    ).label("band_0_8")
+
+    band_8_16 = func.sum(
+        case(
+            (and_(hcol >= 8,  hcol < 16), 1),
+            else_=0,
+        )
+    ).label("band_8_16")
+
+    band_16_24 = func.sum(
+        case(
+            (and_(hcol >= 16, hcol < 24), 1),
+            else_=0,
+        )
+    ).label("band_16_24")
+
+    total = func.count().label("total")
+
+    q = (
+        select(
+            Stamp.place_id,
+            Stamp.place_name,
+            band_0_8,
+            band_8_16,
+            band_16_24,
+            total,
+        )
+        .where(ts_col >= dt_from, ts_col < dt_to)
+    )
+
+    if place_id:
+        q = q.where(Stamp.place_id == place_id)
+
+    q = q.group_by(Stamp.place_id, Stamp.place_name)
+    q = q.having(total >= min_total).order_by(total.desc()).limit(limit)
+
+    rows = list(session.exec(q).all())
+    bom = "\ufeff"
+    from io import StringIO
+    buf = StringIO()
+    
+    def generate():
+        import csv
+        from io import StringIO
+
+        header = ["place_id", "place_name", "band_0_8", "band_8_16", "band_16_24", "total"]
+        sio = StringIO()
+        writer = csv.writer(sio)
+        writer.writerow(header)
+        yield sio.getvalue()
+        sio.seek(0); sio.truncate(0)
+
+        for r in rows:
+            pid, name, c0_8, c8_16, c16_24, tot = r
+            writer.writerow([
+                pid,
+                name,
+                int(c0_8 or 0),
+                int(c8_16 or 0),
+                int(c16_24 or 0),
+                int(tot or 0),
+            ])
+            yield sio.getvalue()
+            sio.seek(0); sio.truncate(0)
+    text = bom + buf.getvalue()
+    filename = f"facility_checkins_{dt_from.date()}_{dt_to.date()}.csv"
+    return StreamingResponse(
+        iter([text]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+

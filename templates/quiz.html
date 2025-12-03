@@ -6,24 +6,158 @@
   <title>クイズ | Ishikawa Facilities & Parks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
-    body { background: #f8fafc; }
-    .card { border: 0; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
-    .blinker { animation: bl 1s linear infinite; }
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --accent: #6366f1;
+      --accent-soft: #4f46e5;
+      --card-radius: 1rem;
+      --shadow-soft: 0 10px 30px rgba(15,23,42,0.10);
+      --border-subtle: rgba(148,163,184,0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      min-height: 100vh;
+      color: #0f172a;
+    }
+
+    /* ===== ナビバー（home.htmlと合わせる） ===== */
+    .navbar {
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.96) !important;
+      border-bottom: 1px solid rgba(148,163,184,0.45);
+    }
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    /* ===== 全体レイアウト ===== */
+    main.quiz-root {
+      padding-top: 1.5rem;
+      padding-bottom: 2.5rem;
+    }
+    .quiz-layout {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .card {
+      border: 0;
+      border-radius: 1rem;
+      box-shadow: var(--shadow-soft);
+      background: #ffffff;
+    }
+
+    .blinker { animation: bl 1s linear infinite; color: #22c55e; }
     @keyframes bl { 50% { opacity: .3; } }
-    .member-pill { border-radius: 999px; background: #eef2ff; padding: .25rem .6rem; font-size: .9rem; }
+
+    .member-pill {
+      border-radius: 999px;
+      background: #eef2ff;
+      padding: .25rem .6rem;
+      font-size: .9rem;
+      border: 1px solid rgba(148,163,184,0.4);
+    }
+
     .choice-btn { text-align: left; }
     .choice-correct { border: 2px solid #22c55e !important; }
     .choice-wrong { opacity: 0.6; }
-    .score-row { display:flex; justify-content:space-between; padding:.25rem .5rem; background:#fff; border:1px solid #eee; border-radius:.5rem; }
 
-    /* ★ ヒント用ボックス */
+    .score-row {
+      display:flex;
+      justify-content:space-between;
+      padding:.25rem .5rem;
+      background:#f9fafb;
+      border:1px solid #e5e7eb;
+      border-radius:.5rem;
+      font-size: .85rem;
+      position: relative;
+    }
+    /* スコア行を駅っぽくする */
+    .score-row::before {
+      content:"";
+      position:absolute;
+      left:-1.1rem;
+      top:50%;
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      background:#ffffff;
+      border:3px solid #4f46e5;
+      box-shadow:0 0 0 3px rgba(191,219,254,0.8);
+      transform:translateY(-50%);
+    }
+
+    /* スコア「線路」ラッパー */
+    .score-wrapper {
+      position: relative;
+      padding-left: 1.6rem;
+    }
+    .score-line {
+      position: absolute;
+      left: 0.55rem;
+      top: 0.4rem;
+      bottom: 0.4rem;
+      width: 3px;
+      border-radius: 999px;
+      background: linear-gradient(to bottom, #4f46e5, #22c55e);
+      opacity: .9;
+    }
+
+    /* ===== プレイ中の小さなラベル ===== */
+    .quiz-tagline-sm {
+      font-size: .78rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+      margin-bottom: .15rem;
+    }
+
+    /* 通常プレイカード */
+    .play-card {
+      position: relative;
+      background: #ffffff;
+    }
+    /* ボス戦用プレイカード（チャレンジモード時） */
+    .play-card-boss {
+      border: 1px solid rgba(248,113,113,0.7);
+      background:
+        radial-gradient(circle at 0% 0%, #fee2e2 0, #fff7ed 45%, #ffffff 100%);
+      box-shadow: 0 18px 40px rgba(248,113,113,0.4);
+    }
+
+    /* ===== ヒント用ボックス ===== */
     #qHintBox {
       border-radius: .75rem;
       border: 1px solid #bfdbfe;
       background: #eff6ff;
       padding: .6rem .8rem;
-      display: none; /* JSで4秒後に表示 */
+      display: none; /* JSで表示制御 */
     }
     #qHintLabel {
       font-size: .85rem;
@@ -41,19 +175,24 @@
       font-size: .9rem;
       color: #1e293b;
     }
-        
+
+    /* ===== スタンプUI ===== */
     .stamp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
-    .stamp-btn { border: 1px solid #eee; border-radius: .5rem; background:#fff; padding:.25rem; cursor:pointer; }
+    .stamp-btn {
+      border: 1px solid #e5e7eb;
+      border-radius: .5rem;
+      background:#ffffff;
+      padding:.25rem;
+      cursor:pointer;
+    }
     .stamp-btn img { width: 100%; height: auto; display:block; }
     .stamp-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-    /* 画面中央でふわっと表示される演出 */
     .stamp-fx{
       position: fixed;
       z-index: 3000;
       pointer-events: none;
       opacity: 0;
-      /* 幅は“パネル幅の ~90%（最大200px）”をJSで設定。ここは fallback */
       width: 160px;
       animation: pop-float 850ms ease-out forwards;
     }
@@ -63,124 +202,682 @@
       100% { opacity: 0; transform: translateY(-10px) scale(1.0); }
     }
 
-
-    /* === Stamp floating panel (bottom-right) === */
     .stamp-fab {
       position: fixed;
       right: 16px;
       bottom: 16px;
       z-index: 2500;
       width: 280px;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: .75rem;
-      box-shadow: 0 12px 32px rgba(0,0,0,.15);
+      background: #ffffff;
+      border: 1px solid rgba(148,163,184,0.7);
+      border-radius: .9rem;
+      box-shadow: 0 16px 40px rgba(15,23,42,.18);
       overflow: hidden;
-      display: none; /* jsで表示 */
+      display: none;
     }
     .stamp-fab-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: .5rem .75rem; background: #f8fafc; border-bottom: 1px solid #eef2ff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .5rem .75rem;
+      background: #f8fafc;
+      border-bottom: 1px solid #e5e7eb;
     }
     .stamp-fab-body {
-      max-height: 50vh; overflow: auto; padding: .75rem;
+      max-height: 50vh;
+      overflow: auto;
+      padding: .75rem;
+      background: #f9fafb;
     }
     @media (max-width: 992px) {
       .stamp-fab { right: 8px; left: 8px; width: auto; }
     }
+
+    /* ===== チャレンジモード（ボス選択）: 光サークル背景 ===== */
+    .challenge-hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.2rem;
+      background: radial-gradient(circle at 0% 0%, #e0f2fe 0, #f5f3ff 40%, #f9fafb 100%);
+      padding: 1.8rem 1.6rem 1.5rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(129,140,248,0.45);
+      margin-bottom: 1.5rem;
+    }
+    .challenge-label {
+      font-size: .75rem;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+      margin-bottom: .35rem;
+    }
+    .challenge-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: .4rem;
+    }
+    .challenge-title span {
+      background: linear-gradient(110deg,#6366f1,#ec4899);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+    .challenge-sub {
+      font-size: .9rem;
+      color: #4b5563;
+      max-width: 34rem;
+      margin-bottom: .7rem;
+    }
+    .challenge-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem .75rem;
+      font-size: .78rem;
+      color: #6b7280;
+    }
+    .challenge-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .2rem .55rem;
+      border-radius: 999px;
+      background: #eff6ff;
+      border: 1px solid rgba(129,140,248,0.5);
+    }
+
+    .boss-row {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0,1fr));
+      gap: 1rem;
+    }
+    @media (min-width: 768px) {
+      .boss-row { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    }
+
+    .boss-card {
+      position: relative;
+      border-radius: 1.2rem;
+      background: #ffffff;
+      border: 1px solid rgba(148,163,184,0.5);
+      box-shadow: 0 12px 30px rgba(148,163,184,0.4);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+    }
+    .boss-inner {
+      position: relative;
+      padding: .85rem .9rem .75rem;
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+    }
+    .boss-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: .5rem;
+    }
+    .boss-tag {
+      font-size: .7rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      padding: .2rem .7rem;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #1f2937;
+      border: 1px solid rgba(129,140,248,0.8);
+    }
+    .boss-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+    .boss-name small {
+      font-size: .75rem;
+      color: #6b7280;
+    }
+
+    .boss-diff {
+      font-size: .8rem;
+      padding: .25rem .6rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      border: 1px solid;
+      background: #fff;
+    }
+    .boss-diff.easy   { border-color: #22c55e33; color:#15803d; background:#dcfce7; }
+    .boss-diff.normal { border-color: #3b82f633; color:#1d4ed8; background:#dbeafe; }
+    .boss-diff.hard   { border-color: #f9731633; color:#b91c1c; background:#fee2e2; }
+
+    .boss-visual {
+      position: relative;
+      margin: .3rem 0 .5rem;
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .boss-bg-circle {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 999px;
+      opacity: 0.9;
+    }
+    .boss-bg-circle.jack {
+      background: radial-gradient(circle at 30% 20%, #bbf7d0 0, #4ade80 35%, #fefce8 70%);
+    }
+    .boss-bg-circle.queen {
+      background: radial-gradient(circle at 30% 20%, #f9a8d4 0, #fb7185 35%, #fdf2f8 70%);
+    }
+    .boss-bg-circle.king {
+      background: radial-gradient(circle at 30% 20%, #bfdbfe 0, #818cf8 35%, #e0f2fe 75%);
+    }
+    .boss-portrait {
+      position: relative;
+      max-height: 140px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 18px rgba(15,23,42,0.25));
+    }
+
+    .boss-text {
+      font-size: .82rem;
+      color: #4b5563;
+    }
+    .boss-stats {
+      display: flex;
+      flex-direction: column;
+      gap: .25rem;
+      font-size: .78rem;
+      color: #374151;
+      margin-top: .15rem;
+    }
+    .boss-stat-row {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .boss-stat-label {
+      min-width: 3.5rem;
+      color: #9ca3af;
+    }
+    .boss-stat-bar {
+      flex: 1;
+      height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+    }
+    .boss-stat-fill {
+      height: 100%;
+      border-radius: inherit;
+    }
+    .boss-stat-fill.jack-speed   { width: 45%; background: linear-gradient(to right,#22c55e,#a3e635); }
+    .boss-stat-fill.jack-accur   { width: 55%; background: linear-gradient(to right,#22c55e,#a3e635); }
+    .boss-stat-fill.queen-speed  { width: 70%; background: linear-gradient(to right,#3b82f6,#6366f1); }
+    .boss-stat-fill.queen-accur  { width: 75%; background: linear-gradient(to right,#3b82f6,#6366f1); }
+    .boss-stat-fill.king-speed   { width: 92%; background: linear-gradient(to right,#f97316,#ef4444); }
+    .boss-stat-fill.king-accur   { width: 96%; background: linear-gradient(to right,#f97316,#ef4444); }
+
+    .boss-footer {
+      padding: .6rem .9rem .8rem;
+      border-top: 1px solid #e5e7eb;
+      background: #f9fafb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .5rem;
+    }
+    .boss-footer small {
+      font-size: .74rem;
+      color: #6b7280;
+    }
+
+    /* ===== ボス戦 HUD (YOU vs BOSS) ===== */
+    .boss-hud {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      margin-top: .25rem;
+      margin-bottom: .5rem;
+    }
+    .boss-hud-side {
+      flex: 1;
+      padding: .45rem .6rem;
+      border-radius: .75rem;
+      border: 1px solid rgba(148,163,184,0.6);
+      background: rgba(15,23,42,0.03);
+      backdrop-filter: blur(6px);
+    }
+    .boss-hud-player {
+      background: radial-gradient(circle at 0% 0%, #dcfce7 0, #f0fdf4 40%, #ffffff 100%);
+    }
+    .boss-hud-boss.jack {
+      background: radial-gradient(circle at 0% 0%, #bbf7d0 0, #4ade80 40%, #fefce8 95%);
+    }
+    .boss-hud-boss.queen {
+      background: radial-gradient(circle at 0% 0%, #f9a8d4 0, #fb7185 40%, #fdf2f8 95%);
+    }
+    .boss-hud-boss.king {
+      background: radial-gradient(circle at 0% 0%, #bfdbfe 0, #818cf8 40%, #e0f2fe 95%);
+    }
+    .boss-hud-label {
+      font-size: .7rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: 700;
+      margin-bottom: .1rem;
+    }
+    .boss-hud-name {
+      font-size: .9rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .boss-hud-name span.icon {
+      font-size: 1.1rem;
+    }
+    .boss-hud-bar {
+      margin-top: .2rem;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.06);
+      overflow: hidden;
+    }
+    .boss-hud-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+    /* ★ HPゲージは最初フル（100%）にしておく */
+    .boss-hud-fill.player { width: 100%; background: linear-gradient(to right,#22c55e,#a3e635); }
+    .boss-hud-fill.boss   { width: 100%; background: linear-gradient(to right,#f97316,#ef4444); }
+
+    .boss-hud-vs {
+      font-weight: 900;
+      font-size: .95rem;
+      padding: .2rem .4rem;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.9);
+      color: #fefce8;
+      box-shadow: 0 0 0 3px rgba(248,250,252,0.8);
+    }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg bg-white border-bottom">
+  <nav class="navbar navbar-expand-lg">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="/home">Ishikawa Facilities & Parks</a>
+      <a class="navbar-brand brand-mark" href="/home">
+        <span class="brand-logo">IF</span>
+        <span>Ishikawa Facilities &amp; Parks</span>
+      </a>
       <div class="ms-auto">
         <a class="btn btn-outline-secondary btn-sm" href="/home">ホームへ</a>
       </div>
     </div>
   </nav>
 
-  <main class="container py-4">
-    {% if mode == "random-wait" %}
+  <main class="quiz-root">
+    <div class="quiz-layout container">
+
+      {% if mode == "random-wait" %}
+      <!-- ランダムマッチ待機 -->
       <div class="card p-4">
-        <h1 class="h4">ランダムマッチ待機中 <span class="blinker">●</span></h1>
-        <p class="text-muted mb-3">人数が揃い次第、自動で対戦部屋に移動します。</p>
-        <div class="d-flex gap-2">
-          <button id="cancelBtn" class="btn btn-outline-secondary">キャンセル</button>
+        <h1 class="h4 mb-2">
+          ランダムマッチ待機中 <span class="blinker">●</span>
+        </h1>
+        <p class="text-muted mb-3">
+          ログイン中のプレイヤーと自動でマッチング中です。  
+          人数が揃い次第、そのまま対戦部屋に移動します。
+        </p>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <button id="cancelBtn" class="btn btn-outline-secondary">
+            キャンセルしてホームへ戻る
+          </button>
+          <span class="small text-muted">※ このまま放置していてもマッチングは続きます。</span>
         </div>
       </div>
       <script>window.__PAGE_MODE__="random-wait";</script>
 
-    {% elif mode == "room-created" %}
+      {% elif mode == "room-created" %}
+      <!-- フレンドマッチ：部屋作成 -->
       <div class="card p-4">
-        <h1 class="h4">フレンドマッチの部屋を作成しました</h1>
-        <p class="mb-2">このコードを友だちに共有してください：</p>
+        <h1 class="h4 mb-3">フレンドマッチの部屋を作成しました</h1>
+        <p class="mb-2 text-muted">
+          下のルームコードを、いっしょに遊ぶ友だちに共有してください。
+        </p>
         <div class="input-group mb-3" style="max-width: 360px;">
           <input id="roomCode" class="form-control" value="{{ code }}" readonly>
           <button id="copyBtn" class="btn btn-outline-primary">コピー</button>
         </div>
-        <a class="btn btn-primary" href="/quiz?code={{ code }}">部屋に入る</a>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <a class="btn btn-primary" href="/quiz?code={{ code }}">自分も部屋に入る</a>
+          <span class="small text-muted">※ 参加者が揃ったら、部屋画面の「ゲーム開始」でスタートします。</span>
+        </div>
       </div>
-      <script>window.__PAGE_MODE__="room-created"; window.__ROOM_CODE__="{{ code }}";</script>
+      <script>
+        window.__PAGE_MODE__="room-created";
+        window.__ROOM_CODE__="{{ code }}";
+      </script>
 
-    {% elif mode == "room-join" %}
+      {% elif mode == "room-join" %}
+      <!-- フレンドマッチ：部屋参加 -->
       <div class="card p-4">
-        <h1 class="h4">フレンドマッチに参加</h1>
+        <h1 class="h4 mb-3">フレンドマッチに参加</h1>
+        <p class="text-muted">
+          友だちから教えてもらった 6 文字のルームコードを入力してください。
+        </p>
         <div class="input-group mb-3" style="max-width: 360px;">
-          <input id="joinCode" class="form-control" placeholder="コードを入力">
+          <input id="joinCode" class="form-control" placeholder="コードを入力（例: ABCD23）">
           <button id="joinBtn" class="btn btn-primary">参加</button>
         </div>
-        <p class="text-muted">コードは英数字6文字（例: ABCD23）</p>
+        <p class="text-muted small mb-0">
+          ※ 半角英数字のみ。大文字・小文字の違いは無視されます。
+        </p>
       </div>
       <script>window.__PAGE_MODE__="room-join";</script>
 
-    {% elif mode == "play" %}
-      <div class="row g-3">
-        <div class="col-lg-8">
-          <div class="card p-4 mb-3">
-            <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      {% elif mode == "challenge-select" %}
+      <!-- チャレンジモード：ボス選択（光サークル背景） -->
+      <div class="challenge-hero">
+        <div class="challenge-label">CHALLENGE MODE</div>
+        <div class="challenge-title"><span>1 vs 1 ボスバトルに挑戦！</span></div>
+        <p class="challenge-sub">
+          ジャック・クイーン・キング、3体のCPUボスがあなたを待っています。  
+          それぞれ「反応速度」と「正解率」が違うので、自分の実力や気分に合わせて難易度を選んでください。
+        </p>
+        <div class="challenge-meta">
+          <span>🎯 先に正解した方がポイント獲得（先着ボーナスあり）</span>
+          <span>🕒 制限時間つきでテンポよく進行</span>
+          <span>🧠 プレイするほど問題の傾向に慣れていきます</span>
+        </div>
+      </div>
+
+      <div class="boss-row mb-3">
+        <!-- ジャック：EASY -->
+        <div class="boss-card">
+          <div class="boss-inner">
+            <div class="boss-header">
               <div>
-                <h1 class="h4 mb-0">対戦中 <span class="text-muted">#{{ code }}</span></h1>
-                <div class="text-muted" id="roundInfo"></div>
+                <div class="boss-tag">◆ JACK</div>
+                <div class="boss-name">
+                  ジャック <small>/ 入門用ボス</small>
+                </div>
               </div>
-              <div class="d-flex gap-2">
-                <button id="startBtn" class="btn btn-success">ゲーム開始</button>
-                <button id="buzzBtn" class="btn btn-outline-danger">早押し</button>
+              <div class="boss-diff easy">
+                <span>★☆☆</span><span>かんたん</span>
+              </div>
+            </div>
+
+            <div class="boss-visual">
+              <div class="boss-bg-circle jack"></div>
+              <img src="/static/challenge/jack.png"
+                   alt="ジャック"
+                   class="boss-portrait img-fluid">
+            </div>
+
+            <p class="boss-text mb-1">
+              CPUの反応速度も正解率もひかえめ。  
+              まずはここで早押しの感覚をつかんでみましょう。
+            </p>
+
+            <div class="boss-stats">
+              <div class="boss-stat-row">
+                <div class="boss-stat-label">スピード</div>
+                <div class="boss-stat-bar">
+                  <div class="boss-stat-fill jack-speed"></div>
+                </div>
+              </div>
+              <div class="boss-stat-row">
+                <div class="boss-stat-label">正確さ</div>
+                <div class="boss-stat-bar">
+                  <div class="boss-stat-fill jack-accur"></div>
+                </div>
               </div>
             </div>
           </div>
+          <div class="boss-footer">
+            <a href="/quiz/challenge/play?level=jack" class="btn btn-sm btn-primary">
+              ジャックに挑戦する
+            </a>
+            <small>初めての人・ルール確認におすすめ。</small>
+          </div>
+        </div>
 
-          <div class="card p-4 mb-3">
+        <!-- クイーン：NORMAL -->
+        <div class="boss-card">
+          <div class="boss-inner">
+            <div class="boss-header">
+              <div>
+                <div class="boss-tag">♥ QUEEN</div>
+                <div class="boss-name">
+                  クイーン <small>/ 標準ボス</small>
+                </div>
+              </div>
+              <div class="boss-diff normal">
+                <span>★★☆</span><span>ふつう</span>
+              </div>
+            </div>
+
+            <div class="boss-visual">
+              <div class="boss-bg-circle queen"></div>
+              <img src="/static/challenge/queen.png"
+                   alt="クイーン"
+                   class="boss-portrait img-fluid">
+            </div>
+
+            <p class="boss-text mb-1">
+              反応も早く、正解率もまずまず。  
+              ジャックでは物足りなくなってきたら、次はクイーンへ。
+            </p>
+
+            <div class="boss-stats">
+              <div class="boss-stat-row">
+                <div class="boss-stat-label">スピード</div>
+                <div class="boss-stat-bar">
+                  <div class="boss-stat-fill queen-speed"></div>
+                </div>
+              </div>
+              <div class="boss-stat-row">
+                <div class="boss-stat-label">正確さ</div>
+                <div class="boss-stat-bar">
+                  <div class="boss-stat-fill queen-accur"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="boss-footer">
+            <a href="/quiz/challenge/play?level=queen" class="btn btn-sm btn-warning">
+              クイーンに挑戦する
+            </a>
+            <small>「そこそこ歯ごたえがほしい」人向け。</small>
+          </div>
+        </div>
+
+        <!-- キング：HARD -->
+        <div class="boss-card">
+          <div class="boss-inner">
+            <div class="boss-header">
+              <div>
+                <div class="boss-tag">♠ KING</div>
+                <div class="boss-name">
+                  キング <small>/ 最終ボス</small>
+                </div>
+              </div>
+              <div class="boss-diff hard">
+                <span>★★★</span><span>かなりムズい</span>
+              </div>
+            </div>
+
+            <div class="boss-visual">
+              <div class="boss-bg-circle king"></div>
+              <img src="/static/challenge/king.png"
+                   alt="キング"
+                   class="boss-portrait img-fluid">
+            </div>
+
+            <p class="boss-text mb-1">
+              反応速度はとても速く、正解率もほぼカンペキ。  
+              油断すると一瞬でポイントを持っていかれます。
+            </p>
+
+            <div class="boss-stats">
+              <div class="boss-stat-row">
+                <div class="boss-stat-label">スピード</div>
+                <div class="boss-stat-bar">
+                  <div class="boss-stat-fill king-speed"></div>
+                </div>
+              </div>
+              <div class="boss-stat-row">
+                <div class="boss-stat-label">正確さ</div>
+                <div class="boss-stat-bar">
+                  <div class="boss-stat-fill king-accur"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="boss-footer">
+            <a href="/quiz/challenge/play?level=king" class="btn btn-sm btn-danger">
+              キングに挑戦する
+            </a>
+            <small>腕に自信がある人だけどうぞ。</small>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-muted small">
+        ※ CPUの具体的な「速さ」や「正解率」は、システムのバージョンアップにより調整される場合があります。
+      </p>
+
+      <script>window.__PAGE_MODE__="challenge-select";</script>
+
+      {% elif mode == "play" %}
+      {% set is_challenge = (challenge_level is defined and challenge_level) %}
+
+      <!-- 対戦中画面（線路スコア＋ボス戦対応） -->
+      <div class="row g-3">
+        <div class="col-lg-8">
+          <div class="card p-4 mb-3 play-card {% if is_challenge %}play-card-boss{% endif %}">
+            <div class="d-flex flex-wrap justify-content-between align-items-start mb-2">
+              <div class="me-3">
+                {% if is_challenge %}
+                  <div class="quiz-tagline-sm" style="color:#f97316;">BOSS BATTLE</div>
+                  <h1 class="h5 mb-1">CPU と 1 vs 1 の白熱バトル</h1>
+                  <div class="text-muted small mb-1">
+                    「ボス戦スタート」を押すとボスとの対戦が始まります。
+                  </div>
+                  <div class="small fw-semibold" style="color:#b91c1c;">
+                    VS
+                    {% if challenge_level == "jack" %}
+                      ジャック
+                    {% elif challenge_level == "queen" %}
+                      クイーン
+                    {% elif challenge_level == "king" %}
+                      キング
+                    {% else %}
+                      CPU
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="quiz-tagline-sm">ONLINE BATTLE</div>
+                  <h1 class="h5 mb-1">石川 公共施設・公園クイズ</h1>
+                  <div class="text-muted small">
+                    参加者が揃ったら「ゲーム開始」を押してください。
+                  </div>
+                {% endif %}
+              </div>
+              <div class="mt-2 mt-lg-0">
+                <button id="startBtn"
+                        class="btn {% if is_challenge %}btn-danger{% else %}btn-success{% endif %}">
+                  {% if is_challenge %}
+                    ボス戦スタート
+                  {% else %}
+                    ゲーム開始
+                  {% endif %}
+                </button>
+              </div>
+            </div>
+
+            {% if is_challenge %}
+            <!-- ボス戦HUD：YOU vs BOSS -->
+            <div class="boss-hud">
+              <div class="boss-hud-side boss-hud-player">
+                <div class="boss-hud-label">YOU</div>
+                <div class="boss-hud-name">
+                  <span class="icon">🧑‍🎓</span>
+                  <span>{{ user.display_name or user.email or "あなた" }}</span>
+                </div>
+                <div class="boss-hud-bar">
+                  <!-- ★ HPバーにID付け -->
+                  <div class="boss-hud-fill player" id="playerHpFill"></div>
+                </div>
+              </div>
+              <div class="boss-hud-vs">VS</div>
+              <div class="boss-hud-side boss-hud-boss boss-{{ challenge_level }}">
+                <div class="boss-hud-label">BOSS</div>
+                <div class="boss-hud-name">
+                  {% if challenge_level == "jack" %}
+                    <span class="icon">◆</span><span>ジャック</span>
+                  {% elif challenge_level == "queen" %}
+                    <span class="icon">♥</span><span>クイーン</span>
+                  {% elif challenge_level == "king" %}
+                    <span class="icon">♠</span><span>キング</span>
+                  {% else %}
+                    <span class="icon">🤖</span><span>CPU</span>
+                  {% endif %}
+                </div>
+                <div class="boss-hud-bar">
+                  <!-- ★ HPバーにID付け -->
+                  <div class="boss-hud-fill boss" id="bossHpFill"></div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <hr class="my-3">
+
             <h2 id="qStem" class="h5 mb-3">問題が表示されます</h2>
+
             <div id="qHintBox" class="mb-3">
               <div id="qHintLabel">
                 <span class="icon">💡</span><span>ヒント</span>
               </div>
               <div id="qHintText"></div>
             </div>
+
             <div id="choices" class="d-grid gap-2">
-              <!-- 4択ボタン -->
+              <!-- 4択ボタン（quiz.jsで生成） -->
             </div>
           </div>
         </div>
 
         <div class="col-lg-4">
           <div class="card p-3">
-            <h2 class="h6">スコア</h2>
-            <div id="scoreboard" class="d-flex flex-column gap-2"></div>
+            <h2 class="h6 mb-2">スコア</h2>
+            <div class="score-wrapper mb-3">
+              <div class="score-line"></div>
+              <div id="scoreboard" class="d-flex flex-column gap-2"></div>
+            </div>
             <hr>
-            <h2 class="h6">参加者</h2>
+            <h2 class="h6 mb-2">参加者</h2>
             <div id="members" class="d-flex flex-wrap gap-2"></div>
           </div>
         </div>
       </div>
 
-      <!-- フローティング・スタンプパネル（右下） -->
+      <!-- フローティング・スタンプパネル -->
       <div id="stampFloat" class="stamp-fab">
         <div class="stamp-fab-header">
           <div class="small fw-bold">スタンプ</div>
           <div class="d-flex align-items-center gap-2">
-            <small class="text-muted">CDあり</small>
+            <small class="text-muted">クールタイムあり</small>
             <button id="stampToggleBtn" class="btn btn-sm btn-outline-secondary">たたむ</button>
           </div>
         </div>
@@ -189,31 +886,90 @@
         </div>
       </div>
 
+      <!-- JS互換用のダミー（画面には表示しない） -->
+      <div style="display:none;">
+        <button id="buzzBtn" type="button"></button>
+        <span id="timerLabel"></span>
+      </div>
+
       <script>
-        window.__PAGE_MODE__="play"; window.__ROOM_CODE__="{{ code }}";
+        window.__PAGE_MODE__="play";
+        window.__ROOM_CODE__="{{ code }}";
         window.__IS_RANDOM__={{ 'true' if is_random else 'false' }};
       </script>
-    {% endif %}
+      {% endif %}
 
-    <div id="overlay" style="
-      position: fixed; inset: 0; display: none; place-items: center;
-      background: rgba(0,0,0,0.35); z-index: 2000;">
-      <div id="overlayContent" class="text-white fw-bold" style="font-size: clamp(32px,6vw,72px); text-shadow: 0 4px 16px rgba(0,0,0,.6);">
+      <!-- WIN / LOSE などのオーバーレイ -->
+      <div id="overlay" style="
+        position: fixed; inset: 0; display: none; place-items: center;
+        background: rgba(15,23,42,0.35); z-index: 2000;">
+        <div id="overlayContent" class="text-white fw-bold"
+             style="font-size: clamp(32px,6vw,72px); text-shadow: 0 4px 16px rgba(0,0,0,.6);">
+        </div>
       </div>
     </div>
   </main>
 
+  <!-- quiz.js 用グローバル変数（チャレンジ用も含む） -->
   <script>
     window.__PAGE_MODE__ = {{ mode | tojson }};
     window.__ROOM_CODE__ = {{ code | tojson }};
     window.__IS_RANDOM__ = {{ (is_random | default(false)) | tojson }};
-    window.__USER__      = {{ {
+    window.__CHALLENGE_LEVEL__ = {{ (challenge_level | default(None)) | tojson }};
+    window.__USER__ = {{ {
       "id": user.id if user else 0,
       "email": user.email if user else None,
       "display_name": (user.display_name if user else None),
       "is_guest": (user.is_guest if user else True)
     } | tojson | safe }};
   </script>
+
+  <!-- ★ HP管理用のヘルパー（1/10ずつ減らすロジック） -->
+  <script>
+    (function() {
+      const maxHp = 100;
+      let playerHp = maxHp;
+      let bossHp   = maxHp;
+
+      const playerBar = document.getElementById('playerHpFill');
+      const bossBar   = document.getElementById('bossHpFill');
+
+      function renderHp() {
+        if (playerBar) playerBar.style.width = playerHp + '%';
+        if (bossBar)   bossBar.style.width   = bossHp   + '%';
+      }
+
+      // 初期化（チャレンジモード時のみ意味があるが、DOMにバーがあれば動く）
+      function initBossBattleHp() {
+        playerHp = maxHp;
+        bossHp   = maxHp;
+        renderHp();
+      }
+
+      // ユーザが「相手より早く正解」したとき: ボスHPを1/10減らし、自分も同じだけ減らす
+      // それ以外（負けor不正解）のとき: 自分だけ1/10減らす
+      function applyBossBattleRound(userFasterAndCorrect) {
+        if (!playerBar || !bossBar) return; // 通常モードでは何もしない
+
+        if (userFasterAndCorrect) {
+          // 自分が正解（＝今は m.correct=true のとき） → ボスのHPだけ削る
+          bossHp = Math.max(0, bossHp - 10);
+        } else {
+          // 外した or ボスに負けた → 自分のHPだけ削る
+          playerHp = Math.max(0, playerHp - 10);
+        }
+        renderHp();
+      }
+
+      window.initBossBattleHp     = initBossBattleHp;
+      window.applyBossBattleRound = applyBossBattleRound;
+
+      document.addEventListener('DOMContentLoaded', function() {
+        initBossBattleHp();
+      });
+    })();
+  </script>
+
   <script src="/static/quiz.js"></script>
 </body>
 </html>

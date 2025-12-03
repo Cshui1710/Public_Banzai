@@ -13,11 +13,13 @@ from fastapi.templating import Jinja2Templates
 import glob,time,os
 from pathlib import Path
 from auth import get_current_user, login_required
-from models import UserQuestion, engine
+from models import UserQuestion, engine, RecognitionStat
 from sqlmodel import Session
 
 from sqlmodel import Session, select
 from models import engine, Character, UserCharacter
+from datetime import datetime  # ★ 追加
+from models import User, FacilityStat, CityStat 
 
 STAMP_COOLDOWN_SEC     = 4   # 同一ユーザーの連打を抑制
 STAMP_MAX_PER_ROUND    = 10     # 1ラウンドに送れる上限
@@ -30,8 +32,8 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 NEEDED_PLAYERS = 4         # 目標人数（ここまでCPUで補充）
-CPU_CORRECT_PROB = 0.40    # CPUの正解確率
-CPU_MIN_DELAY = 4.0        # 回答遅延（秒） 最小
+CPU_CORRECT_PROB = 0.25    # CPUの正解確率
+CPU_MIN_DELAY = 6.0        # 回答遅延（秒） 最小
 CPU_MAX_DELAY = 8.0        # 回答遅延（秒） 最大
 MM_GRACE_SEC = 10.0          # ← ここを追加：待機者が揃わなくてもこの秒数で切り上げ
 AUTO_START_ON_FIRST_HUMAN = False# ← ここを追加：最初の人が入ったら自動開始
@@ -52,12 +54,40 @@ HEAD_START_STAMP_KEYS = {
     "kitsune.png",
 }
 
+CPU_NAME_POOL = [
+    "nao",
+    "AS",
+    "eija",
+    "佐藤",
+    "山田",
+    "yui",
+    "ari",
+    "サトシ",
+    "sasa",
+    "レオン",
+    "アシュリー",
+    "kaibara",
+    "yamaoka",
+]
+
+
 from typing import Any
 
-PUBLIC_FACILITY_CSV = "data/170003_public_facility.csv"  # ここに実ファイルパスを設定
+PUBLIC_FACILITY_CSV = "data/public_facility.csv"  # ここに実ファイルパスを設定
 # ===================== 質問バンク =====================
 print(PUBLIC_FACILITY_CSV)
 import csv, os, io 
+from fastapi import status
+
+def ensure_admin(user):
+    """admin 以外は 403"""
+    role = getattr(user, "role", "normal")
+    if role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="このページは管理者専用です。",
+        )
+
 
 @dataclass
 class Question:
@@ -66,6 +96,50 @@ class Question:
     choices: List[str]
     correct_idx: int
     hint: Optional[str] = None   # ★ 追加
+    
+    facility_key: Optional[str] = None   # 施設ごとの安定ID
+    facility_name: Optional[str] = None  # 名称（兼六園など）
+    city: Optional[str] = None           # 金沢市・野々市市…
+    kind: Optional[str] = None           # 公園 / 公共施設 / 図書館 等
+    place_id: Optional[str] = None      # 施設ID
+    place_name: Optional[str] = None    # 施設名
+
+def _update_recognition_stat_for_answer(q: Question, is_correct: bool) -> None:
+    """
+    1ユーザーがこの問題に答えたときに RecognitionStat を1件ぶん更新する。
+    - facility_key が無い（CSV由来でない問題など）の場合は何もしない
+    """
+    if not q or not q.facility_key:
+        return
+
+    place_id = q.facility_key
+    place_name = (q.facility_name or q.stem or "").strip()
+    city = (q.city or "不明").strip()
+
+    with Session(engine) as s:
+        st = s.exec(
+            select(RecognitionStat).where(RecognitionStat.place_id == place_id)
+        ).first()
+        if not st:
+            # 新規レコード
+            st = RecognitionStat(
+                place_id=place_id,
+                place_name=place_name,
+                city=city,
+                correct_count=0,
+                total_count=0,
+                last_answered_at=datetime.utcnow(),
+            )
+            s.add(st)
+
+        st.total_count += 1
+        if is_correct:
+            st.correct_count += 1
+        st.last_answered_at = datetime.utcnow()
+
+        s.add(st)
+        s.commit()
+
     
 class QuestionBank:
     """
@@ -175,6 +249,9 @@ class QuestionBank:
         # ★ 修正：市区町村の抽出を専用ヘルパーで
         city = self._pick_city(r)
 
+        fid = (r.get("ID") or r.get("id") or r.get("_id") or "").strip()
+        if not fid:
+            fid = f"{city}::{name}"
         # 種別/分類（あれば使う）
         kind = (
             r.get("分類") or r.get("種別") or r.get("用途") or
@@ -187,19 +264,24 @@ class QuestionBank:
         # 公園/公共施設のざっくりラベル（名称や種別に「公園」が含まれれば公園）
         norm = (kind or name)
         label = "公園" if ("公園" in norm) else "公共施設"
-        self.rows.append({"name": name, "city": city, "kind": (kind or label)})
+        self.rows.append({
+            "fid": fid,
+            "name": name,
+            "city": city,
+            "kind": (kind or label),
+        })
 
 
     # ------- 出題生成 -------
     def sample(self) -> Question:
         # 25%の確率でユーザー作問から出題
-        if random.random() < 0.5:
+        if random.random() < 0.8:
             uq = self._sample_user_question()
             if uq:
                 return uq
         # 既存のCSV問題
         if len(self.rows) >= 8 and len(self.city_set) >= 4:
-            if random.random() < 0.5:
+            if random.random() < 0.2:
                 return self._make_city_question()
             else:
                 kq = self._make_kind_question()
@@ -209,8 +291,10 @@ class QuestionBank:
 
     def _make_city_question(self) -> Question:
         row = random.choice(self.rows)
-        name, city = row["name"], row["city"]
 
+        name, city = row["name"], row["city"]
+        fid = row["fid"]
+        kind = row.get("kind") or ""
         # ほかの市からダミー3つ
         others = [c for c in self.city_set if c != city]
         random.shuffle(others)
@@ -222,6 +306,10 @@ class QuestionBank:
             stem=f"「{name}」がある市町はどれ？",
             choices=choices,
             correct_idx=choices.index(city),
+            facility_key=fid,
+            facility_name=name,
+            city=city,
+            kind=kind,
         )
 
     def _make_kind_question(self) -> Optional[Question]:
@@ -230,8 +318,10 @@ class QuestionBank:
         if len(good) < 4:
             return None
         row = random.choice(good)
-        name, kind = row["name"], row["kind"]
 
+        name, kind = row["name"], row["kind"]
+        fid = row["fid"]
+        city = row["city"]
         # ほかの種別からダミー3つ
         kinds = list({r["kind"] for r in good if r["kind"] != kind})
         random.shuffle(kinds)
@@ -245,6 +335,10 @@ class QuestionBank:
             stem=f"「{name}」の種別（分類）はどれ？",
             choices=choices,
             correct_idx=choices.index(kind),
+            facility_key=fid,
+            facility_name=name,
+            city=city,
+            kind=kind,
         )
 
     def _sample_user_question(self) -> Optional[Question]:
@@ -346,16 +440,26 @@ class Room:
     round_timer_task: Optional[asyncio.Task] = None  # このラウンドの締切タスク
     deadline_ts: float = 0.0                         # 締切の epoch 秒
     first_correct_user: Optional[int] = None         # 先着正解を取った user_id
-    
+    round_started_ts: float = 0.0 
     # 追加: この時刻より前の回答は無視する（ラウンドごとに更新）
     answer_open_ts: float = 0.0
     
     host_id: Optional[int] = None         # フレンドマッチのホスト
     is_random: bool = False               # ランダムマッチ部屋なら True
 
+    is_challenge: bool = False                 # チャレンジモードの部屋かどうか
+    challenge_level: Optional[str] = None      # "jack" / "queen" / "king"
+    cpu_correct_prob: float = CPU_CORRECT_PROB # CPU 正解率
+    cpu_min_delay: float = CPU_MIN_DELAY       # CPU 最小回答時間
+    cpu_max_delay: float = CPU_MAX_DELAY       # CPU 最大回答時間
+    cpu_name: Optional[str] = None  
     last_stamp_ts: Dict[int, float] = field(default_factory=dict)    # 直近送信時刻
     stamp_count_round: Dict[int, int] = field(default_factory=dict)  # 今ラウンドの送信回数
-    
+
+    correct_users: set = field(default_factory=set)          # この問題で正解した user_id
+    round_human_ids: set = field(default_factory=set)        # 問題開始時点での人間プレイヤー
+    stats_recorded: bool = False 
+
     async def start_with_countdown(self, seconds: int = PRESTART_COUNTDOWN_SEC):
         async with self.lock:
             if self.running:
@@ -433,17 +537,51 @@ class Room:
         
     # ---- CPU補充 ----
     def _need_cpu_count(self) -> int:
+        """
+        通常: NEEDED_PLAYERS になるまでCPUを補充
+        チャレンジ: 「人間1 + CPU1」の 1vs1 になるようにCPUを1体だけ確保
+        """
         human = sum(1 for p in self.players.values() if not p.is_bot)
+
+        if self.is_challenge:
+            has_cpu = any(p.is_bot for p in self.players.values())
+            # すでにCPUがいれば追加しない。いなければ 1 体だけ追加
+            return 0 if has_cpu else 1
+
+        # 通常ルール（人間が NEEDED_PLAYERS に満たない分だけ CPU を追加）
         return max(0, NEEDED_PLAYERS - human)
 
     async def _spawn_bots(self, n: int):
         for i in range(n):
             # 安定的な負ID（被らなければOK）
             uid = -random.randint(100000, 999999)
-            name = f"CPU-{str(uid)[-4:]}"
+
+            # 現在この部屋にいるプレイヤー名（人間＋CPU）を集めておく
+            used_names = {pc.name for pc in self.players.values()}
+
+            if self.is_challenge and getattr(self, "cpu_name", None):
+                # ★ チャレンジモード：Jack / Queen / King など固定
+                name = self.cpu_name
+            else:
+                # ★ 通常モード：CPU_NAME_POOL からまだ使っていない名前を優先的に選ぶ
+                candidates = [nm for nm in CPU_NAME_POOL if nm not in used_names]
+                if not candidates:
+                    # 全部使われていたら、プールからランダム（重複は気にしない）
+                    candidates = CPU_NAME_POOL[:]
+                name = random.choice(candidates)
+
             self.players[uid] = PlayerConn(user_id=uid, name=name, ws=None, is_bot=True)
             self.scores.setdefault(uid, 0)
-        await self.broadcast({"type":"system","event":"join","user_id":-1,"name":"CPU-Group","members":self.member_list()})
+
+        await self.broadcast({
+            "type": "system",
+            "event": "join",
+            "user_id": -1,
+            "name": "CPU-Group",
+            "members": self.member_list()
+        })
+
+
 
     async def start_game(self):
         async with self.lock:
@@ -490,8 +628,12 @@ class Room:
             self.current_q = QBANK.sample()
             self.answered = set()
             self.first_correct_user = None
+            self.correct_users = set()
+            self.round_human_ids = set(self._human_ids())  # 問題開始時点の人間プレイヤー
+            self.stats_recorded = False
 
             self.stamp_count_round.clear()
+            self.round_started_ts = asyncio.get_event_loop().time()
             # 既存: 問題ブロードキャスト用ペイロード
             q = self.current_q
             banner = {"type": "round_banner", "round_no": self.round_no}
@@ -532,7 +674,9 @@ class Room:
                     return
                 # ★ ここで「このラウンドのタイマーは終わった」とマークする
                 self.round_timer_task = None
-
+                if not self.stats_recorded:
+                    self._save_recognition_stats()
+                    self.stats_recorded = True
                 # ここで締切、正解を公開
                 reveal = {"type": "reveal", "qid": qid, "correct_idx": self.current_q.correct_idx}
             await self.broadcast(reveal)
@@ -550,7 +694,8 @@ class Room:
         if not q or not cpu_ids:
             return
         for uid in cpu_ids:
-            delay = random.uniform(CPU_MIN_DELAY, CPU_MAX_DELAY)
+            # ★ ここで Room 固有の遅延パラメータを使用
+            delay = random.uniform(self.cpu_min_delay, self.cpu_max_delay)
             asyncio.create_task(self._cpu_answer_after(uid, q.qid, delay))
 
     async def _cpu_answer_after(self, cpu_uid: int, qid: str, delay: float):
@@ -561,8 +706,8 @@ class Room:
                 return
             if cpu_uid in self.answered:
                 return
-            # 答えを選ぶ
-            if random.random() < CPU_CORRECT_PROB:
+            # ★ CPUの正解確率も Room パラメータから読む
+            if random.random() < self.cpu_correct_prob:
                 idx = self.current_q.correct_idx
             else:
                 wrongs = [i for i in range(len(self.current_q.choices)) if i != self.current_q.correct_idx]
@@ -570,6 +715,7 @@ class Room:
 
         # ロック外で通常ルートと同じ処理へ
         await self.receive_answer(cpu_uid, qid, idx)
+
 
     async def receive_answer(self, user_id: int, qid: str, idx: int):
         async with self.lock:
@@ -588,8 +734,10 @@ class Room:
             self.answered.add(user_id)
 
             correct = int(idx) == int(self.current_q.correct_idx)
+            _update_recognition_stat_for_answer(self.current_q, correct)
             # ★先着加点：first_correct_user が未設定で、今回が正解なら 2点
             if correct:
+                self.correct_users.add(user_id)
                 if self.first_correct_user is None:
                     self.first_correct_user = user_id
                     gain = FIRST_CORRECT_POINTS
@@ -619,17 +767,37 @@ class Room:
             human_answered = len(human_ids & set(self.answered))
             everyone = (len(human_ids) > 0) and (human_answered >= len(human_ids))
             if everyone:
+                if not self.stats_recorded:
+                    self._save_recognition_stats()
+                    self.stats_recorded = True                
+
                 # ★締切タスクを止める
                 if self.round_timer_task and not self.round_timer_task.done():
                     self.round_timer_task.cancel()
+
                 reveal = {"type": "reveal", "qid": qid, "correct_idx": self.current_q.correct_idx}
+
+                # ★ ここで「最低表示時間」を計算
+                min_open_sec = 1.5  # ここは好みで 1.0〜2.0 くらいに
+                now = asyncio.get_event_loop().time()
+                # この問題が出てからどれくらい経ったか
+                elapsed = max(0.0, now - (self.round_started_ts or now))
+                # もし min_open_sec 未満なら、あとどれだけ待つか
+                extra_wait = max(0.0, min_open_sec - elapsed)
             else:
                 reveal = None
+                extra_wait = 0.0
 
         await self.broadcast(result)
 
         if reveal:
             await self.broadcast(reveal)
+            try:
+                if extra_wait > 0:
+                    await asyncio.sleep(extra_wait)
+            except Exception:
+                pass
+
             await asyncio.sleep(2.0)
             asyncio.create_task(self.next_round())
 
@@ -688,6 +856,75 @@ class Room:
             await self.start_game()
         except asyncio.CancelledError:
             return
+
+    def _save_recognition_stats(self):
+        """
+        このラウンドの施設・市ごとの認知率統計を DB に反映する。
+        - current_q が CSV由来で facility_key/city を持っているときだけ集計
+        - CPU（is_bot）は含めず、人間プレイヤーのみカウント
+        """
+        q = self.current_q
+        if not q or not q.facility_key or not q.city:
+            return
+
+        human_ids = set(self.round_human_ids or [])
+        if not human_ids:
+            return
+
+        answered = human_ids & set(self.answered or [])
+        correct = human_ids & set(self.correct_users or [])
+
+        shown_cnt = len(human_ids)
+        answered_cnt = len(answered)
+        correct_cnt = len(correct)
+
+        if shown_cnt == 0 and answered_cnt == 0 and correct_cnt == 0:
+            return
+
+        from datetime import datetime
+        from sqlmodel import select, Session
+        from models import FacilityStat, CityStat, engine
+
+        now = datetime.utcnow()
+        with Session(engine) as s:
+            # 施設ごとの統計
+            fs = s.exec(
+                select(FacilityStat).where(FacilityStat.facility_key == q.facility_key)
+            ).first()
+            if not fs:
+                fs = FacilityStat(
+                    facility_key=q.facility_key,
+                    name=q.facility_name or "",
+                    city=q.city,
+                    kind=q.kind or "",
+                    total_shown=0,
+                    total_answered=0,
+                    total_correct=0,
+                )
+            fs.total_shown += shown_cnt
+            fs.total_answered += answered_cnt
+            fs.total_correct += correct_cnt
+            fs.last_played_at = now
+            s.add(fs)
+
+            # 市ごとの統計
+            cs = s.exec(
+                select(CityStat).where(CityStat.city == q.city)
+            ).first()
+            if not cs:
+                cs = CityStat(
+                    city=q.city,
+                    total_shown=0,
+                    total_answered=0,
+                    total_correct=0,
+                )
+            cs.total_shown += shown_cnt
+            cs.total_answered += answered_cnt
+            cs.total_correct += correct_cnt
+            cs.last_played_at = now
+            s.add(cs)
+
+            s.commit()
 
 class RoomManager:
     def __init__(self):
@@ -776,6 +1013,89 @@ MATCH.ensure_started()
 
 # ===================== 画面ルーティング =====================
 
+@router.get("/quiz/challenge", response_class=HTMLResponse)
+async def quiz_challenge_select(request: Request, user=Depends(get_current_user)):
+    """
+    チャレンジモードの難易度選択画面
+    """
+    login_required(user, allow_guest=True)
+    return templates.TemplateResponse(
+        "quiz.html",
+        {
+            "request": request,
+            "mode": "challenge-select",
+            "code": "",
+            "user": user,
+            "is_random": False,
+        },
+    )
+
+
+def _apply_challenge_level(room: Room, level: str):
+    """
+    難易度ごとに CPU の強さ・スピード・ラウンド数を設定
+    """
+    level = level.lower()
+    room.is_challenge = True
+    room.challenge_level = level
+
+    # デフォルト（念のため）
+    room.cpu_correct_prob = CPU_CORRECT_PROB
+    room.cpu_min_delay = CPU_MIN_DELAY
+    room.cpu_max_delay = CPU_MAX_DELAY
+    room.round_max = 5
+
+    if level == "jack":
+        # 入門：ちょっと遅くて、正解率ひかえめ
+        room.cpu_name = "Jack"
+        room.cpu_correct_prob = 0.35
+        room.cpu_min_delay = 5.0
+        room.cpu_max_delay = 7.0
+        room.round_max = 11
+    elif level == "queen":
+        # 中級：そこそこ速くて、正解も多め
+        room.cpu_name = "Queen"
+        room.cpu_correct_prob = 0.6
+        room.cpu_min_delay = 4.0
+        room.cpu_max_delay = 6.0
+        room.round_max = 12
+    elif level == "king":
+        # 上級：かなり速くて、ほぼ正解。負けても恨まない。
+        room.cpu_name = "King"
+        room.cpu_correct_prob = 0.85
+        room.cpu_min_delay = 2.0
+        room.cpu_max_delay = 3.0
+        room.round_max = 13
+
+
+@router.get("/quiz/challenge/play", response_class=HTMLResponse)
+async def quiz_challenge_play(request: Request, level: str, user=Depends(get_current_user)):
+    """
+    難易度を選んだあとの 1vsCPU 用の部屋を作成して、そのまま play 画面を表示
+    """
+    login_required(user, allow_guest=True)
+
+    level_norm = level.lower()
+    if level_norm not in ("jack", "queen", "king"):
+        raise HTTPException(status_code=404, detail="unknown level")
+
+    # 通常ルームとして作るが、あとからチャレンジ設定を上書き
+    room = await ROOMS.create_room(is_random=False)
+    _apply_challenge_level(room, level_norm)
+
+    # ここで直接 play モードを表示する（/quiz?code=... を挟まない）
+    return templates.TemplateResponse(
+        "quiz.html",
+        {
+            "request": request,
+            "mode": "play",
+            "code": room.code,
+            "user": user,
+            "is_random": False,
+            "challenge_level": level_norm,
+        },
+    )
+
 @router.get("/quiz/random", response_class=HTMLResponse)
 async def quiz_random(request: Request, user=Depends(get_current_user)):
     login_required(user, allow_guest=True)
@@ -802,7 +1122,8 @@ async def quiz_play(request: Request, code: str, user=Depends(get_current_user))
         "mode": "play",
         "code": code,
         "user": user,
-        "is_random": getattr(room, "is_random", False)
+        "is_random": getattr(room, "is_random", False),
+        "challenge_level": getattr(room, "challenge_level", None),  # ★ 追加
     })
 
 # ===================== マッチメイクAPI =====================
@@ -873,6 +1194,69 @@ async def quiz_maker_page(request: Request, user=Depends(get_current_user)):
     login_required(user, allow_guest=False)
     return templates.TemplateResponse("quiz_maker.html", {"request": request, "user": user})
 
+@router.get("/quiz/maker/admin", response_class=HTMLResponse)
+async def quiz_maker_admin_page(request: Request, user=Depends(get_current_user)):
+    """
+    管理者向け：全ユーザーの作問を一覧・削除するページ
+    """
+    login_required(user, allow_guest=False)
+    ensure_admin(user)
+    return templates.TemplateResponse(
+        "quiz_maker_admin.html",
+        {
+            "request": request,
+            "user": user,
+        },
+    )
+
+# ===================== 作問管理 API（admin 専用） =====================
+
+@router.get("/api/quiz/maker/admin/list")
+async def api_quiz_maker_admin_list(user=Depends(get_current_user)):
+    """
+    管理者用：すべての UserQuestion を取得
+    """
+    login_required(user, allow_guest=False)
+    ensure_admin(user)
+
+    with Session(engine) as s:
+        # User と join して作成者名を取得
+        rows = s.exec(
+            select(UserQuestion, User).join(User, User.id == UserQuestion.user_id)
+        ).all()
+
+        questions = []
+        for uq, u in rows:
+            questions.append({
+                "id": uq.id,
+                "stem": uq.stem,
+                "choices": [uq.choice1, uq.choice2, uq.choice3, uq.choice4],
+                "correct_idx": uq.correct_idx,
+                "hint": uq.hint or "",
+                "user_id": uq.user_id,
+                "user_name": (u.display_name or u.email),
+                "created_at": uq.created_at,
+            })
+
+    return {"ok": True, "questions": questions}
+
+
+@router.delete("/api/quiz/maker/admin/{qid}")
+async def api_quiz_maker_admin_delete(qid: int, user=Depends(get_current_user)):
+    """
+    管理者用：特定の UserQuestion を削除
+    """
+    login_required(user, allow_guest=False)
+    ensure_admin(user)
+
+    with Session(engine) as s:
+        q = s.get(UserQuestion, qid)
+        if not q:
+            return {"ok": False, "error": "指定された問題が見つかりません。"}
+        s.delete(q)
+        s.commit()
+    return {"ok": True}
+    
 # ===================== WebSocket =====================
 
 @router.websocket("/ws/quiz/{code}")

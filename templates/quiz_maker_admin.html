@@ -1,0 +1,325 @@
+<!-- templates/quiz_maker_admin.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>作問編集（管理者） | Ishikawa Facilities & Parks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+  <style>
+    body { background:#f8fafc; }
+    .card {
+      border: 0;
+      border-radius: 1rem;
+      box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+    }
+    .badge-role {
+      font-size: .7rem;
+      letter-spacing: .08em;
+    }
+    .table-wrap {
+      max-height: 520px;
+      overflow:auto;
+      border-radius: .75rem;
+    }
+    .q-stem {
+      font-weight: 600;
+      font-size: .9rem;
+    }
+    .q-meta {
+      font-size: .8rem;
+      color:#64748b;
+    }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      gap:.25rem;
+      border-radius:999px;
+      padding:.1rem .6rem;
+      font-size:.75rem;
+      background:#eef2ff;
+      color:#4f46e5;
+    }
+  </style>
+</head>
+<body>
+  <!-- ナビ -->
+  <nav class="navbar navbar-expand-lg bg-white border-bottom">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="/home">
+        Ishikawa Facilities &amp; Parks
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <span class="text-muted small">
+          管理者: {{ user.display_name or user.email }}
+        </span>
+        <a href="/home" class="btn btn-outline-secondary btn-sm">ホームへ戻る</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+    <div class="mb-3">
+      <h1 class="h4 mb-1">作問編集（管理者用）</h1>
+      <p class="text-muted mb-0">
+        みんなが作ったクイズ問題を一覧表示し、不適切な問題を削除できます。
+      </p>
+    </div>
+
+    <!-- フィルタ -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-4">
+            <label class="form-label small text-muted">キーワード検索（問題文 / ヒント / 作成者）</label>
+            <input id="searchInput" type="text" class="form-control" placeholder="例）図書館 / 金沢市 など">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">並び順</label>
+            <select id="sortSelect" class="form-select form-select-sm">
+              <option value="newest">新しい順</option>
+              <option value="oldest">古い順</option>
+              <option value="author">作成者名順</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted">表示件数</label>
+            <select id="limitSelect" class="form-select form-select-sm">
+              <option value="50">50件まで</option>
+              <option value="100">100件まで</option>
+              <option value="0">すべて表示</option>
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end justify-content-end">
+            <button id="reloadBtn" class="btn btn-outline-primary btn-sm w-100">
+              再読み込み
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 一覧 -->
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <span class="badge bg-indigo-100 text-primary-emphasis badge-role">
+              Q MAKER ADMIN
+            </span>
+            <span id="summaryText" class="ms-2 small text-muted">読み込み中...</span>
+          </div>
+        </div>
+
+        <div class="table-wrap mt-2">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:4rem;">ID</th>
+                <th>問題 / ヒント / 選択肢</th>
+                <th style="width:10rem;">作成者</th>
+                <th style="width:8rem;">作成日時</th>
+                <th style="width:5rem;" class="text-end">操作</th>
+              </tr>
+            </thead>
+            <tbody id="qTableBody">
+              <tr>
+                <td colspan="5" class="text-muted small">読み込み中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    var ALL_QUESTIONS = [];
+
+    function escapeHtml(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function(m) {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        }[m];
+      });
+    }
+
+    async function fetchQuestions() {
+      var r = await fetch("/api/quiz/maker/admin/list");
+      if (!r.ok) {
+        throw new Error("HTTP " + r.status);
+      }
+      var js = await r.json();
+      if (!js.ok) {
+        throw new Error(js.error || "取得に失敗しました");
+      }
+      return js.questions || [];
+    }
+
+    function applyFilterAndRender() {
+      var searchEl = document.getElementById("searchInput");
+      var sortEl   = document.getElementById("sortSelect");
+      var limitEl  = document.getElementById("limitSelect");
+
+      var search = (searchEl.value || "").trim().toLowerCase();
+      var sort   = sortEl.value;
+      var limit  = parseInt(limitEl.value || "0", 10);
+
+      var items = ALL_QUESTIONS.slice();
+
+      if (search) {
+        items = items.filter(function(q) {
+          var hay = (q.stem || "") + " " + (q.hint || "") + " " + (q.user_name || "");
+          return hay.toLowerCase().indexOf(search) !== -1;
+        });
+      }
+
+      if (sort === "newest") {
+        items.sort(function(a, b) {
+          return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+        });
+      } else if (sort === "oldest") {
+        items.sort(function(a, b) {
+          return String(a.created_at || "").localeCompare(String(b.created_at || ""));
+        });
+      } else if (sort === "author") {
+        items.sort(function(a, b) {
+          return String(a.user_name || "").localeCompare(String(b.user_name || ""));
+        });
+      }
+
+      if (limit > 0) {
+        items = items.slice(0, limit);
+      }
+
+      renderTable(items);
+    }
+
+    function renderTable(items) {
+      var tbody   = document.getElementById("qTableBody");
+      var summary = document.getElementById("summaryText");
+
+      summary.textContent = "全 " + ALL_QUESTIONS.length + " 件中、表示 " + items.length + " 件";
+
+      if (!items.length) {
+        tbody.innerHTML = "<tr><td colspan=\"5\" class=\"text-muted small\">該当する問題がありません。</td></tr>";
+        return;
+      }
+
+      tbody.innerHTML = "";
+
+      items.forEach(function(q) {
+        var tr = document.createElement("tr");
+
+        var choicesHtml = "";
+        (q.choices || []).forEach(function(c, i) {
+          choicesHtml +=
+            "<span class=\"pill\">" + (i + 1) + "</span> " +
+            escapeHtml(c) + "<br>";
+        });
+
+        var hintHtml = "";
+        if (q.hint) {
+          hintHtml =
+            "<div class=\"q-meta mt-1\"><strong>ヒント：</strong>" +
+            escapeHtml(q.hint) +
+            "</div>";
+        }
+
+        var created = escapeHtml(q.created_at || "");
+
+        tr.innerHTML =
+          "<td><span class=\"small text-muted\">#" + q.id + "</span></td>" +
+          "<td>" +
+            "<div class=\"q-stem\">" + escapeHtml(q.stem) + "</div>" +
+            hintHtml +
+            "<div class=\"q-meta mt-1\">" + choicesHtml + "</div>" +
+          "</td>" +
+          "<td>" +
+            "<div class=\"small fw-semibold\">" + escapeHtml(q.user_name || "") + "</div>" +
+            "<div class=\"q-meta\">user_id: " + q.user_id + "</div>" +
+          "</td>" +
+          "<td><span class=\"q-meta\">" + created + "</span></td>" +
+          "<td class=\"text-end\">" +
+            "<button class=\"btn btn-sm btn-outline-danger btn-delete\" data-id=\"" + q.id + "\">削除</button>" +
+          "</td>";
+
+        tbody.appendChild(tr);
+      });
+
+      // 削除ボタンにイベントを付与
+      var btns = tbody.querySelectorAll(".btn-delete");
+      Array.prototype.forEach.call(btns, function(btn) {
+        btn.addEventListener("click", function() {
+          var id = parseInt(btn.getAttribute("data-id"), 10);
+          onDeleteQuestion(id);
+        });
+      });
+    }
+
+    async function onDeleteQuestion(id) {
+      if (!confirm("問題 #" + id + " を削除しますか？\n（この操作は元に戻せません）")) {
+        return;
+      }
+      try {
+        var r = await fetch("/api/quiz/maker/admin/" + id, {
+          method: "DELETE"
+        });
+        var js = await r.json();
+        if (!r.ok || !js.ok) {
+          alert(js.error || "削除に失敗しました");
+          return;
+        }
+        ALL_QUESTIONS = ALL_QUESTIONS.filter(function(q) { return q.id !== id; });
+        applyFilterAndRender();
+      } catch (e) {
+        console.error(e);
+        alert("削除中にエラーが発生しました");
+      }
+    }
+
+    async function reloadAll() {
+      try {
+        document.getElementById("summaryText").textContent = "読み込み中...";
+        ALL_QUESTIONS = await fetchQuestions();
+        applyFilterAndRender();
+      } catch (e) {
+        console.error(e);
+        document.getElementById("summaryText").textContent = "読み込みに失敗しました";
+        var tbody = document.getElementById("qTableBody");
+        tbody.innerHTML =
+          "<tr><td colspan=\"5\" class=\"text-muted small\">読み込みに失敗しました。</td></tr>";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      var searchInput = document.getElementById("searchInput");
+      var sortSelect  = document.getElementById("sortSelect");
+      var limitSelect = document.getElementById("limitSelect");
+      var reloadBtn   = document.getElementById("reloadBtn");
+
+      if (searchInput) {
+        searchInput.addEventListener("input", applyFilterAndRender);
+      }
+      if (sortSelect) {
+        sortSelect.addEventListener("change", applyFilterAndRender);
+      }
+      if (limitSelect) {
+        limitSelect.addEventListener("change", applyFilterAndRender);
+      }
+      if (reloadBtn) {
+        reloadBtn.addEventListener("click", reloadAll);
+      }
+
+      reloadAll();
+    });
+  </script>
+</body>
+</html>

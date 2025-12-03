@@ -3,6 +3,7 @@
   const mode = window.__PAGE_MODE__ || "";
   const user = window.__USER__ || { id: 0, email: null, is_guest: true };
   const isRandom = window.__IS_RANDOM__ === true || window.__IS_RANDOM__ === "true";
+  const IS_CHALLENGE = !!window.__CHALLENGE_LEVEL__;   // ★ 追加：チャレンジモード判定
   const j = (sel) => document.querySelector(sel);
 
   const MY_NAME = (() => {
@@ -11,6 +12,20 @@
     const id = user.id || 0;
     return `Guest${String(Math.abs(id) % 10000).padStart(4, "0")}`;  // ゲスト
   })();
+
+  // ★ここをあなたのファイル名に合わせて変更
+  const JUDGE_IMG_CORRECT = "/static/judge/hanamaru.png";   // 正解用 ○
+  const JUDGE_IMG_WRONG   = "/static/judge/batsu.png";      // 不正解用 ×
+
+  // ★ 追加：正解／不正解の音声ファイル
+  const JUDGE_SE_CORRECT = "/static/bgm/クイズ・正解.mp3";
+  const JUDGE_SE_WRONG   = "/static/bgm/クイズ・間違い03.mp3";
+
+  const SE_QUESTION_START = "/static/bgm/クイズ・出題02.mp3";
+  const SE_THINKING       = "/static/bgm/クイズ・シンキングタイム.mp3";
+
+  let thinkingAudio = null;
+  let questionStartAudio = null;
 
   // ========= メンバー & スコア =========
   const renderMembers = (members) => {
@@ -36,7 +51,13 @@
       .forEach((m) => {
         const row = document.createElement("div");
         row.className = "score-row";
-        row.innerHTML = `<span>${m.name}</span><b>${m.score ?? 0}</b>`;
+        // ★ スタンプ用に id と name を data-* に入れておく
+        row.dataset.userId = m.id != null ? String(m.id) : "";
+        row.dataset.name = m.name || "";
+        row.innerHTML = `
+          <span class="score-name">${m.name}</span>
+          <b>${m.score ?? 0}</b>
+        `;
         box.appendChild(row);
       });
   };
@@ -113,7 +134,6 @@
     if (bar && toZero) bar.style.width = "0%";
   };
 
-
   // ========= ランダム待機 =========
   if (mode === "random-wait") {
     fetch("/api/matchmaking/join", { method: "POST" });
@@ -139,7 +159,7 @@
     });
     return;
   }
-    
+
   // ========= ルーム作成 =========
   if (mode === "room-created") {
     j("#copyBtn")?.addEventListener("click", async () => {
@@ -175,13 +195,23 @@
     const hideStampFloat = () => { if (stampFloat) stampFloat.style.display = "none"; };
     let stampCollapsed = false;
     let hintTimer = null;
+
+    // ゲーム終了状態フラグ
+    let gameFinished = false;
+
+    // ★ ボス戦HPの初期化（window.initBossBattleHp は quiz.html 側で定義）
+    if (IS_CHALLENGE && typeof window.initBossBattleHp === "function") {
+      window.initBossBattleHp();
+    }
+
     stampToggleBtn?.addEventListener("click", () => {
       stampCollapsed = !stampCollapsed;
       const body = stampFloat?.querySelector(".stamp-fab-body");
       if (!body) return;
       body.style.display = stampCollapsed ? "none" : "block";
       stampToggleBtn.textContent = stampCollapsed ? "ひらく" : "たたむ";
-    });    
+    });
+
     // 開始ボタン（ランダムは非表示）
     if (isRandom) {
       const sb = document.getElementById("startBtn");
@@ -227,9 +257,10 @@
           disableAllChoices();
         }
       }, 100);
-    };    
+    };
+
     // ========= スタンプUI =========
-    const stamp = { list: [], cooldownMs: 1500, lastSendAt: 0 };
+    const stamp = { list: [] };  // ★ クールタイム関連は削除
 
     const renderStampGrid = () => {
       // 優先：右下パネル、なければ従来サイドバー
@@ -245,13 +276,8 @@
         btn.title = name;
         btn.innerHTML = `<img src="/static/stamp/${encodeURIComponent(name)}" alt="">`;
         btn.addEventListener("click", () => {
-          const now = Date.now();
-          if (now - stamp.lastSendAt < stamp.cooldownMs) return;
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "stamp", key: name }));
-            stamp.lastSendAt = now;
-            btn.disabled = true;
-            setTimeout(() => (btn.disabled = false), 600);
           }
         });
         grid.appendChild(btn);
@@ -271,25 +297,23 @@
       } catch (e) { /* ignore */ }
     };
 
-    const playStampFx = (key, whoName) => {
+    // ★ 自分のスタンプ：右下パネルの上に大きくポップ（既存の挙動）
+    const playStampFxSelf = (key) => {
       const img = document.createElement("img");
       img.src = `/static/stamp/${encodeURIComponent(key)}`;
       img.className = "stamp-fx";
-      img.alt = whoName ? `${whoName}のスタンプ` : "stamp";
+      img.alt = "自分のスタンプ";
 
-      // 右下パネルの位置・サイズから、表示位置と大きさを決める
       const panel = document.getElementById("stampFloat");
-      const pad = 12; // パネルとの間隔
+      const pad = 12;
       let left = 0, top = 0, w = 160;
 
       if (panel) {
         const r = panel.getBoundingClientRect();
-        // パネル幅の90%（最大200px）で表示 → 以前よりグッと小さめ（≒1/4想定）
         w = Math.min(Math.max(Math.floor(r.width * 0.5), 120), 200);
-        left = Math.max(8, Math.floor(r.left + r.width - w)); // パネル右端に合わせる
-        top  = Math.max(8, Math.floor(r.top - w - pad));      // パネルの少し上
+        left = Math.max(8, Math.floor(r.left + (r.width - w) / 2));
+        top  = Math.max(8, Math.floor(r.top - w - pad));
       } else {
-        // パネルが無い/まだ測れない時のフォールバック（右下付近）
         const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
         const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
         w = 160;
@@ -305,16 +329,107 @@
       setTimeout(() => img.remove(), 1200);
     };
 
+    // ★ 他人のスタンプ：その人のスコア名の右横に小さくポップ
+    const playStampFxOther = (key, whoName, whoId) => {
+      const rows = Array.from(document.querySelectorAll(".score-row"));
+      let targetRow = null;
+
+      if (whoId != null) {
+        targetRow = rows.find(r => r.dataset.userId && Number(r.dataset.userId) === Number(whoId));
+      }
+      if (!targetRow && whoName) {
+        targetRow = rows.find(r => {
+          if (!r.dataset.name) return false;
+          return r.dataset.name === whoName;
+        });
+      }
+      if (!targetRow) return;
+
+      const nameEl = targetRow.querySelector(".score-name") || targetRow;
+      const r = nameEl.getBoundingClientRect();
+
+      const img = document.createElement("img");
+      img.src = `/static/stamp/${encodeURIComponent(key)}`;
+      img.className = "stamp-fx";
+      img.alt = `${whoName || "プレイヤー"}のスタンプ`;
+
+      const size = 40; // 小さめ
+      const left = r.right + 8;
+      const top  = r.top - 4;
+
+      img.style.width = `${size}px`;
+      img.style.left  = `${left}px`;
+      img.style.top   = `${top}px`;
+
+      document.body.appendChild(img);
+      setTimeout(() => img.remove(), 900);
+    };
+
+    // ========= ○× ジャッジ画像表示 =========
+    const playJudgeFx = (isCorrect) => {
+      try {
+        const audio = new Audio(isCorrect ? JUDGE_SE_CORRECT : JUDGE_SE_WRONG);
+        audio.volume = 1.0;
+        audio.play().catch(() => {});
+      } catch(e) {}
+
+      const src = isCorrect ? JUDGE_IMG_CORRECT : JUDGE_IMG_WRONG;
+      if (!src) return;
+
+      const img = document.createElement("img");
+      img.src = src;
+      img.alt = isCorrect ? "正解！" : "不正解";
+      img.style.position = "fixed";
+      img.style.zIndex = "2200";
+      img.style.left = "50%";
+      img.style.top = "50%";
+      img.style.transform = "translate(-50%, -50%) scale(0.8)";
+      img.style.opacity = "0";
+      img.style.width = "min(480px, 80vw)";
+      img.style.pointerEvents = "none";
+      img.style.transition = "opacity 0.2s ease-out, transform 0.2s ease-out";
+
+      document.body.appendChild(img);
+
+      requestAnimationFrame(() => {
+        img.style.opacity = "1";
+        img.style.transform = "translate(-50%, -50%) scale(1.0)";
+      });
+
+      setTimeout(() => {
+        img.style.opacity = "0";
+        img.style.transform = "translate(-50%, -50%) scale(1.05)";
+        setTimeout(() => img.remove(), 250);
+      }, 550);
+    };
 
     // ========= 問題レンダリング =========
     const renderQuestion = (q) => {
       j("#qStem").textContent = q.stem;
+      // 出題音
+      try {
+        if (questionStartAudio) questionStartAudio.pause();
+        questionStartAudio = new Audio(SE_QUESTION_START);
+        questionStartAudio.volume = 1.0;
+        questionStartAudio.play().catch(()=>{});
+      } catch(e) {}
 
-      // ★ ヒント処理
+      // シンキングタイム開始（ループ再生）
+      try {
+        if (thinkingAudio) {
+          thinkingAudio.pause();
+          thinkingAudio = null;
+        }
+        thinkingAudio = new Audio(SE_THINKING);
+        thinkingAudio.volume = 1.0;
+        thinkingAudio.loop = true;
+        thinkingAudio.play().catch(()=>{});
+      } catch(e) {}
+
+      // ヒント処理
       const hintBox  = j("#qHintBox");
       const hintText = j("#qHintText");
 
-      // 前のヒントタイマーをクリア
       if (hintTimer) {
         clearTimeout(hintTimer);
         hintTimer = null;
@@ -322,18 +437,22 @@
 
       if (hintBox && hintText) {
         const h = (q.hint || "").trim();
+
+        hintBox.style.display = "block";
+
         if (h) {
-          // テキストは先にセットしておき、4秒後に表示
           hintText.textContent = h;
-          hintBox.style.display = "none";  // 最初は非表示
+          hintBox.style.visibility = "hidden";
+          hintBox.style.opacity = "0";
 
           hintTimer = setTimeout(() => {
-            hintBox.style.display = "block";
-          }, 4000);  // ★ 4秒後に表示
+            hintBox.style.visibility = "visible";
+            hintBox.style.opacity = "1";
+          }, 4000);
         } else {
-          // ヒントが無い問題は常に非表示
-          hintText.textContent = "";
-          hintBox.style.display = "none";
+          hintText.textContent = "　"; // 全角スペース
+          hintBox.style.visibility = "hidden";
+          hintBox.style.opacity = "0";
         }
       }
 
@@ -361,11 +480,8 @@
         box.appendChild(btn);
       });
 
-      // サーバ側の回答受付ディレイとのバランス用
       setTimeout(enableAllChoices, 800);
     };
-
-
 
     const markReveal = (correctIdx) => {
       const list = Array.from(document.querySelectorAll(".choice-btn"));
@@ -378,7 +494,8 @@
       current.locked = true;
       const hintBox  = j("#qHintBox");
       if (hintBox) {
-        hintBox.style.display = "none";
+        hintBox.style.visibility = "hidden";
+        hintBox.style.opacity = "0";
       }
     };
 
@@ -387,10 +504,19 @@
     const updateStartButton = () => {
       const btn = document.getElementById("startBtn");
       if (!btn) return;
+
       if (isRandom) {
         btn.style.display = "none";
         return;
       }
+
+      if (gameFinished) {
+        btn.disabled = true;
+        btn.textContent = "ゲーム終了";
+        btn.title = "この部屋ではこれ以上開始できません。";
+        return;
+      }
+
       const meIsHost = hostId !== null && hostId === user.id;
       btn.disabled = !meIsHost;
       btn.title = meIsHost ? "" : "開始できるのはホストのみです";
@@ -399,8 +525,12 @@
     // ========= WebSocket =========
     ws.addEventListener("open", () => {
       ws.send(JSON.stringify({ type: "hello", user_id: user.id, name: MY_NAME }));
-      // スタンプ一覧ロード（初回）
       fetchStamps();
+
+      // ★ 念のためここでもHP初期化（接続成功時）
+      if (IS_CHALLENGE && typeof window.initBossBattleHp === "function") {
+        window.initBossBattleHp();
+      }
     });
 
     ws.addEventListener("message", (ev) => {
@@ -408,7 +538,12 @@
         const m = JSON.parse(ev.data);
 
         if (m.type === "stamp") {
-          playStampFx(m.key, m.name);
+          const isMe = (m.user_id != null && m.user_id === user.id) || (m.name === MY_NAME);
+          if (isMe) {
+            playStampFxSelf(m.key);
+          } else {
+            playStampFxOther(m.key, m.name, m.user_id);
+          }
         }
 
         if (m.type === "prestart") {
@@ -453,10 +588,21 @@
             const list = Array.from(document.querySelectorAll(".choice-btn"));
             const btn = list[m.choice_idx];
             if (btn) btn.classList.add(m.correct ? "choice-correct" : "choice-wrong");
+
+            try { if (thinkingAudio) thinkingAudio.pause(); } catch(e) {}
+            playJudgeFx(m.correct);
+
+            // ★★★ チャレンジモードのHP減少処理 ★★★
+            if (IS_CHALLENGE && typeof window.applyBossBattleRound === "function") {
+              // 今のところ「自分が正解 → ボスに攻撃」「自分が不正解 → 自分がダメージ」
+              const userFasterAndCorrect = !!m.correct;
+              window.applyBossBattleRound(userFasterAndCorrect);
+            }
           }
         }
 
         if (m.type === "reveal") {
+          try { if (thinkingAudio) thinkingAudio.pause(); } catch(e) {}
           markReveal(m.correct_idx);
         }
 
@@ -466,9 +612,11 @@
           showOverlay(`<div class="text-center"><div class="mb-2">🎉 試合終了！</div>${msg}</div>`);
           setTimeout(hideOverlay, 4000);
 
-          j("#startBtn")?.removeAttribute("disabled");
+          gameFinished = true;
+          updateStartButton();
+
           setRoundInfo(null, null);
-          j("#qStem").textContent = "ゲーム終了。もう一度「ゲーム開始」を押すと新しい問題が始まります。";
+          j("#qStem").textContent = "ゲーム終了。この部屋ではこれ以上対戦できません。";
           j("#choices").innerHTML = "";
           stopQuestionTimer(true);
           current.locked = true;
@@ -491,7 +639,7 @@
 
     // ========= ボタンイベント =========
     j("#startBtn")?.addEventListener("click", () => {
-      if (isRandom) return; // 念押し
+      if (isRandom) return;
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "start" }));
       }

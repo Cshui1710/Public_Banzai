@@ -1,0 +1,437 @@
+<!-- templates/checkins_summary.html -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>チェックイン集計ダッシュボード | Ishikawa Facilities & Parks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --accent: #6366f1;
+      --accent-soft: #4f46e5;
+      --card-radius: 1.1rem;
+      --shadow-soft: 0 14px 30px rgba(15,23,42,0.12);
+      --border-subtle: rgba(148,163,184,0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ブランドロゴ（共通） */
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    .nav-glass {
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.96) !important;
+      border-bottom: 1px solid var(--border-subtle);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+    }
+
+    .btn-soft {
+      border-radius: 999px !important;
+      padding-inline: 1rem;
+      font-size: .8rem;
+    }
+
+    main.page-root {
+      flex: 1;
+      padding-top: 1.8rem;
+      padding-bottom: 2.6rem;
+    }
+
+    .page-header {
+      margin-bottom: 1.3rem;
+    }
+    .page-header .tagline {
+      font-size: .78rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: #6b7280;
+      font-weight: 700;
+      margin-bottom: .3rem;
+    }
+    .page-header h1 {
+      font-size: 1.3rem;
+      font-weight: 800;
+      margin: 0 0 .25rem;
+    }
+    .page-header p {
+      font-size: .9rem;
+      color: #6b7280;
+      margin: 0;
+    }
+
+    .chip-note {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4f46e5;
+      font-size: .78rem;
+      padding: .2rem .6rem;
+      margin-top: .35rem;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.98);
+      border-radius: var(--card-radius);
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+
+    /* 絞り込みフォーム */
+    .filter-card .form-label {
+      font-size: .85rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    /* サマリ指標カード */
+    .stat-card {
+      border-radius: var(--card-radius);
+      border: 0;
+      box-shadow: var(--shadow-soft);
+      background: linear-gradient(135deg, #ffffff, #eff6ff);
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .stat {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .stat-label {
+      font-size: .85rem;
+      color:#64748b;
+    }
+
+    /* グラフ・テーブルカード */
+    .card-analytic {
+      border-radius: var(--card-radius);
+      border: 0;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148,163,184,0.35);
+      background: #ffffff;
+    }
+
+    .section-subtitle {
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      color: #9ca3af;
+      font-weight: 600;
+      margin-bottom: .2rem;
+    }
+
+    .table-wrap {
+      max-height: 420px;
+      overflow:auto;
+      border-radius: .8rem;
+      border: 1px solid #e5e7eb;
+    }
+
+    table.table-sm th,
+    table.table-sm td {
+      font-size: .82rem;
+    }
+
+    .table thead tr {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    code {
+      font-size: .8rem;
+    }
+
+    @media (max-width: 768px) {
+      main.page-root {
+        padding-top: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ナビバー -->
+  <nav class="navbar navbar-expand-lg nav-glass">
+    <div class="container">
+      <a class="navbar-brand brand-mark" href="/home">
+        <span class="brand-logo">IF</span>
+        <span>Ishikawa Facilities &amp; Parks</span>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary btn-sm btn-soft" href="/home">🏠 ホームへ戻る</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container page-root">
+    <!-- ページヘッダ -->
+    <header class="page-header">
+      <div class="tagline">CHECKIN LINE</div>
+      <h1>チェックイン集計ダッシュボード</h1>
+      <p>
+        期間と種別を指定して、施設ごとのチェックイン数を可視化します。  
+        CSVをダウンロードして、より詳細な分析に利用することもできます。
+      </p>
+      <div class="chip-note">
+        📍 クイズとマップの「足あと」を俯瞰するビューです
+      </div>
+    </header>
+
+    <!-- 絞り込みフォーム -->
+    <section class="panel filter-card mb-3">
+      <div class="card-body p-3 p-md-4">
+        <form class="row g-3 align-items-end" id="filterForm" onsubmit="return false;">
+          <div class="col-md-4">
+            <label class="form-label">開始日時</label>
+            <input type="datetime-local" class="form-control" id="dateFrom">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">終了日時</label>
+            <input type="datetime-local" class="form-control" id="dateTo">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">種別</label>
+            <select id="kind" class="form-select">
+              <option value="">すべて</option>
+              <option value="公園">公園</option>
+              <option value="公共施設">公共施設</option>
+            </select>
+          </div>
+          <div class="col-md-2 d-flex gap-2">
+            <button type="button" class="btn btn-primary flex-grow-1 btn-soft" onclick="loadSummary()">
+              🔄 更新
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- サマリ指標 -->
+    <section class="mb-3">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="section-subtitle">TOTAL</div>
+              <div class="stat" id="statTotal">-</div>
+              <div class="stat-label">合計チェックイン数</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="section-subtitle">PLACES</div>
+              <div class="stat" id="statFacilities">-</div>
+              <div class="stat-label">チェックインがあった施設数</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card stat-card">
+            <div class="card-body">
+              <div class="section-subtitle">SPAN</div>
+              <div class="stat" id="statDays">-</div>
+              <div class="stat-label">期間（日数）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- グラフ＋テーブル -->
+    <section class="row g-3">
+      <div class="col-md-6">
+        <div class="card card-analytic h-100">
+          <div class="card-body d-flex flex-column">
+            <div class="section-subtitle">TOP PLACES</div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h6 mb-0">上位施設（チェックイン数順）</h2>
+              <small class="text-muted" id="chartNote">上位10件を表示</small>
+            </div>
+            <div style="height:300px;">
+              <canvas id="facChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card card-analytic h-100">
+          <div class="card-body d-flex flex-column">
+            <div class="section-subtitle">DETAIL</div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h6 mb-0">施設別チェックイン一覧</h2>
+              <a id="csvLink" href="/api/export/checkins_summary.csv" class="btn btn-sm btn-outline-secondary btn-soft">
+                ⬇ CSVダウンロード
+              </a>
+            </div>
+            <div class="table-wrap">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">施設名</th>
+                    <th scope="col">種別</th>
+                    <th scope="col" class="text-end">件数</th>
+                    <th scope="col">最初</th>
+                    <th scope="col">最新</th>
+                  </tr>
+                </thead>
+                <tbody id="facTableBody">
+                  <tr><td colspan="5" class="text-muted">データなし</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let facChart = null;
+
+    function toLocalInput(d){
+      const pad = n => String(n).padStart(2,'0');
+      return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())
+        +'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+    }
+
+    function buildQueryParams(){
+      const from = document.getElementById('dateFrom').value;
+      const to   = document.getElementById('dateTo').value;
+      const kind = document.getElementById('kind').value;
+
+      const params = new URLSearchParams();
+      if (from) params.set('date_from', new Date(from).toISOString());
+      if (to)   params.set('date_to',   new Date(to).toISOString());
+      if (kind) params.set('kind', kind);
+      return params;
+    }
+
+    async function loadSummary(){
+      const params = buildQueryParams();
+      const url = '/api/checkins/summary/data?' + params.toString();
+      const csvUrl = '/api/export/checkins_summary.csv?' + params.toString();
+      document.getElementById('csvLink').href = csvUrl;
+
+      const res = await fetch(url);
+      const js  = await res.json();
+
+      if (!res.ok || !js.ok){
+        alert(js.detail || '集計の取得に失敗しました');
+        return;
+      }
+
+      // サマリ指標
+      document.getElementById('statTotal').textContent      = js.total_count ?? 0;
+      document.getElementById('statFacilities').textContent = js.facility_count ?? js.items.length;
+      document.getElementById('statDays').textContent       = js.day_span ?? '-';
+
+      // テーブル
+      const tbody = document.getElementById('facTableBody');
+      if (!js.items.length){
+        tbody.innerHTML = '<tr><td colspan="5" class="text-muted">該当データがありません</td></tr>';
+      }else{
+        tbody.innerHTML = js.items.map(it => {
+          const first = it.first_ts ? new Date(it.first_ts).toLocaleString() : '-';
+          const last  = it.last_ts  ? new Date(it.last_ts).toLocaleString()  : '-';
+          return `
+            <tr>
+              <td>${escapeHtml(it.place_name || '(名称不明)')}</td>
+              <td>${escapeHtml(it.kind || '')}</td>
+              <td class="text-end">${it.count}</td>
+              <td><small class="text-muted">${first}</small></td>
+              <td><small class="text-muted">${last}</small></td>
+            </tr>`;
+        }).join('');
+      }
+
+      // グラフ（上位10件）
+      const top = js.items.slice(0, 10);
+      const labels = top.map(it => it.place_name || '(名称不明)');
+      const values = top.map(it => it.count);
+      drawFacChart(labels, values);
+    }
+
+    function drawFacChart(labels, values){
+      const ctx = document.getElementById('facChart');
+      if (!ctx) return;
+      if (facChart) facChart.destroy();
+      facChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'チェックイン数',
+            data: values
+          }]
+        },
+        options: {
+          responsive:true,
+          maintainAspectRatio:false,
+          scales:{
+            x: { ticks: { maxRotation: 30, minRotation: 0 } },
+            y: { beginAtZero:true }
+          }
+        }
+      });
+    }
+
+    function escapeHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
+    }
+
+    // 初期化：直近30日をセットしてからロード
+    (function init(){
+      const now  = new Date();
+      const from = new Date(now.getTime() - 30*24*60*60*1000);
+      document.getElementById('dateFrom').value = toLocalInput(from);
+      document.getElementById('dateTo').value   = toLocalInput(now);
+      loadSummary();
+    })();
+  </script>
+</body>
+</html>

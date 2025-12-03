@@ -5,139 +5,690 @@
   <meta charset="UTF-8" />
   <title>ホーム | Ishikawa Facilities & Parks</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Bootstrap 5（プロジェクトの他ページに合わせてください） -->
+  <!-- Bootstrap 5 -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background: #f8fafc; }
-    .card { border: 0; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.06); transition: transform .1s ease; }
-    .card:hover { transform: translateY(-3px); }
-    .card .icon { font-size: 2.2rem; line-height: 1; }
-    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(1,minmax(0,1fr)); }
-    @media (min-width: 768px) { .grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+    :root {
+      --bg: #f3f4ff;
+      --panel-bg: #ffffff;
+      --line-color: #4f46e5;
+      --card-radius: 1rem;
+      --shadow-soft: 0 14px 30px rgba(15,23,42,0.10);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      min-height: 100vh;
+      color: #0f172a;
+    }
+
+    .navbar {
+      backdrop-filter: blur(10px);
+      background: rgba(255,255,255,0.96) !important;
+      border-bottom: 1px solid rgba(148,163,184,0.45);
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    /* ===== レイアウト全体 ===== */
+    .home-root {
+      padding-top: 1.5rem;
+      padding-bottom: 2.5rem;
+    }
+
+    .layout-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.2rem;
+    }
+
+    @media (min-width: 992px) {
+      .layout-main {
+        grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+        align-items: stretch;
+      }
+    }
+
+    /* ===== 左サイド：マップ＆コピー ===== */
+    .panel-left {
+      background: rgba(255,255,255,0.97);
+      border-radius: 1.4rem;
+      padding: 1.5rem 1.3rem 1.6rem;
+      box-shadow: var(--shadow-soft);
+      border: 1px solid rgba(148,163,184,0.35);
+      position: relative;
+      overflow: hidden;
+    }
+    @media (min-width: 992px) {
+      .panel-left {
+        padding: 1.9rem 1.7rem 1.9rem;
+      }
+    }
+
+    .tagline {
+      font-size: .78rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+      margin-bottom: .4rem;
+    }
+    .hero-title {
+      font-size: clamp(1.4rem, 2vw + 1rem, 2.1rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: .5rem;
+    }
+    .hero-title span.highlight {
+      background: linear-gradient(110deg,#6366f1,#ec4899);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+    .hero-sub {
+      font-size: .92rem;
+      color: #4b5563;
+      max-width: 22rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      margin-bottom: 1rem;
+      font-size: .78rem;
+    }
+    .hero-chip {
+      border-radius: 999px;
+      padding: .3rem .75rem;
+      background: #eef2ff;
+      color: #4f46e5;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .hero-chip span.dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #4f46e5;
+    }
+
+    /* ミニマップ風エリア */
+    .mini-map {
+      margin-top: .4rem;
+      position: relative;
+      border-radius: 1.2rem;
+      background: radial-gradient(circle at 10% 0%, #bfdbfe 0, #e0f2fe 30%, #fefce8 60%, #fee2e2 95%);
+      height: 180px;
+      overflow: hidden;
+    }
+    @media (min-width: 768px) {
+      .mini-map { height: 210px; }
+    }
+    .mini-map-label {
+      position: absolute;
+      top: .65rem;
+      left: .85rem;
+      padding: .25rem .7rem;
+      border-radius: 999px;
+      font-size: .7rem;
+      background: rgba(15,23,42,0.75);
+      color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+    }
+
+    .map-shape {
+      width: 140px;
+      height: 140px;
+      border-radius: 999px;
+      border: 6px solid rgba(37,99,235,0.75);
+      position: absolute;
+      left: 50%;
+      top: 55%;
+      transform: translate(-50%, -50%) rotate(-18deg);
+      box-shadow: 0 18px 45px rgba(30,64,175,0.5);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(56,189,248,0.4) 0, transparent 55%),
+        radial-gradient(circle at 70% 90%, rgba(96,165,250,0.55) 0, transparent 50%),
+        radial-gradient(circle at 30% 75%, rgba(254,243,199,0.8) 0, transparent 55%);
+    }
+
+    .map-dot {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 5px rgba(34,197,94,0.3);
+    }
+    .map-dot::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      border-radius: inherit;
+      background: #f9fafb;
+    }
+    .map-dot.kzt   { left: 47%; top: 30%; }
+    .map-dot.nnji  { left: 45%; top: 46%; }
+    .map-dot.komat { left: 52%; top: 62%; }
+
+    .legend {
+      position: absolute;
+      bottom: .6rem;
+      right: .8rem;
+      background: rgba(255,255,255,0.92);
+      border-radius: .9rem;
+      padding: .4rem .7rem;
+      font-size: .72rem;
+      color: #4b5563;
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+      border: 1px solid rgba(148,163,184,0.4);
+    }
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .legend-tag {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      background: #22c55e;
+    }
+    .legend-tag2 {
+      background: #eab308;
+    }
+
+    /* ===== 右サイド：路線図カード ===== */
+    .panel-right {
+      background: transparent;
+    }
+
+    .section-title {
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: #6b7280;
+      margin-bottom: .5rem;
+    }
+
+    .line-wrapper {
+      position: relative;
+      padding-left: 1.7rem;
+      margin-left: .3rem;
+    }
+    .line-core {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: .55rem;
+      width: 3px;
+      border-radius: 999px;
+      background: linear-gradient(to bottom, #4f46e5, #22c55e);
+      opacity: .9;
+    }
+
+    .station-card {
+      position: relative;
+      background: var(--panel-bg);
+      border-radius: var(--card-radius);
+      padding: .9rem .9rem .95rem .9rem;
+      margin-bottom: .75rem;
+      box-shadow: 0 8px 22px rgba(15,23,42,0.08);
+      border: 1px solid rgba(148,163,184,0.4);
+      transition: transform .1s ease, box-shadow .1s ease, border-color .1s ease;
+    }
+    .station-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 34px rgba(15,23,42,0.18);
+      border-color: #6366f1;
+    }
+
+    .station-node {
+      position: absolute;
+      left: -1.35rem;
+      top: 1.1rem;
+      width: 15px;
+      height: 15px;
+      border-radius: 999px;
+      background: #f9fafb;
+      border: 3px solid #4f46e5;
+      box-shadow: 0 0 0 4px rgba(191,219,254,0.9);
+    }
+
+    .station-header {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      margin-bottom: .25rem;
+    }
+
+    .station-sign {
+      min-width: 56px;
+      padding: .15rem .45rem;
+      border-radius: 999px;
+      font-size: .7rem;
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #111827;
+      background: #e5e7eb;
+    }
+    .station-title {
+      font-size: .95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+    }
+    .station-icon {
+      font-size: 1.3rem;
+    }
+
+    .station-body {
+      font-size: .82rem;
+      color: #6b7280;
+      margin-bottom: .45rem;
+    }
+
+    .station-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .pill-btn {
+      border-radius: 999px !important;
+      padding-inline: 1.1rem;
+      font-size: .78rem;
+      padding-block: .2rem .25rem;
+    }
+
+    .station-note {
+      font-size: .75rem;
+      color: #9ca3af;
+    }
+
+    /* カラー差別化 */
+    .station-random .station-sign { background:#dbeafe; color:#1e40af; }
+    .station-friend .station-sign { background:#dcfce7; color:#166534; }
+    .station-challenge .station-sign { background:#fef3c7; color:#92400e; }
+    .station-map .station-sign { background:#fce7f3; color:#9d174d; }
+    .station-char .station-sign { background:#ede9fe; color:#5b21b6; }
+    .station-name .station-sign { background:#e5e7eb; color:#111827; }
+    .station-analytics .station-sign { background:#f1f5f9; color:#0f172a; }
+    .station-admin .station-sign { background:#fee2e2; color:#b91c1c; }
+
+    .badge-small {
+      font-size: .7rem;
+      padding: .2rem .45rem;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid rgba(129,140,248,0.4);
+    }
+
+    /* BGM ボタン */
+    #bgmToggleBtn {
+      border-radius: 999px;
+      box-shadow: 0 10px 25px rgba(15,23,42,0.25);
+      background: #111827;
+      color: #e5e7eb;
+      border: 0;
+      font-size: .8rem;
+      padding-inline: .9rem;
+    }
+    #bgmToggleBtn:hover { background: #020617; }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg bg-white border-bottom">
+  <nav class="navbar navbar-expand-lg">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="/home">Ishikawa Facilities & Parks</a>
-      <div class="ms-auto">
-        <span class="me-3 text-muted">
-          ようこそ、{{ user.display_name or user.email }}
+      <a class="navbar-brand brand-mark" href="/home">
+        <span class="brand-logo">IF</span>
+        <span>Ishikawa Facilities &amp; Parks</span>
+      </a>
+      <div class="ms-auto d-flex align-items-center gap-3">
+        <span class="text-muted small d-none d-md-inline">
+          ようこそ、<strong>{{ user.display_name or user.email }}</strong>
         </span>
         <a class="btn btn-outline-secondary btn-sm" href="/auth/logout">ログアウト</a>
       </div>
     </div>
   </nav>
+
+  <!-- BGM -->
   <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm.mp3" type="audio/mpeg">
-    <!-- ここに対応してないブラウザ向けメッセージを書いてもOK -->
   </audio>
-
-  <!-- ★ どこかの目立つ場所に BGM ボタン（例: ページ右上など） -->
   <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
-    <button id="bgmToggleBtn" class="btn btn-sm btn-outline-primary">
+    <button id="bgmToggleBtn" class="btn btn-sm">
       🎵 BGM ON
     </button>
   </div>
 
-  <main class="container py-4">
-    <div class="mb-4">
-      <h1 class="h3 mb-1">ホーム</h1>
-      <p class="text-muted mb-0">
-        対戦モードを選ぶか、コレクションや作問、マップでスタンプ集めへどうぞ。
-      </p>
-    </div>
-
-    <div class="grid">
-      <!-- ランダムマッチ -->
-      <div class="card">
-        <div class="card-body d-flex align-items-start">
-          <div class="icon me-3">🎮</div>
-          <div class="flex-grow-1">
-            <h2 class="h5 mb-1">ランダムマッチ</h2>
-            <p class="text-muted mb-3">すぐに対戦を開始します（自動マッチング）。</p>
-            <a href="/quiz/random" class="btn btn-primary">対戦をはじめる</a>
+  <main class="container home-root">
+    <div class="layout-main">
+      <!-- 左カラム：コピー＋ミニマップ -->
+      <section class="panel-left">
+        <div class="tagline">CONNECT · QUIZ · TOWN</div>
+        <h1 class="hero-title">
+          <span class="highlight">クイズで町をつなぐ</span><br>
+          石川の公共施設＆公園ゲーム
+        </h1>
+        <p class="hero-sub">
+          早押しクイズで学びながら、  
+          実際に足を運んでスタンプを集める。  
+          オンラインとまち歩きがリンクする「石川版クイズラボ」です。
+        </p>
+        <div class="hero-chip-row">
+          <div class="hero-chip">
+            <span class="dot"></span><span>4人対戦の早押しモード</span>
+          </div>
+          <div class="hero-chip">
+            <span class="dot" style="background:#22c55e;"></span><span>マップでチェックイン</span>
+          </div>
+          <div class="hero-chip">
+            <span class="dot" style="background:#f97316;"></span><span>認知率データでまちを可視化</span>
           </div>
         </div>
-      </div>
 
-      <!-- フレンドマッチ（部屋作成/参加） -->
-      <div class="card">
-        <div class="card-body d-flex align-items-start">
-          <div class="icon me-3">👥</div>
-          <div class="flex-grow-1">
-            <h2 class="h5 mb-1">フレンドマッチ</h2>
-            <p class="text-muted mb-3">部屋を作成して友だちと遊ぶ。ルームコードで合流。</p>
-            <div class="d-flex gap-2">
-              <a href="/quiz/room/new" class="btn btn-success">部屋を作成</a>
-              <a href="/quiz/room/join" class="btn btn-outline-success">部屋に参加</a>
+        <div class="mini-map">
+          <div class="mini-map-label">
+            <span>🗺️ 石川県の「知っている場所」を増やそう</span>
+          </div>
+          <div class="map-shape"></div>
+          <div class="map-dot kzt" title="金沢市"></div>
+          <div class="map-dot nnji" title="野々市市"></div>
+          <div class="map-dot komat" title="小松市"></div>
+
+          <div class="legend">
+            <div class="legend-row">
+              <span class="legend-tag"></span><span>クイズに登場する施設</span>
+            </div>
+            <div class="legend-row">
+              <span class="legend-tag2"></span><span>チェックインスポット</span>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- 所持キャラクター -->
-      <div class="card">
-        <div class="card-body d-flex align-items-start">
-          <div class="icon me-3">🦫</div>
-          <div class="flex-grow-1">
-            <h2 class="h5 mb-1">所持スタンプ</h2>
-            <p class="text-muted mb-3">マーモットなどコレクションを確認。</p>
-            <a href="/chars" class="btn btn-outline-primary">コレクションを見る</a>
-          </div>
-        </div>
-      </div>
+      <!-- 右カラム：路線図風ステーションカード -->
+      <section class="panel-right">
+        <h2 class="section-title">PLAY LINE</h2>
+        <div class="line-wrapper mb-4">
+          <div class="line-core"></div>
 
-      <!-- 作問ページ -->
-      <div class="card">
-        <div class="card-body d-flex align-items-start">
-          <div class="icon me-3">✍️</div>
-          <div class="flex-grow-1">
-            <h2 class="h5 mb-1">作問</h2>
-            <p class="text-muted mb-3">新しいクイズ問題を作って公開しよう。</p>
-            <a href="/quiz/maker" class="btn btn-outline-dark">作問ページへ</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- ★ マップ・スタンプをゲット -->
-      <div class="card">
-        <div class="card-body d-flex align-items-start">
-          <div class="icon me-3">📍</div>
-          <div class="flex-grow-1">
-            <h2 class="h5 mb-1">マップ・スタンプをゲット</h2>
-            <p class="text-muted mb-3">地図でチェックインしてスタンプを集めよう。</p>
-            <!-- index.html を返すルート（/map）へ -->
-            <a href="/map" class="btn btn-outline-primary">マップを開く</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- 名前の決定・変更 -->
-      <div class="card">
-        <div class="card-body d-flex align-items-start">
-          <div class="icon me-3">🏷️</div>
-          <div class="flex-grow-1">
-            <h2 class="h5 mb-1">名前の決定・変更</h2>
-            <p class="text-muted mb-2">
-              対戦中に表示されるニックネームを設定します。
+          <!-- ランダムマッチ -->
+          <article class="station-card station-random">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">RANDOM</div>
+              <div class="station-title">
+                <span class="station-icon">🎮</span> ランダムマッチ
+              </div>
+            </div>
+            <p class="station-body">
+              そのときログインしているプレイヤーと自動マッチング。  
+              だれと一緒に石川クイズを戦うかは入ってからのお楽しみ。
             </p>
-            <p class="small text-muted mb-3">
+            <div class="station-actions">
+              <a href="/quiz/random" class="btn btn-primary pill-btn btn-sm">
+                対戦をはじめる
+              </a>
+              <span class="station-note">最大4人で同時プレイ</span>
+            </div>
+          </article>
+
+          <!-- フレンドマッチ -->
+          <article class="station-card station-friend">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">FRIEND</div>
+              <div class="station-title">
+                <span class="station-icon">👥</span> フレンドマッチ
+              </div>
+            </div>
+            <p class="station-body">
+              ルームコードを使って、友だちやクラスメイトと同じ部屋へ。  
+              教室・オンラインどちらでもワイワイ遊べます。
+            </p>
+            <div class="station-actions">
+              <a href="/quiz/room/new" class="btn btn-success pill-btn btn-sm">
+                部屋を作成
+              </a>
+              <a href="/quiz/room/join" class="btn btn-outline-success pill-btn btn-sm">
+                部屋に参加
+              </a>
+            </div>
+          </article>
+
+          <!-- チャレンジモード -->
+          <article class="station-card station-challenge">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">CPU</div>
+              <div class="station-title">
+                <span class="station-icon">🔥</span> チャレンジモード
+              </div>
+            </div>
+            <p class="station-body">
+              「ジャック」「クイーン」「キング」から難易度を選択。  
+              それぞれ性格の違うCPUと 1 vs 1 の早押しバトルができます。
+            </p>
+            <div class="station-actions">
+              <a href="/quiz/challenge" class="btn btn-warning pill-btn btn-sm">
+                難易度をえらぶ
+              </a>
+              <span class="station-note">
+                Jack はやさしめ、King はかなり手ごわい設定です。
+              </span>
+            </div>
+          </article>
+
+          <!-- マップ・スタンプ -->
+          <article class="station-card station-map">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">MAP</div>
+              <div class="station-title">
+                <span class="station-icon">📍</span> マップ・スタンプをゲット
+              </div>
+            </div>
+            <p class="station-body">
+              実際に公園や公共施設へ行ってチェックイン。  
+              訪れた場所に応じてスタンプが解放され、コレクションが増えていきます。
+            </p>
+            <div class="station-actions">
+              <a href="/map" class="btn btn-outline-primary pill-btn btn-sm">
+                マップを開く
+              </a>
+              <span class="station-note">位置情報 ON 推奨</span>
+            </div>
+          </article>
+        </div>
+
+        <h2 class="section-title">COLLECTION &amp; PROFILE</h2>
+        <div class="line-wrapper mb-4">
+          <div class="line-core"></div>
+
+          <!-- 所持スタンプ -->
+          <article class="station-card station-char">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">STAMP</div>
+              <div class="station-title">
+                <span class="station-icon">🦫</span> 所持スタンプ
+              </div>
+            </div>
+            <p class="station-body">
+              これまで手に入れたスタンプの一覧を確認。  
+              どの市町・施設でゲットしたかを振り返る楽しみも。
+            </p>
+            <div class="station-actions">
+              <a href="/chars" class="btn btn-outline-primary pill-btn btn-sm">
+                コレクションを見る
+              </a>
+            </div>
+          </article>
+
+          <!-- 作問ページ -->
+          <article class="station-card station-char">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">MAKE</div>
+              <div class="station-title">
+                <span class="station-icon">✍️</span> 作問
+              </div>
+            </div>
+            <p class="station-body">
+              あなたのおすすめスポットやローカル知識を、クイズの1問として登録。  
+              みんなで「石川クイズ図鑑」を育てていくモードです。
+            </p>
+            <div class="station-actions">
+              <a href="/quiz/maker" class="btn btn-outline-dark pill-btn btn-sm">
+                作問ページへ
+              </a>
+            </div>
+          </article>
+
+          <!-- 名前の決定・変更 -->
+          <article class="station-card station-name">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">NAME</div>
+              <div class="station-title">
+                <span class="station-icon">🏷️</span> 名前の決定・変更
+              </div>
+            </div>
+            <p class="station-body mb-1">
+              対戦中に表示されるニックネームを設定・変更できます。
+            </p>
+            <p class="station-body" style="font-size:.78rem; color:#9ca3af;">
               現在の名前：
-              <strong>
-                {{ user.display_name or '未設定（メールアドレスが表示されます）' }}
-              </strong>
+              <strong>{{ user.display_name or '未設定（メールアドレスが表示されます）' }}</strong>
             </p>
-            <a href="/name" class="btn btn-outline-secondary">名前を決める / 変更する</a>
-          </div>
+            <div class="station-actions">
+              <a href="/name" class="btn btn-outline-secondary pill-btn btn-sm">
+                名前を決める / 変更する
+              </a>
+            </div>
+          </article>
         </div>
-      </div>
+
+        {% if user.role in ["admin", "researcher"] %}
+        <h2 class="section-title">ANALYTICS LINE</h2>
+        <div class="line-wrapper">
+          <div class="line-core"></div>
+
+          <!-- 認知率データ -->
+          <article class="station-card station-analytics">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">DATA</div>
+              <div class="station-title">
+                <span class="station-icon">📊</span> データ提供（認知率）
+              </div>
+            </div>
+            <p class="station-body">
+              クイズの正解／不正解から、施設別・市町別の「認知率」を集計。  
+              仮想フィールドワークの結果をダッシュボードやCSVで確認できます。
+            </p>
+            <div class="station-actions">
+              <a href="/recognition" class="btn btn-outline-primary pill-btn btn-sm">
+                認知率ダッシュボード
+              </a>
+              <a href="/api/recognition/export.csv" class="btn btn-outline-secondary pill-btn btn-sm">
+                CSVをダウンロード
+              </a>
+            </div>
+          </article>
+
+          <!-- チェックインデータ -->
+          <article class="station-card station-analytics">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">DATA</div>
+              <div class="station-title">
+                <span class="station-icon">🗂️</span> データ提供その２（チェックイン）
+              </div>
+            </div>
+            <p class="station-body">
+              施設ごとのチェックイン数を期間別に集計し、  
+              利用実態を把握するための簡易ダッシュボードとCSVを提供します。
+            </p>
+            <div class="station-actions">
+              <a href="/api/checkins/summary" class="btn btn-outline-primary pill-btn btn-sm">
+                チェックインダッシュボード
+              </a>
+              <a href="/api/export/checkins_summary.csv" class="btn btn-outline-secondary pill-btn btn-sm">
+                CSVをダウンロード
+              </a>
+            </div>
+          </article>
+
+          {% if user.role in ["admin"] %}
+          <!-- 作問編集（管理者のみ） -->
+          <article class="station-card station-admin">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">ADMIN</div>
+              <div class="station-title">
+                <span class="station-icon">🛠️</span> 作問編集
+              </div>
+            </div>
+            <p class="station-body">
+              みんなが登録したオリジナル問題を一覧し、不適切な問題を削除できます。  
+              授業やイベントにあわせて、問題プールをメンテナンスする管理用ツールです。
+            </p>
+            <div class="station-actions">
+              <a href="/quiz/maker/admin" class="btn btn-outline-danger pill-btn btn-sm">
+                作問編集ページへ
+              </a>
+              <span class="station-note">※ 管理者専用機能</span>
+            </div>
+          </article>
+          {% endif %}
+        </div>
+        {% endif %}
+      </section>
     </div>
-    <!-- 必要なら将来ここにお知らせやランキングなど -->
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+  <!-- BGM制御 -->
   <script>
     (function () {
       const audio = document.getElementById("bgmAudio");
@@ -146,7 +697,6 @@
 
       const STORAGE_KEY = "ifp_bgm_enabled";
 
-      // ローカルストレージから前回の設定を復元
       let enabled = localStorage.getItem(STORAGE_KEY);
       enabled = (enabled === null) ? true : (enabled === "true");
 
@@ -162,22 +712,18 @@
         try {
           await audio.play();
         } catch (e) {
-          // 自動再生ブロックに引っかかった場合はボタンで再チャレンジ
           console.log("BGM autoplay blocked:", e);
         }
       };
 
-      // 初期状態のボタン表示
       updateButtonText();
 
-      // 初回：ユーザーがどこかクリックしたタイミングで再生を試みる
       const onFirstInteract = () => {
         document.removeEventListener("click", onFirstInteract);
         playIfAllowed();
       };
       document.addEventListener("click", onFirstInteract);
 
-      // ボタンで ON/OFF
       btn.addEventListener("click", async () => {
         enabled = !enabled;
         localStorage.setItem(STORAGE_KEY, String(enabled));
@@ -189,6 +735,6 @@
         }
       });
     })();
-  </script>  
+  </script>
 </body>
 </html>
