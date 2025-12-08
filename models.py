@@ -5,7 +5,6 @@ from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationsh
 
 # SQLite エンジン
 engine = create_engine("sqlite:///./nonoji.db", echo=False)
-
 # ===== Models =====
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

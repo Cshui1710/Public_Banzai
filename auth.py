@@ -355,7 +355,7 @@ async def google_callback(request: Request):
 async def line_login(request: Request):
     if not LINE_CLIENT_ID or not LINE_CLIENT_SECRET:
         raise HTTPException(500, "LINE OAuth の環境変数が未設定です")
-    redirect_uri = f"{BASE_URL}/auth/line/callback"
+    redirect_uri = f"{BASE_URL}auth/line/callback"
     return await oauth.line.authorize_redirect(request, redirect_uri)
 
 @router.get("/auth/line/callback")
