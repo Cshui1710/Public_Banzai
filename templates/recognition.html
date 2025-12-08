@@ -184,6 +184,15 @@
       </div>
     </div>
   </nav>
+    <!-- BGM -->
+    <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+    </audio>
+    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+        🎵 BGM ON
+    </button>
+    </div>
 
   <main class="container page-root">
     <!-- ヘッダ -->
@@ -409,5 +418,57 @@
       reloadAll();
     })();
   </script>
+    <script>
+    (function () {
+        const audio = document.getElementById("bgmAudio");
+        const btn   = document.getElementById("bgmToggleBtn");
+        if (!audio || !btn) return;
+
+        /* ▼ 音量を50%に設定 ▼ */
+        audio.volume = 0.5;
+
+        const STORAGE_KEY = "ifp_bgm_enabled";
+
+        let enabled = localStorage.getItem(STORAGE_KEY);
+        enabled = (enabled === null) ? true : (enabled === "true");
+
+        const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+        };
+
+        const playIfAllowed = async () => {
+        if (!enabled) {
+            try { audio.pause(); } catch(e) {}
+            return;
+        }
+        try {
+            await audio.play();
+        } catch (e) {
+            console.log("BGM autoplay blocked:", e);
+        }
+        };
+
+        updateButtonText();
+
+        // 初回クリックで再生開始（ブラウザ制限対策）
+        const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+        };
+        document.addEventListener("click", onFirstInteract);
+
+        btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+            await playIfAllowed();
+        } else {
+            audio.pause();
+        }
+        });
+    })();
+    </script>
+
 </body>
 </html>

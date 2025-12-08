@@ -21,20 +21,37 @@ class CommentIn(BaseModel):
     parent_id: Optional[int] = None
 
 @router.get("")
-def list_comments(place_id: str = Query(..., min_length=1, max_length=128), session: Session = Depends(get_session)):
+def list_comments(
+    place_id: str = Query(..., min_length=1, max_length=128),
+    session: Session = Depends(get_session)
+):
     rows = session.exec(
-        select(Comment, User).where(Comment.place_id == place_id).join(User, User.id == Comment.user_id).order_by(Comment.created_at.desc())
+        select(Comment, User)
+        .where(Comment.place_id == place_id)
+        .join(User, User.id == Comment.user_id)
+        .order_by(Comment.created_at.desc())
     ).all()
+
     items = []
     for c, u in rows:
+        # ★ 表示に使う名前をここで決める
+        display = u.display_name or (u.email.split("@")[0] if u.email else "匿名ユーザー")
+
         items.append({
             "id": c.id,
             "place_id": c.place_id,
             "content": c.content,
-            "created_at": c.created_at.isoformat()+"Z",
-            "user": {"id": u.id, "email": u.email}
+            "created_at": c.created_at.isoformat() + "Z",
+            "user": {
+                "id": u.id,
+                "email": u.email,
+                "display_name": u.display_name,
+            },
+            "user_name": display,  # ★ 表示用
         })
+
     return {"ok": True, "count": len(items), "items": items}
+
 
 @router.post("")
 def create_comment(payload: CommentIn, request: Request, session: Session = Depends(get_session)):
@@ -51,19 +68,34 @@ def create_comment(payload: CommentIn, request: Request, session: Session = Depe
 
     c = Comment(user_id=user.id, place_id=payload.place_id, content=payload.content.strip(), parent_id=payload.parent_id)
     session.add(c); session.commit(); session.refresh(c)
-    return {"ok": True, "id": c.id, "created_at": c.created_at.isoformat()+"Z"}
+    return {
+            "ok": True,
+            "id": c.id,
+            "created_at": c.created_at.isoformat() + "Z",
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "display_name": user.display_name,
+            },
+        }
 
 @router.delete("/{comment_id}")
-def delete_comment(comment_id: int = Path(..., ge=1), request: Request = None, session: Session = Depends(get_session)):
-    user = get_current_user(request)
-    login_required(user)
-
+def delete_comment(
+    comment_id: int,
+    session: Session = Depends(get_session),
+    user = Depends(get_current_user)
+):
+    # コメントの存在チェック
     c = session.get(Comment, comment_id)
     if not c:
-        raise HTTPException(404, "コメントが見つかりません")
-    if c.user_id != user.id:
-        # 管理者権限があればここで許可するなど（今回は本人のみ）
-        raise HTTPException(403, "削除権限がありません")
+        raise HTTPException(status_code=404, detail="コメントが見つかりません")
 
-    session.delete(c); session.commit()
+    # ★ 所有者チェック（最重要）
+    if c.user_id != user.id:
+        raise HTTPException(status_code=403, detail="このコメントを削除する権限がありません")
+
+    session.delete(c)
+    session.commit()
+
     return {"ok": True}
+

@@ -212,6 +212,7 @@
         padding: 1.1rem 1rem 1.3rem;
       }
     }
+    
   </style>
 </head>
 <body>
@@ -231,7 +232,15 @@
       </div>
     </div>
   </nav>
-
+  
+  <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+  </audio>
+  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+      🎵 BGM ON
+    </button>
+  </div>
   <main class="container page-root">
     <section class="panel">
       <div class="page-header">
@@ -297,7 +306,7 @@
       }
 
       grid.innerHTML = items.map(it => {
-        const imgUrl = new URL(it.image, window.location.origin).href + `?v=${Date.now()}`;
+        const imgUrl = new URL(it.image, window.location.origin).href;
         const ownedClass = it.owned ? 'owned' : 'locked';
         const badge = it.owned
           ? '<span class="badge-owned">所持中 ✅</span>'
@@ -307,7 +316,7 @@
           <div class="col-6 col-md-4 col-lg-3">
             <div class="stamp-card ${ownedClass}">
               ${badge}
-              <img src="${imgUrl}" alt="${escapeHtml(it.name || '')}">
+              <img src="${imgUrl}" alt="${escapeHtml(it.name || '')}" loading="lazy">
               <div class="stamp-name">${escapeHtml(it.name || '')}</div>
               <div class="stamp-meta">
                 ${it.owned ? 'チェックイン済み' : 'まだ未ゲット'}
@@ -352,5 +361,57 @@
       loadChars();
     });
   </script>
+  <script>
+  (function () {
+    const audio = document.getElementById("bgmAudio");
+    const btn   = document.getElementById("bgmToggleBtn");
+    if (!audio || !btn) return;
+
+    /* ▼ 音量を50%に設定 ▼ */
+    audio.volume = 0.5;
+
+    const STORAGE_KEY = "ifp_bgm_enabled";
+
+    let enabled = localStorage.getItem(STORAGE_KEY);
+    enabled = (enabled === null) ? true : (enabled === "true");
+
+    const updateButtonText = () => {
+      btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+    };
+
+    const playIfAllowed = async () => {
+      if (!enabled) {
+        try { audio.pause(); } catch(e) {}
+        return;
+      }
+      try {
+        await audio.play();
+      } catch (e) {
+        console.log("BGM autoplay blocked:", e);
+      }
+    };
+
+    updateButtonText();
+
+    // 初回クリックで再生開始（ブラウザ制限対策）
+    const onFirstInteract = () => {
+      document.removeEventListener("click", onFirstInteract);
+      playIfAllowed();
+    };
+    document.addEventListener("click", onFirstInteract);
+
+    btn.addEventListener("click", async () => {
+      enabled = !enabled;
+      localStorage.setItem(STORAGE_KEY, String(enabled));
+      updateButtonText();
+      if (enabled) {
+        await playIfAllowed();
+      } else {
+        audio.pause();
+      }
+    });
+  })();
+</script>
+
 </body>
 </html>

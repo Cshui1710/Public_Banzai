@@ -3,7 +3,7 @@
   const mode = window.__PAGE_MODE__ || "";
   const user = window.__USER__ || { id: 0, email: null, is_guest: true };
   const isRandom = window.__IS_RANDOM__ === true || window.__IS_RANDOM__ === "true";
-  const IS_CHALLENGE = !!window.__CHALLENGE_LEVEL__;   // ★ 追加：チャレンジモード判定
+  const IS_CHALLENGE = !!window.__CHALLENGE_LEVEL__;   // ★ チャレンジモード判定
   const j = (sel) => document.querySelector(sel);
 
   const MY_NAME = (() => {
@@ -26,6 +26,108 @@
 
   let thinkingAudio = null;
   let questionStartAudio = null;
+
+  
+  // ========= チュートリアルモーダル（全モード共通） =========
+  const TUTORIAL_HIDE_KEY = "ifp_quiz_tutorial_hide";
+
+  const setupTutorial = () => {
+    const backdrop   = document.getElementById("tutorialBackdrop");
+    const helpBtn    = document.getElementById("helpBtn");
+    if (!backdrop) return;  // quiz.html にチュートリアルがない場合は何もしない
+
+    const pages      = Array.from(backdrop.querySelectorAll(".tutorial-page"));
+    const prevBtn    = document.getElementById("tutorialPrevBtn");
+    const nextBtn    = document.getElementById("tutorialNextBtn");
+    const closeBtn   = document.getElementById("tutorialCloseBtn");
+    const stepLabel  = document.getElementById("tutorialStepLabel");
+    const dontShowCb = document.getElementById("tutorialDontShow");
+
+    if (!pages.length || !prevBtn || !nextBtn || !closeBtn || !stepLabel) return;
+
+    const total = pages.length;
+    let currentPage = 1;
+
+    const applyPage = () => {
+      pages.forEach((p) => {
+        const pageNo = Number(p.dataset.page || "0");
+        p.classList.toggle("active", pageNo === currentPage);
+      });
+      stepLabel.textContent = `${currentPage} / ${total}`;
+
+      prevBtn.disabled = currentPage === 1;
+      nextBtn.style.display = currentPage < total ? "inline-block" : "none";
+      closeBtn.style.display = currentPage === total ? "inline-block" : "none";
+    };
+
+    const openTutorial = (page = 1) => {
+      currentPage = Math.min(Math.max(1, page), total);
+      applyPage();
+      backdrop.style.display = "flex";
+    };
+
+    const closeTutorial = () => {
+      backdrop.style.display = "none";
+      if (dontShowCb && dontShowCb.checked) {
+        try {
+          localStorage.setItem(TUTORIAL_HIDE_KEY, "true");
+        } catch (e) {}
+      }
+    };
+
+    prevBtn.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage -= 1;
+        applyPage();
+      }
+    });
+
+    nextBtn.addEventListener("click", () => {
+      if (currentPage < total) {
+        currentPage += 1;
+        applyPage();
+      }
+    });
+
+    closeBtn.addEventListener("click", () => {
+      closeTutorial();
+    });
+
+    // 背景クリックで閉じる（カード内クリックでは閉じない）
+    backdrop.addEventListener("click", (ev) => {
+      if (ev.target === backdrop) {
+        closeTutorial();
+      }
+    });
+
+    // ESCキーでも閉じる
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && backdrop.style.display !== "none") {
+        closeTutorial();
+      }
+    });
+
+    // 「❓ あそびかた」ボタン → 手動表示
+    if (helpBtn) {
+      helpBtn.addEventListener("click", () => {
+        openTutorial(1);
+      });
+    }
+
+    // 自動表示（初回のみ）
+    try {
+      const hide = localStorage.getItem(TUTORIAL_HIDE_KEY) === "true";
+      if (!hide) {
+        // 全モード共通だが、play画面/チャレンジ選択/待機などで自然に出る想定
+        openTutorial(1);
+      }
+    } catch (e) {
+      // localStorage にアクセスできなくても無視
+      openTutorial(1);
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", setupTutorial);
 
   // ========= メンバー & スコア =========
   const renderMembers = (members) => {
@@ -221,8 +323,19 @@
     let current = { qid: null, choices: [], locked: true };
     const setRoundInfo = (no, max) => {
       const el = j("#roundInfo");
-      if (el) el.textContent = no && max ? `ラウンド ${no} / ${max}` : "";
+      if (!el) return;
+
+      if (no && max) {
+        // ★ 通常時：今が何問目で、全何問か分かる
+        el.textContent = `第 ${no} 問 / 全 ${max} 問`;
+      } else if (max) {
+        // ★ もし今の問題番号がまだ分からないけど、総数だけ分かる時用（保険）
+        el.textContent = `全 ${max} 問`;
+      } else {
+        el.textContent = "";
+      }
     };
+
 
     const disableAllChoices = () => {
       document.querySelectorAll(".choice-btn").forEach((b) => (b.disabled = true));
@@ -369,7 +482,7 @@
     const playJudgeFx = (isCorrect) => {
       try {
         const audio = new Audio(isCorrect ? JUDGE_SE_CORRECT : JUDGE_SE_WRONG);
-        audio.volume = 1.0;
+        audio.volume = 0.6;  
         audio.play().catch(() => {});
       } catch(e) {}
 

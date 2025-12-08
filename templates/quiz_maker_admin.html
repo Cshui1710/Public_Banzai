@@ -10,44 +10,181 @@
     rel="stylesheet"
   >
   <style>
-    body { background:#f8fafc; }
+    :root {
+      --indigo: #4f46e5;
+      --indigo-soft: #eef2ff;
+      --danger-soft: #fef2f2;
+      --slate: #0f172a;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #0f172a;
+    }
+
+    .navbar {
+      background: rgba(255,255,255,0.96) !important;
+      border-bottom: 1px solid rgba(148,163,184,0.35);
+      backdrop-filter: blur(10px);
+    }
+
     .card {
       border: 0;
       border-radius: 1rem;
       box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+      background: #ffffff;
     }
+
     .badge-role {
       font-size: .7rem;
-      letter-spacing: .08em;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: .25rem .7rem;
+      background: var(--indigo-soft);
+      color: #4338ca;
     }
+
+    .page-header-card {
+      border-radius: 1.1rem;
+      background: linear-gradient(135deg, #eef2ff, #e0f2fe 55%, #fef3c7 100%);
+      border: 1px solid rgba(129,140,248,0.4);
+    }
+
+    .page-header-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .page-header-title span.icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #4f46e5;
+      color: #fff;
+      font-size: 1.1rem;
+      box-shadow: 0 10px 20px rgba(79,70,229,0.35);
+    }
+
+    .page-header-sub {
+      font-size: .85rem;
+      color: #4b5563;
+    }
+
+    .page-header-meta {
+      font-size: .75rem;
+      color: #6b7280;
+      text-align: right;
+    }
+
     .table-wrap {
       max-height: 520px;
-      overflow:auto;
+      overflow: auto;
       border-radius: .75rem;
+      border: 1px solid rgba(148,163,184,0.35);
     }
+
+    .table thead th {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #6b7280;
+      background: #f9fafb;
+      border-top: none;
+    }
+
+    .table tbody tr:hover {
+      background: #f9fafb;
+    }
+
     .q-stem {
       font-weight: 600;
       font-size: .9rem;
+      color: #0f172a;
     }
+
     .q-meta {
-      font-size: .8rem;
-      color:#64748b;
+      font-size: .78rem;
+      color: #64748b;
     }
+
     .pill {
       display:inline-flex;
       align-items:center;
+      justify-content:center;
+      min-width: 1.4rem;
       gap:.25rem;
       border-radius:999px;
-      padding:.1rem .6rem;
-      font-size:.75rem;
-      background:#eef2ff;
-      color:#4f46e5;
+      padding:.05rem .5rem;
+      font-size:.7rem;
+      background: var(--indigo-soft);
+      color: #4f46e5;
+      margin-right: .25rem;
+    }
+
+    .hint-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .15rem .6rem;
+      border-radius: 999px;
+      background: #fef9c3;
+      color: #854d0e;
+      font-size: .75rem;
+      margin-top: .25rem;
+    }
+
+    .hint-pill span.icon {
+      font-size: .9rem;
+    }
+
+    .filter-label {
+      font-size: .75rem;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: #6b7280;
+    }
+
+    .filter-card {
+      border-radius: 1rem;
+    }
+
+    .btn-outline-primary.btn-sm {
+      border-radius: 999px;
+      font-size: .78rem;
+      padding-inline: 1rem;
+    }
+
+    .btn-delete-soft {
+      border-radius: 999px;
+      font-size: .75rem;
+      padding: .2rem .75rem;
+      border-color: #fecaca;
+      color: #b91c1c;
+      background: var(--danger-soft);
+    }
+    .btn-delete-soft:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+
+    /* small helper */
+    .text-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     }
   </style>
 </head>
 <body>
   <!-- ナビ -->
-  <nav class="navbar navbar-expand-lg bg-white border-bottom">
+  <nav class="navbar navbar-expand-lg">
     <div class="container">
       <a class="navbar-brand fw-bold" href="/home">
         Ishikawa Facilities &amp; Parks
@@ -60,42 +197,69 @@
       </div>
     </div>
   </nav>
-
+    <!-- BGM -->
+    <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+    </audio>
+    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+        🎵 BGM ON
+    </button>
+    </div>
+  
   <main class="container py-4">
-    <div class="mb-3">
-      <h1 class="h4 mb-1">作問編集（管理者用）</h1>
-      <p class="text-muted mb-0">
-        みんなが作ったクイズ問題を一覧表示し、不適切な問題を削除できます。
-      </p>
+    <!-- ヘッダカード -->
+    <div class="card page-header-card mb-3">
+      <div class="card-body d-flex flex-wrap justify-content-between align-items-start gap-3">
+        <div>
+          <div class="page-header-title mb-1">
+            <span class="icon">⚙️</span>
+            <span>作問編集（管理者用）</span>
+          </div>
+          <p class="page-header-sub mb-0">
+            みんなが作ったクイズ問題を一覧表示し、不適切な問題を削除できます。  
+            授業やイベントの目的に合わせて、問題プールをメンテナンスできます。
+          </p>
+        </div>
+        <div class="text-end">
+          <div class="badge-role mb-1">Q MAKER ADMIN</div>
+          <div id="summaryText" class="page-header-meta">読み込み中...</div>
+        </div>
+      </div>
     </div>
 
     <!-- フィルタ -->
-    <div class="card mb-3">
+    <div class="card filter-card mb-3">
       <div class="card-body">
-        <div class="row g-3 align-items-center">
-          <div class="col-md-4">
-            <label class="form-label small text-muted">キーワード検索（問題文 / ヒント / 作成者）</label>
-            <input id="searchInput" type="text" class="form-control" placeholder="例）図書館 / 金沢市 など">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-5">
+            <label class="filter-label form-label mb-1">キーワード検索</label>
+            <input
+              id="searchInput"
+              type="text"
+              class="form-control form-control-sm"
+              placeholder="問題文 / ヒント / 作成者 で検索（例：図書館 / 金沢市 など）"
+            >
           </div>
           <div class="col-md-3">
-            <label class="form-label small text-muted">並び順</label>
+            <label class="filter-label form-label mb-1">並び順</label>
             <select id="sortSelect" class="form-select form-select-sm">
               <option value="newest">新しい順</option>
               <option value="oldest">古い順</option>
               <option value="author">作成者名順</option>
             </select>
           </div>
-          <div class="col-md-3">
-            <label class="form-label small text-muted">表示件数</label>
+          <div class="col-md-2">
+            <label class="filter-label form-label mb-1">表示件数</label>
             <select id="limitSelect" class="form-select form-select-sm">
               <option value="50">50件まで</option>
               <option value="100">100件まで</option>
               <option value="0">すべて表示</option>
             </select>
           </div>
-          <div class="col-md-2 d-flex align-items-end justify-content-end">
-            <button id="reloadBtn" class="btn btn-outline-primary btn-sm w-100">
-              再読み込み
+          <div class="col-md-2 d-grid">
+            <button id="reloadBtn" class="btn btn-outline-primary btn-sm">
+              🔄 再読み込み
             </button>
           </div>
         </div>
@@ -105,24 +269,15 @@
     <!-- 一覧 -->
     <div class="card">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div>
-            <span class="badge bg-indigo-100 text-primary-emphasis badge-role">
-              Q MAKER ADMIN
-            </span>
-            <span id="summaryText" class="ms-2 small text-muted">読み込み中...</span>
-          </div>
-        </div>
-
-        <div class="table-wrap mt-2">
+        <div class="table-wrap mt-1 bg-white">
           <table class="table table-sm align-middle mb-0">
             <thead class="table-light">
               <tr>
                 <th style="width:4rem;">ID</th>
                 <th>問題 / ヒント / 選択肢</th>
                 <th style="width:10rem;">作成者</th>
-                <th style="width:8rem;">作成日時</th>
-                <th style="width:5rem;" class="text-end">操作</th>
+                <th style="width:9rem;">作成日時</th>
+                <th style="width:6rem;" class="text-end">操作</th>
               </tr>
             </thead>
             <tbody id="qTableBody">
@@ -221,34 +376,35 @@
         var choicesHtml = "";
         (q.choices || []).forEach(function(c, i) {
           choicesHtml +=
-            "<span class=\"pill\">" + (i + 1) + "</span> " +
-            escapeHtml(c) + "<br>";
+            "<span class=\"pill\">" + (i + 1) + "</span>" +
+            "<span>" + escapeHtml(c) + "</span><br>";
         });
 
         var hintHtml = "";
         if (q.hint) {
           hintHtml =
-            "<div class=\"q-meta mt-1\"><strong>ヒント：</strong>" +
-            escapeHtml(q.hint) +
+            "<div class=\"hint-pill mt-1\">" +
+              "<span class=\"icon\">💡</span>" +
+              "<span>" + escapeHtml(q.hint) + "</span>" +
             "</div>";
         }
 
         var created = escapeHtml(q.created_at || "");
 
         tr.innerHTML =
-          "<td><span class=\"small text-muted\">#" + q.id + "</span></td>" +
+          "<td><span class=\"small text-mono text-muted\">#" + q.id + "</span></td>" +
           "<td>" +
             "<div class=\"q-stem\">" + escapeHtml(q.stem) + "</div>" +
             hintHtml +
-            "<div class=\"q-meta mt-1\">" + choicesHtml + "</div>" +
+            "<div class=\"q-meta mt-2\">" + choicesHtml + "</div>" +
           "</td>" +
           "<td>" +
             "<div class=\"small fw-semibold\">" + escapeHtml(q.user_name || "") + "</div>" +
-            "<div class=\"q-meta\">user_id: " + q.user_id + "</div>" +
+            "<div class=\"q-meta text-mono\">user_id: " + q.user_id + "</div>" +
           "</td>" +
           "<td><span class=\"q-meta\">" + created + "</span></td>" +
           "<td class=\"text-end\">" +
-            "<button class=\"btn btn-sm btn-outline-danger btn-delete\" data-id=\"" + q.id + "\">削除</button>" +
+            "<button class=\"btn btn-delete-soft btn-sm btn-delete\" data-id=\"" + q.id + "\">削除</button>" +
           "</td>";
 
         tbody.appendChild(tr);
@@ -321,5 +477,58 @@
       reloadAll();
     });
   </script>
+
+    <script>
+    (function () {
+        const audio = document.getElementById("bgmAudio");
+        const btn   = document.getElementById("bgmToggleBtn");
+        if (!audio || !btn) return;
+
+        /* ▼ 音量を50%に設定 ▼ */
+        audio.volume = 0.5;
+
+        const STORAGE_KEY = "ifp_bgm_enabled";
+
+        let enabled = localStorage.getItem(STORAGE_KEY);
+        enabled = (enabled === null) ? true : (enabled === "true");
+
+        const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+        };
+
+        const playIfAllowed = async () => {
+        if (!enabled) {
+            try { audio.pause(); } catch(e) {}
+            return;
+        }
+        try {
+            await audio.play();
+        } catch (e) {
+            console.log("BGM autoplay blocked:", e);
+        }
+        };
+
+        updateButtonText();
+
+        // 初回クリックで再生開始（ブラウザ制限対策）
+        const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+        };
+        document.addEventListener("click", onFirstInteract);
+
+        btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+            await playIfAllowed();
+        } else {
+            audio.pause();
+        }
+        });
+    })();
+    </script>
+  
 </body>
 </html>

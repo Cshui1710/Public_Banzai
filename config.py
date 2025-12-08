@@ -38,3 +38,4 @@ MIN_PW = 8
 MAX_PW = 256
 
 AUTH_COOKIE = "nonoji_session"
+

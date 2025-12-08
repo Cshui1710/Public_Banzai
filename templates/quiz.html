@@ -509,6 +509,105 @@
       color: #fefce8;
       box-shadow: 0 0 0 3px rgba(248,250,252,0.8);
     }
+
+    /* ===== クイズ あそびかた（home.html と共通テイスト） ===== */
+    .tutorial-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;              /* JSで表示制御 */
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      padding: 1.5rem;
+      background: radial-gradient(
+        circle at top,
+        rgba(15,23,42,0.75) 0,
+        rgba(15,23,42,0.85) 45%,
+        rgba(15,23,42,0.9) 100%
+      );
+    }
+
+    .tutorial-card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      max-width: 720px;
+      width: 92%;
+      box-shadow: 0 24px 60px rgba(15,23,42,0.55);
+      padding: 1.6rem 1.8rem 1.3rem;
+      position: relative;
+      border: 1px solid rgba(148,163,184,0.45);
+    }
+
+    /* 見出しまわり（home の home-tutorial-* と同じトーン） */
+    .tutorial-badge {
+      font-size: .75rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+      margin-bottom: .3rem;
+    }
+
+    .tutorial-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      margin-bottom: .4rem;
+    }
+
+    .tutorial-title span {
+      background: linear-gradient(110deg,#6366f1,#f97316);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    /* 本文・ページ切り替え */
+    .tutorial-body {
+      margin-top: .6rem;
+      margin-bottom: .8rem;
+      font-size: .94rem;
+      color: #4b5563;
+      min-height: 130px;
+    }
+
+    .tutorial-page {
+      display: none;
+    }
+
+    .tutorial-page.active {
+      display: block;
+    }
+
+    /* フッター部分（ステップ表示＋ボタン群） */
+    .tutorial-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .75rem;
+      margin-top: .75rem;
+      padding-top: .6rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .tutorial-steps {
+      font-size: .8rem;
+      color: #6b7280;
+    }
+
+    /* 閉じるボタンは pill 形状 */
+    .tutorial-close-btn {
+      border-radius: 999px;
+    }
+
+    /* 「次回から自動表示しない」 */
+    .tutorial-checkbox {
+      font-size: .78rem;
+      color: #6b7280;
+      margin-top: .45rem;
+      display: flex;
+      align-items: center;
+      gap: .3rem;
+    }
+
   </style>
 </head>
 <body>
@@ -518,7 +617,10 @@
         <span class="brand-logo">IF</span>
         <span>Ishikawa Facilities &amp; Parks</span>
       </a>
-      <div class="ms-auto">
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <button id="helpBtn" class="btn btn-outline-primary btn-sm">
+          ❓ あそびかた
+        </button>
         <a class="btn btn-outline-secondary btn-sm" href="/home">ホームへ</a>
       </div>
     </div>
@@ -606,7 +708,7 @@
           <div class="boss-inner">
             <div class="boss-header">
               <div>
-                <div class="boss-tag">◆ JACK</div>
+                <div class="boss-tag">♠ JACK</div>
                 <div class="boss-name">
                   ジャック <small>/ 入門用ボス</small>
                 </div>
@@ -645,9 +747,9 @@
           </div>
           <div class="boss-footer">
             <a href="/quiz/challenge/play?level=jack" class="btn btn-sm btn-primary">
-              ジャックに挑戦する
+              ジャックに挑戦
             </a>
-            <small>初めての人・ルール確認におすすめ。</small>
+            <small>初めての人におすすめ。</small>
           </div>
         </div>
 
@@ -695,9 +797,9 @@
           </div>
           <div class="boss-footer">
             <a href="/quiz/challenge/play?level=queen" class="btn btn-sm btn-warning">
-              クイーンに挑戦する
+              クイーンに挑戦
             </a>
-            <small>「そこそこ歯ごたえがほしい」人向け。</small>
+            <small>「歯ごたえがほしい」人向け。</small>
           </div>
         </div>
 
@@ -706,7 +808,7 @@
           <div class="boss-inner">
             <div class="boss-header">
               <div>
-                <div class="boss-tag">♠ KING</div>
+                <div class="boss-tag">◆ KING</div>
                 <div class="boss-name">
                   キング <small>/ 最終ボス</small>
                 </div>
@@ -745,7 +847,7 @@
           </div>
           <div class="boss-footer">
             <a href="/quiz/challenge/play?level=king" class="btn btn-sm btn-danger">
-              キングに挑戦する
+              キングに挑戦
             </a>
             <small>腕に自信がある人だけどうぞ。</small>
           </div>
@@ -792,6 +894,7 @@
                     参加者が揃ったら「ゲーム開始」を押してください。
                   </div>
                 {% endif %}
+                <div id="roundInfo" class="text-muted small mt-1"></div>
               </div>
               <div class="mt-2 mt-lg-0">
                 <button id="startBtn"
@@ -910,6 +1013,90 @@
     </div>
   </main>
 
+  <!-- ▼ チュートリアルモーダル（全モード共通で使う） -->
+  <div id="tutorialBackdrop" class="tutorial-backdrop">
+    <div class="tutorial-card">
+      <div class="tutorial-badge">HOW TO PLAY</div>
+      <div class="tutorial-title"><span>クイズの遊び方</span></div>
+
+      <div class="tutorial-body">
+        <!-- ページ1: アプリ全体 -->
+        <div class="tutorial-page active" data-page="1">
+          <p class="mb-2">
+            このアプリは、<strong>石川県の公共施設・公園</strong>に関するクイズを通して、街のことを楽しく学べるアプリです。
+          </p>
+          <ul class="mb-0">
+            <li>ランダムマッチ：全国のプレイヤーと自動マッチング</li>
+            <li>フレンドマッチ：ルームコードを共有して友だちとバトル</li>
+            <li>チャレンジモード：CPUボスとの 1 vs 1 バトル</li>
+          </ul>
+        </div>
+
+        <!-- ページ2: 基本ルール -->
+        <div class="tutorial-page" data-page="2">
+          <p class="mb-2">
+            クイズは<strong>4択</strong>で、<strong>制限時間内に答えを選ぶ</strong>早押しスタイルです。
+          </p>
+          <ul class="mb-0">
+            <li>正解するとスコアが加算されます。</li>
+            <li><strong>早く正解</strong>するほど高得点（先着ボーナス）！</li>
+            <li>まちがえても次の問題で挽回できます。</li>
+          </ul>
+        </div>
+
+        <!-- ページ3: ボス戦＆スタンプ -->
+        <div class="tutorial-page" data-page="3">
+          <p class="mb-2">
+            チャレンジモードでは、ジャック・クイーン・キングの<strong>CPUボス</strong>と対戦します。
+          </p>
+          <ul class="mb-0">
+            <li>正解・不正解に応じて、お互いの<strong>HPバー</strong>が減っていきます。</li>
+            <li>先にボスのHPを 0 にすれば勝利、あなたのHPが 0 になると敗北です。</li>
+            <li>プレイ中はスタンプでリアクションを送ることもできます。</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tutorial-footer">
+        <div class="tutorial-steps">
+          <span id="tutorialStepLabel">1 / 3</span>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="tutorialPrevBtn" type="button" class="btn btn-outline-secondary btn-sm" disabled>
+            戻る
+          </button>
+          <button id="tutorialNextBtn" type="button" class="btn btn-primary btn-sm">
+            次へ
+          </button>
+          <button id="tutorialCloseBtn" type="button" class="btn btn-outline-dark btn-sm tutorial-close-btn" style="display:none;">
+            OK ではじめる
+          </button>
+        </div>
+      </div>
+
+      <label class="tutorial-checkbox">
+        <input type="checkbox" id="tutorialDontShow" />
+        次回から自動表示しない
+      </label>
+    </div>
+  </div>
+
+  <!-- ▼ クイズBGM（待機系 & チャレンジ選択だけ） -->
+  {% if mode in ["random-wait", "room-created", "room-join", "challenge-select"] %}
+  <audio id="bgmAudio" loop>
+    {% if mode == "challenge-select" %}
+      <source src="/static/bgm/challenge.mp3" type="audio/mpeg">
+    {% else %}
+      <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+    {% endif %}
+  </audio>
+  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+      🎵 BGM ON
+    </button>
+  </div>
+  {% endif %}
+
   <!-- quiz.js 用グローバル変数（チャレンジ用も含む） -->
   <script>
     window.__PAGE_MODE__ = {{ mode | tojson }};
@@ -946,16 +1133,14 @@
         renderHp();
       }
 
-      // ユーザが「相手より早く正解」したとき: ボスHPを1/10減らし、自分も同じだけ減らす
+      // ユーザが「相手より早く正解」したとき: ボスHPを1/10減らす
       // それ以外（負けor不正解）のとき: 自分だけ1/10減らす
       function applyBossBattleRound(userFasterAndCorrect) {
         if (!playerBar || !bossBar) return; // 通常モードでは何もしない
 
         if (userFasterAndCorrect) {
-          // 自分が正解（＝今は m.correct=true のとき） → ボスのHPだけ削る
           bossHp = Math.max(0, bossHp - 10);
         } else {
-          // 外した or ボスに負けた → 自分のHPだけ削る
           playerHp = Math.max(0, playerHp - 10);
         }
         renderHp();
@@ -966,6 +1151,61 @@
 
       document.addEventListener('DOMContentLoaded', function() {
         initBossBattleHp();
+      });
+    })();
+  </script>
+
+  <!-- クイズ画面用BGM制御（待機画面 / チャレンジ選択のみ） -->
+  <script>
+    (function () {
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;  // play画面など、BGMが無いモードでは何もしない
+
+      // 音量を50%に設定
+      audio.volume = 0.5;
+
+      // quiz専用のキー（他ページのBGMとは独立）
+      const STORAGE_KEY = "ifp_quiz_bgm_enabled";
+
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
+
+      const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+      };
+
+      const playIfAllowed = async () => {
+        if (!enabled) {
+          try { audio.pause(); } catch(e) {}
+          return;
+        }
+        try {
+          await audio.play();
+        } catch (e) {
+          console.log("Quiz BGM autoplay blocked:", e);
+        }
+      };
+
+      updateButtonText();
+
+      // 初回ユーザー操作で再生開始（ブラウザの自動再生制限対策）
+      const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+      };
+      document.addEventListener("click", onFirstInteract);
+
+      // ボタンON/OFF
+      btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+          await playIfAllowed();
+        } else {
+          audio.pause();
+        }
       });
     })();
   </script>

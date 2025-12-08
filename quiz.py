@@ -21,8 +21,8 @@ from models import engine, Character, UserCharacter
 from datetime import datetime  # ★ 追加
 from models import User, FacilityStat, CityStat 
 
-STAMP_COOLDOWN_SEC     = 4   # 同一ユーザーの連打を抑制
-STAMP_MAX_PER_ROUND    = 10     # 1ラウンドに送れる上限
+STAMP_COOLDOWN_SEC     = 1   # 同一ユーザーの連打を抑制
+STAMP_MAX_PER_ROUND    = 100     # 1ラウンドに送れる上限
 BASE_DIR = Path(__file__).resolve().parent  # quiz.pyの場所
 # staticがプロジェクト直下なら parent を調整してください
 # STAMP_DIR = str((BASE_DIR.parent / "static" / "stamp").resolve())
@@ -50,8 +50,9 @@ WRONG_POINTS            = 0          # 誤答
 
 HEAD_START_STAMP_KEYS = {
     "marmot.png",
-    "tanuki.png",
-    "kitsune.png",
+    "2.png",
+    "3.png",
+    "4.png",
 }
 
 CPU_NAME_POOL = [
@@ -68,6 +69,16 @@ CPU_NAME_POOL = [
     "アシュリー",
     "kaibara",
     "yamaoka",
+    "taka",
+    "垣yosiki",
+    "koutya",
+    "kaden",
+    "雷電",
+    "町田",
+    "有本",
+    "田中",
+    "松田",
+    "sai"
 ]
 
 
@@ -87,6 +98,69 @@ def ensure_admin(user):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="このページは管理者専用です。",
         )
+
+# 既にある import のすぐ下あたりに追加
+
+
+def _display_name_for_user(u: User) -> str:
+    """
+    ランキング表示用の名前：
+    - display_name があればそれを優先
+    - なければ「プレイヤーXXXX」（ID下4桁）形式
+    """
+    if getattr(u, "display_name", None):
+        return u.display_name
+    uid = getattr(u, "id", 0) or 0
+    return f"プレイヤー{uid:04d}"
+
+
+def _increment_quiz_play_count(user_ids: list[int]) -> None:
+    """
+    クイズ1プレイごとに、ユーザーの quiz_play_count を +1 する。
+    CPU(負ID)は除外。
+    """
+    if not user_ids:
+        return
+
+    from sqlmodel import Session
+    from models import engine, User
+
+    with Session(engine) as s:
+        for uid in user_ids:
+            if uid <= 0:
+                continue  # CPUなど
+            u = s.get(User, uid)
+            if not u:
+                continue
+            if u.quiz_play_count is None:
+                u.quiz_play_count = 0
+            u.quiz_play_count += 1
+            s.add(u)
+        s.commit()
+
+
+def _mark_king_clear(user_id: int) -> None:
+    """
+    チャレンジモード（King）をクリアしたユーザーにフラグを立てる。
+    すでに king_cleared が True なら何もしない。
+    """
+    if user_id <= 0:
+        return  # CPUなど
+
+    from sqlmodel import Session
+    from models import engine, User
+
+    with Session(engine) as s:
+        u = s.get(User, user_id)
+        if not u:
+            return
+        if getattr(u, "king_cleared", False):
+            return  # すでに登録済み
+
+        u.king_cleared = True
+        u.king_cleared_at = datetime.utcnow()
+        s.add(u)
+        s.commit()
 
 
 @dataclass
@@ -275,13 +349,13 @@ class QuestionBank:
     # ------- 出題生成 -------
     def sample(self) -> Question:
         # 25%の確率でユーザー作問から出題
-        if random.random() < 0.8:
+        if random.random() < 0.7:
             uq = self._sample_user_question()
             if uq:
                 return uq
         # 既存のCSV問題
         if len(self.rows) >= 8 and len(self.city_set) >= 4:
-            if random.random() < 0.2:
+            if random.random() < 0.3:
                 return self._make_city_question()
             else:
                 kq = self._make_kind_question()
@@ -428,7 +502,7 @@ class Room:
     players: Dict[int, PlayerConn] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
-    round_max: int = 5
+    round_max: int = 10
     round_no: int = 0
     scores: Dict[int, int] = field(default_factory=dict)
     current_q: Optional[Question] = None
@@ -459,7 +533,10 @@ class Room:
     correct_users: set = field(default_factory=set)          # この問題で正解した user_id
     round_human_ids: set = field(default_factory=set)        # 問題開始時点での人間プレイヤー
     stats_recorded: bool = False 
-
+    round_end_scheduled: bool = False
+    finished: bool = False
+    
+    
     async def start_with_countdown(self, seconds: int = PRESTART_COUNTDOWN_SEC):
         async with self.lock:
             if self.running:
@@ -591,6 +668,7 @@ class Room:
             if self.running:
                 return
             # 必要人数までCPUで補充
+            self.finished = False
             need = self._need_cpu_count()
             if need > 0:
                 # ロック外のawaitを避けるため、後で呼ぶ
@@ -612,55 +690,71 @@ class Room:
         await self.next_round()
 
     async def next_round(self):
-        # ★既存ロジック先頭そのまま
+        # ★ まずロックを取って状態だけ決める
         async with self.lock:
-            # 既存: ラウンド終了→_finish
+            self.round_end_scheduled = False
+
+            # --- 全ラウンド終了なら finish フラグだけ立てる ---
             if self.round_no >= self.round_max:
-                await self._finish()
-                return
+                should_finish = True
+                q = None
+                banner = None
+                payload = None
+            else:
+                should_finish = False
 
-            if self.running and self.current_q and self.round_timer_task and not self.round_timer_task.done():
-                # すでに同じ round_no の問題が動作中なら return
-                return
+                # 次のラウンドをセットアップ
+                self.round_no += 1
+                self.current_q = QBANK.sample()
+                self.answered = set()
+                self.first_correct_user = None
+                self.correct_users = set()
+                self.round_human_ids = set(self._human_ids())  # 問題開始時点の人間プレイヤー
+                self.stats_recorded = False
 
-            # 既存: ラウンド番号＋問題生成
-            self.round_no += 1
-            self.current_q = QBANK.sample()
-            self.answered = set()
-            self.first_correct_user = None
-            self.correct_users = set()
-            self.round_human_ids = set(self._human_ids())  # 問題開始時点の人間プレイヤー
-            self.stats_recorded = False
+                # スタンプ回数リセット
+                self.stamp_count_round.clear()
+                self.round_started_ts = asyncio.get_event_loop().time()
 
-            self.stamp_count_round.clear()
-            self.round_started_ts = asyncio.get_event_loop().time()
-            # 既存: 問題ブロードキャスト用ペイロード
-            q = self.current_q
-            banner = {"type": "round_banner", "round_no": self.round_no}
-            payload = {
-                "type": "q",
-                "round_no": self.round_no,
-                "round_max": self.round_max,
-                "qid": q.qid,
-                "stem": q.stem,
-                "choices": q.choices,
-                "hint": q.hint or "",   # ★ 追加：ヒントを送る（空文字も可）                
-            }
+                q = self.current_q
+                banner = {"type": "round_banner", "round_no": self.round_no}
+                payload = {
+                    "type": "q",
+                    "round_no": self.round_no,
+                    "round_max": self.round_max,
+                    "qid": q.qid,
+                    "stem": q.stem,
+                    "choices": q.choices,
+                    "hint": q.hint or "",
+                }
 
-            # ★追加：前ラウンドの締切タスクをキャンセル
-            if self.round_timer_task and not self.round_timer_task.done():
-                self.round_timer_task.cancel()
-            # ★追加：新しい締切を設定
-            self.deadline_ts = asyncio.get_event_loop().time() + QUESTION_TIME_LIMIT_SEC
-            self.answer_open_ts = asyncio.get_event_loop().time() + ANSWER_OPEN_DELAY_SEC
-            # ★追加：締切監視タスクを起動
-            self.round_timer_task = asyncio.create_task(self._deadline_watch(q.qid, self.deadline_ts))
+                # 直前の締切タスクをキャンセル
+                if self.round_timer_task and not self.round_timer_task.done():
+                    self.round_timer_task.cancel()
 
-        # 既存: 問題を全員へ送信
+                # 新しい締切・回答オープン時刻を設定
+                loop = asyncio.get_event_loop()
+                now = loop.time()
+                self.deadline_ts = now + QUESTION_TIME_LIMIT_SEC
+                self.answer_open_ts = now + ANSWER_OPEN_DELAY_SEC
+
+                # 新しい締切監視タスクを起動
+                self.round_timer_task = asyncio.create_task(
+                    self._deadline_watch(q.qid, self.deadline_ts)
+                )
+
+        # --- ここからロックの外 ---
+
+        # 全ラウンド終わっていたら、ここで初めて _finish を呼ぶ
+        if should_finish:
+            await self._finish()
+            return
+
+        # まだ続く場合は、問題を配信＆CPU回答をスケジュール
         await self.broadcast(banner)
         await self.broadcast(payload)
-        # 既存: CPU の遅延回答スケジュール
         await self._schedule_cpu_answers()
+
 
     async def _deadline_watch(self, qid: str, deadline_ts: float):
         """制限時間になったら強制的に正解公開→次問へ"""
@@ -668,23 +762,39 @@ class Room:
             now = asyncio.get_event_loop().time()
             remain = max(0.0, deadline_ts - now)
             await asyncio.sleep(remain)
+
+            schedule_next = False  # ★ ここでこの関数から next_round を呼ぶかどうかを決める
+
             async with self.lock:
                 # すでに別問に移っている / 期限が更新されている場合は何もしない
                 if not self.current_q or self.current_q.qid != qid or self.deadline_ts != deadline_ts:
                     return
                 # ★ ここで「このラウンドのタイマーは終わった」とマークする
                 self.round_timer_task = None
+
                 if not self.stats_recorded:
                     self._save_recognition_stats()
                     self.stats_recorded = True
-                # ここで締切、正解を公開
+
+                # ★ すでに他の経路（receive_answer）でラウンド終了が予約されていないか確認
+                if not self.round_end_scheduled:
+                    self.round_end_scheduled = True
+                    schedule_next = True
+
                 reveal = {"type": "reveal", "qid": qid, "correct_idx": self.current_q.correct_idx}
+
+            # ロック解放後にブロードキャスト
             await self.broadcast(reveal)
-            await asyncio.sleep(2.0)
-            await self.next_round()
+
+            # ★ この関数からは「自分が担当」と決まっているときだけ次のラウンドへ進む
+            if schedule_next:
+                await asyncio.sleep(2.0)
+                await self.next_round()
+
         except asyncio.CancelledError:
             # ラウンド中に全員回答などでキャンセルされた場合
             return
+
 
 
     async def _schedule_cpu_answers(self):
@@ -797,7 +907,13 @@ class Room:
                     await asyncio.sleep(extra_wait)
             except Exception:
                 pass
-
+            
+            schedule_next = False
+            async with self.lock:
+                if not self.round_end_scheduled:
+                    self.round_end_scheduled = True
+                    schedule_next = True
+                    
             await asyncio.sleep(2.0)
             asyncio.create_task(self.next_round())
 
@@ -805,18 +921,58 @@ class Room:
 
 
     async def _finish(self):
-        if self.prestart_task and not self.prestart_task.done():
-            self.prestart_task.cancel()
-        self.is_prestarting = False
-        
-        if self.round_timer_task and not self.round_timer_task.done():
-            self.round_timer_task.cancel()        
-        self.running = False
-        ranking = sorted(self.scores.items(), key=lambda kv: (-kv[1], kv[0]))
-        await self.broadcast({"type":"game","event":"finished","ranking":[
-            {"id":uid,"name": self.players[uid].name if uid in self.players else f"User{uid}","score":sc}
-            for uid, sc in ranking
-        ]})
+        # ★ まずロックを取って「もう終わっているか」確認
+        async with self.lock:
+            if self.finished:
+                # すでに結果発表まで済んでいるなら何もしない
+                return
+            self.finished = True
+
+            if self.prestart_task and not self.prestart_task.done():
+                self.prestart_task.cancel()
+            self.is_prestarting = False
+
+            if self.round_timer_task and not self.round_timer_task.done():
+                self.round_timer_task.cancel()
+            self.running = False
+
+            # ランキング（スコア順）
+            ranking = sorted(self.scores.items(), key=lambda kv: (-kv[1], kv[0]))
+
+            # ★ クイズプレイ回数の加算（人間プレイヤーのみ）
+            human_ids = [uid for uid, pc in self.players.items() if not pc.is_bot]
+            _increment_quiz_play_count(human_ids)
+
+            # ★ チャレンジモード(King)で「人間が勝った」場合 → King撃破登録
+            if self.is_challenge and self.challenge_level == "king" and ranking:
+                top_uid, top_score = ranking[0]
+                top_pc = self.players.get(top_uid)
+
+                # CPUが混ざっている想定なので、CPUを含むかチェック
+                has_cpu = any(pc.is_bot for pc in self.players.values())
+
+                # 1位が人間 かつ CPU がいた場合を「キング撃破」とみなす
+                if top_pc and (not top_pc.is_bot) and has_cpu:
+                    _mark_king_clear(top_uid)
+
+            # broadcast 用にデータだけコピーしてからロックを抜ける
+            result_payload = {
+                "type": "game",
+                "event": "finished",
+                "ranking": [
+                    {
+                        "id": uid,
+                        "name": self.players[uid].name if uid in self.players else f"User{uid}",
+                        "score": sc,
+                    }
+                    for uid, sc in ranking
+                ],
+            }
+
+        # ★ ロックを持ったまま broadcast すると二重ロックの危険があるので外で送信
+        await self.broadcast(result_payload)
+
+
 
     async def _maybe_auto_prestart(self):
         """人間が READY_HUMANS に達したらカウントダウンを開始／割れたら中止"""
@@ -1048,21 +1204,21 @@ def _apply_challenge_level(room: Room, level: str):
     if level == "jack":
         # 入門：ちょっと遅くて、正解率ひかえめ
         room.cpu_name = "Jack"
-        room.cpu_correct_prob = 0.35
-        room.cpu_min_delay = 5.0
-        room.cpu_max_delay = 7.0
+        room.cpu_correct_prob = 0.5
+        room.cpu_min_delay = 4.0
+        room.cpu_max_delay = 6.0
         room.round_max = 11
     elif level == "queen":
         # 中級：そこそこ速くて、正解も多め
         room.cpu_name = "Queen"
-        room.cpu_correct_prob = 0.6
-        room.cpu_min_delay = 4.0
-        room.cpu_max_delay = 6.0
+        room.cpu_correct_prob = 0.7
+        room.cpu_min_delay = 3.0
+        room.cpu_max_delay = 5.0
         room.round_max = 12
     elif level == "king":
         # 上級：かなり速くて、ほぼ正解。負けても恨まない。
         room.cpu_name = "King"
-        room.cpu_correct_prob = 0.85
+        room.cpu_correct_prob = 0.9
         room.cpu_min_delay = 2.0
         room.cpu_max_delay = 3.0
         room.round_max = 13
@@ -1386,3 +1542,56 @@ async def ws_quiz(websocket: WebSocket, code: str):
             await room.leave(user_id)
         if websocket.client_state == WebSocketState.CONNECTED:
             await websocket.close()
+
+# ===================== HOME 用 ランキングAPI =====================
+
+@router.get("/api/home/top_quiz_players")
+async def api_home_top_quiz_players(user=Depends(get_current_user)):
+    """
+    クイズをたくさん遊んでくれた人（quiz_play_count順 上位5名）
+    """
+    login_required(user, allow_guest=True)
+
+    with Session(engine) as s:
+        rows = s.exec(
+            select(User)
+            .where(User.quiz_play_count > 0)
+            .order_by(User.quiz_play_count.desc(), User.id)
+            .limit(5)
+        ).all()
+
+    items = [
+        {
+            "id": u.id,
+            "display_name": _display_name_for_user(u),
+            "count": u.quiz_play_count or 0,
+        }
+        for u in rows
+    ]
+    return {"items": items}
+
+
+@router.get("/api/home/king_clearers")
+async def api_home_king_clearers(user=Depends(get_current_user)):
+    """
+    チャレンジモードの King を倒した人一覧（最大20名）
+    """
+    login_required(user, allow_guest=True)
+
+    with Session(engine) as s:
+        rows = s.exec(
+            select(User)
+            .where(User.king_cleared == True)  # noqa: E712
+            .order_by(User.king_cleared_at, User.id)
+            .limit(20)
+        ).all()
+
+    items = [
+        {
+            "id": u.id,
+            "display_name": _display_name_for_user(u),
+            "cleared_at": u.king_cleared_at.isoformat() if u.king_cleared_at else None,
+        }
+        for u in rows
+    ]
+    return {"items": items}

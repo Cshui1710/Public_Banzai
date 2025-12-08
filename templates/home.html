@@ -75,7 +75,7 @@
     .panel-left {
       background: rgba(255,255,255,0.97);
       border-radius: 1.4rem;
-      padding: 1.5rem 1.3rem 1.6rem;
+      padding: 1.5rem 1.3rem 1.9rem;
       box-shadow: var(--shadow-soft);
       border: 1px solid rgba(148,163,184,0.35);
       position: relative;
@@ -83,7 +83,7 @@
     }
     @media (min-width: 992px) {
       .panel-left {
-        padding: 1.9rem 1.7rem 1.9rem;
+        padding: 1.9rem 1.7rem 2.1rem;
       }
     }
 
@@ -370,6 +370,332 @@
       padding-inline: .9rem;
     }
     #bgmToggleBtn:hover { background: #020617; }
+
+    /* ===== HOME チュートリアルモーダル ===== */
+    .home-tutorial-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;              /* JSで表示制御 */
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      background: radial-gradient(circle at top, rgba(15,23,42,0.75) 0, rgba(15,23,42,0.85) 45%, rgba(15,23,42,0.9) 100%);
+    }
+
+    .home-tutorial-card {
+      background: #ffffff;
+      border-radius: 1.25rem;
+      max-width: 720px;
+      width: 92%;
+      box-shadow: 0 24px 60px rgba(15,23,42,0.55);
+      padding: 1.6rem 1.8rem 1.3rem;
+      position: relative;
+    }
+
+    .home-tutorial-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .4rem;
+    }
+
+    .home-tutorial-badge {
+      font-size: .75rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+    }
+
+    .home-tutorial-title {
+      font-size: 1.3rem;
+      font-weight: 800;
+    }
+
+    .home-tutorial-title span {
+      background: linear-gradient(110deg,#6366f1,#f97316);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .home-tutorial-body {
+      margin-top: .6rem;
+      margin-bottom: .8rem;
+    }
+
+    .home-tutorial-page {
+      display: none;
+    }
+
+    .home-tutorial-page.active {
+      display: block;
+    }
+
+    .home-tutorial-list {
+      padding-left: 1rem;
+      margin-bottom: .4rem;
+    }
+
+    .home-tutorial-list li {
+      margin-bottom: .25rem;
+      font-size: .94rem;
+    }
+
+    .home-tutorial-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: .75rem;
+      margin-top: .75rem;
+    }
+
+    .home-tutorial-steps {
+      font-size: .8rem;
+      color: #6b7280;
+    }
+
+    .home-tutorial-actions button {
+      min-width: 90px;
+    }
+
+    /* ===== 殿堂入りエリア（スライダー化・白ベース版） ===== */
+    .hall-of-fame {
+      margin-top: 1.1rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .hof-shell {
+      position: relative;
+      border-radius: 1.1rem;
+      padding: 1.0rem 1.0rem 1.1rem;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(251,191,36,0.18) 0, transparent 45%),
+        radial-gradient(circle at 100% 0%, rgba(129,140,248,0.2) 0, transparent 45%),
+        linear-gradient(135deg, #ffffff, #f9fafb);
+      color: #111827;
+      box-shadow: 0 14px 35px rgba(148,163,184,0.35);
+      border: 1px solid rgba(148,163,184,0.55);
+      overflow: hidden;
+      min-height: 210px;
+    }
+
+    .hof-shell::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      opacity: 0.16;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(253,224,71,0.8), transparent 55%),
+        radial-gradient(circle at 85% 0%, rgba(129,140,248,0.9), transparent 55%);
+      pointer-events: none;
+    }
+
+    .hof-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .hof-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: .75rem;
+      margin-bottom: .55rem;
+    }
+
+    .hof-header-left {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+    }
+
+    .hof-medal {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 20% 0%, #facc15, #f97316);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 3px rgba(250,204,21,0.6);
+      font-size: 1.2rem;
+    }
+
+    .hof-header-text-main {
+      font-size: .85rem;
+      font-weight: 800;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #1f2937;
+    }
+
+    .hof-header-text-sub {
+      font-size: .8rem;
+      color: #6b7280;
+    }
+
+    .hof-carousel {
+      margin-top: .5rem;
+      overflow: hidden;
+      border-radius: .85rem;
+      border: 1px solid rgba(203,213,225,0.9);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(239,246,255,0.9) 0, transparent 55%),
+        linear-gradient(to bottom, #ffffff, #f9fafb);
+      min-height: 170px;
+    }
+
+    .hof-track {
+      display: flex;
+      width: 200%;
+      transition: transform .55s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .hof-slide {
+      min-width: 100%;
+      padding: .7rem .9rem .65rem;
+    }
+
+    .hof-block {
+      background: transparent;
+      border-radius: .75rem;
+      padding: .2rem 0 .1rem;
+      border: none;
+      box-shadow: none;
+    }
+
+    .hof-title {
+      font-size: .8rem;
+      font-weight: 700;
+      color: #111827;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .hof-title span.badge-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      display: inline-block;
+      background: linear-gradient(135deg, #f97316, #facc15);
+      box-shadow: 0 0 0 2px rgba(253,224,71,0.8);
+    }
+
+    .hof-subtitle {
+      font-size: .72rem;
+      color: #6b7280;
+      margin-bottom: .15rem;
+    }
+
+    .hof-list {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .hof-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.4rem;
+      padding-block: 4px;
+      font-size: .8rem;
+      color: #374151;
+    }
+
+    .hof-name {
+      font-weight: 600;
+      color: #111827;
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+    }
+
+    .hof-rank-pill {
+      min-width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 700;
+      background: #ffffff;
+      color: #111827;
+      border: 1px solid rgba(148,163,184,0.8);
+      box-shadow: 0 4px 10px rgba(148,163,184,0.45);
+    }
+
+    .hof-meta {
+      font-size: 0.72rem;
+      color: #6b7280;
+    }
+
+    .hof-empty {
+      font-size: 0.74rem;
+      color: #9ca3af;
+    }
+
+    .hof-indicators {
+      display: flex;
+      justify-content: center;
+      gap: .4rem;
+      margin-top: .45rem;
+    }
+
+    .hof-indicator {
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.75);
+      background: #ffffff;
+      color: #111827;
+      font-size: .72rem;
+      padding: .18rem .7rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      transition: background .15s ease, transform .1s ease, box-shadow .15s ease, border-color .15s ease;
+      box-shadow: 0 4px 10px rgba(148,163,184,0.35);
+    }
+
+    .hof-indicator span.dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: rgba(148,163,184,0.75);
+    }
+
+    .hof-indicator.active {
+      background: linear-gradient(135deg, #f97316, #facc15);
+      color: #111827;
+      border-color: rgba(250,204,21,0.95);
+      box-shadow: 0 0 0 2px rgba(252,211,77,0.55);
+      transform: translateY(-1px);
+    }
+
+    .hof-indicator.active span.dot {
+      background: #b45309;
+    }
+
+    .hof-indicator:hover:not(.active) {
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 2px rgba(148,163,184,0.5);
+    }
+
+    @media (max-width: 575.98px) {
+      .hof-shell {
+        padding-inline: .85rem;
+      }
+      .hof-header-text-main {
+        font-size: .8rem;
+      }
+      .hof-header-text-sub {
+        font-size: .78rem;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -379,7 +705,10 @@
         <span class="brand-logo">IF</span>
         <span>Ishikawa Facilities &amp; Parks</span>
       </a>
-      <div class="ms-auto d-flex align-items-center gap-3">
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <button id="homeHelpBtn" class="btn btn-outline-primary btn-sm btn-soft">
+          ❓ あそびかた
+        </button>
         <span class="text-muted small d-none d-md-inline">
           ようこそ、<strong>{{ user.display_name or user.email }}</strong>
         </span>
@@ -390,10 +719,14 @@
 
   <!-- BGM -->
   <audio id="bgmAudio" loop>
-    <source src="/static/bgm/home_bgm.mp3" type="audio/mpeg">
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
   </audio>
-  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
-    <button id="bgmToggleBtn" class="btn btn-sm">
+  <!-- 右下フローティングボタン（アプリフィードバック＋BGM） -->
+  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000; display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+    <button id="appFeedbackBtn" class="btn btn-sm btn-outline-secondary">
+      💬 このアプリへのご意見
+    </button>
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
       🎵 BGM ON
     </button>
   </div>
@@ -404,8 +737,7 @@
       <section class="panel-left">
         <div class="tagline">CONNECT · QUIZ · TOWN</div>
         <h1 class="hero-title">
-          <span class="highlight">クイズで町をつなぐ</span><br>
-          石川の公共施設＆公園ゲーム
+          <span class="highlight">クイズでつなぐ石川のまち</span><br>
         </h1>
         <p class="hero-sub">
           早押しクイズで学びながら、  
@@ -439,6 +771,68 @@
             </div>
             <div class="legend-row">
               <span class="legend-tag2"></span><span>チェックインスポット</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 殿堂入りスライダー -->
+        <div class="hall-of-fame">
+          <div class="hof-shell">
+            <div class="hof-inner">
+              <div class="hof-header">
+                <div class="hof-header-left">
+                  <div class="hof-medal">👑</div>
+                  <div>
+                    <div class="hof-header-text-main">HALL OF FAME</div>
+                    <div class="hof-header-text-sub">クイズとチェックインをがんばっているプレイヤーたち</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hof-carousel">
+                <div class="hof-track" id="hofTrack">
+                  <!-- スライド1：たくさん遊んでくれた人 -->
+                  <div class="hof-slide" data-index="0">
+                    <div class="hof-block">
+                      <div class="hof-title">
+                        <span class="badge-dot"></span>
+                        <span>🏆 たくさん遊んでくれた人</span>
+                      </div>
+                      <div class="hof-subtitle">
+                        ランダムマッチ・フレンドマッチ・チャレンジモードの合計プレイ数ランキングです。
+                      </div>
+                      <ul id="hofTopPlayers" class="hof-list">
+                        <li class="hof-empty">まだ集計中です… クイズに参加してみよう！</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <!-- スライド2：キングを倒した人 -->
+                  <div class="hof-slide" data-index="1">
+                    <div class="hof-block">
+                      <div class="hof-title">
+                        <span class="badge-dot"></span>
+                        <span>👑 キングを倒した人</span>
+                      </div>
+                      <div class="hof-subtitle">
+                        チャレンジモードの最強CPU「キング」を撃破したプレイヤーの一覧です。
+                      </div>
+                      <ul id="hofKingClear" class="hof-list">
+                        <li class="hof-empty">まだキングを倒したプレイヤーはいません。</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hof-indicators">
+                <button class="hof-indicator active" data-index="0">
+                  <span class="dot"></span><span>プレイ数ランキング</span>
+                </button>
+                <button class="hof-indicator" data-index="1">
+                  <span class="dot"></span><span>キング撃破ランキング</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -505,7 +899,7 @@
             </div>
             <p class="station-body">
               「ジャック」「クイーン」「キング」から難易度を選択。  
-              それぞれ性格の違うCPUと 1 vs 1 の早押しバトルができます。
+              それぞれ性能の違うCPUと 1 vs 1 の早押しバトルができます。
             </p>
             <div class="station-actions">
               <a href="/quiz/challenge" class="btn btn-warning pill-btn btn-sm">
@@ -679,12 +1073,210 @@
               <span class="station-note">※ 管理者専用機能</span>
             </div>
           </article>
+
+          <!-- 管理者権限の付与・変更（管理者のみ） -->
+          <article class="station-card station-admin">
+            <div class="station-node"></div>
+            <div class="station-header">
+              <div class="station-sign">ROLE</div>
+              <div class="station-title">
+                <span class="station-icon">🔑</span> 管理者権限の設定
+              </div>
+            </div>
+            <p class="station-body">
+              指定したユーザーの権限（role）を <code>admin</code> / <code>researcher</code> / <code>normal</code> に変更できます。  
+              メールアドレスを間違えないよう注意してください。
+            </p>
+            <div class="station-actions" style="flex-direction: column; align-items: stretch; gap: .5rem;">
+              <form id="roleForm" class="row g-2 align-items-end">
+                <div class="col-12 col-md-6">
+                  <label class="form-label mb-1 small">ユーザーのメールアドレス</label>
+                  <input type="email" class="form-control form-control-sm" id="roleEmail" placeholder="user@example.com" required>
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label mb-1 small">ロール</label>
+                  <select class="form-select form-select-sm" id="roleValue" required>
+                    <option value="normal">normal（一般）</option>
+                    <option value="researcher">researcher（分析者）</option>
+                    <option value="admin">admin（管理者）</option>
+                  </select>
+                </div>
+                <div class="col-6 col-md-3 d-grid">
+                  <button type="submit" class="btn btn-sm btn-primary pill-btn" id="roleSubmitBtn">
+                    権限を更新する
+                  </button>
+                </div>
+              </form>
+              <div class="station-note" id="roleResult" style="min-height:1.2em;">
+                <!-- 結果メッセージ表示エリア -->
+              </div>
+            </div>
+          </article>
           {% endif %}
         </div>
         {% endif %}
       </section>
     </div>
   </main>
+
+  <!-- HOME 用 チュートリアルモーダル -->
+  <div id="homeTutorialBackdrop" class="home-tutorial-backdrop">
+    <div class="home-tutorial-card">
+      <div class="home-tutorial-header">
+        <div class="home-tutorial-badge">HOW TO PLAY</div>
+        <div class="home-tutorial-title">
+          <span>はじめての方へ</span>
+        </div>
+      </div>
+      <p class="text-muted small mb-3">
+        このアプリは、<b>早押しクイズ</b>と<b>マップ・スタンプ</b>を組み合わせて、石川の公共施設・公園をもっと身近に感じてもらうためのサービスです。
+      </p>
+
+      <div class="home-tutorial-body">
+        <!-- ページ1：全体像 -->
+        <div class="home-tutorial-page" data-page="1">
+          <h3 class="h6 mb-2">① どんなアプリ？</h3>
+          <ul class="home-tutorial-list">
+            <li><b>早押しクイズ</b>で、公共施設・公園の名前や場所・特徴を楽しく学べます。</li>
+            <li><b>ランダムマッチ</b>で全国の誰かと、<b>フレンドマッチ</b>で友達同士と対戦できます。</li>
+            <li><b>チャレンジモード</b>では CPUボス（ジャック・クイーン・キング）と 1 vs 1 でバトル！</li>
+            <li><b>「マップ・スタンプをゲット」</b>から地図を開き、実際に公園や公共施設へ行って
+              <b>チェックイン</b>すると、クイズ中に使えるスタンプが増えていきます。</li>        
+          </ul>
+          <p class="small text-muted mb-0">
+            まずは「PLAY LINE」のカードから、遊びたいモードを選んでみてください。
+          </p>
+        </div>
+
+        <!-- ページ2：クイズで遊ぶ -->
+        <div class="home-tutorial-page" data-page="2">
+          <h3 class="h6 mb-2">② クイズの遊びかた</h3>
+          <ul class="home-tutorial-list">
+            <li><b>ランダムマッチ</b>…ログイン中のプレイヤー同士で自動マッチングして対戦します。</li>
+            <li><b>フレンドマッチ</b>…部屋コードを共有して、友達だけで遊べます。</li>
+            <li><b>チャレンジモード</b>…CPUボスと 1対1。早く正解するとボスのHPを削れます。</li>
+          </ul>
+          <p class="small text-muted mb-1">
+            4択から素早く正解を選ぶほどスコアが伸びます。<br>
+            対戦中は「スタンプ」ボタンから、リアクションスタンプも送れます。
+          </p>
+        </div>
+
+        <!-- ページ3：マップ・スタンプ・作問 -->
+        <div class="home-tutorial-page" data-page="3">
+          <h3 class="h6 mb-2">③ マップでスタンプを集める・問題を作る</h3>
+          <ul class="home-tutorial-list">
+            <li><b>マップ・スタンプをゲット</b>から地図を開き、実際に公園や公共施設へ行って<b>チェックイン</b>できます。</li>
+            <li>チェックインすると、クイズで使える<b>スタンプ</b>が増えていきます。</li>
+            <li><b>作問</b>のページでは、自分でクイズ問題を作って登録することもできます。</li>
+          </ul>
+          <p class="small text-muted mb-0">
+            「遊ぶ → 行ってみる → 自分で作る」という流れで、地域の魅力を深く知ることができます。
+          </p>
+        </div>
+      </div>
+
+      <div class="home-tutorial-footer">
+        <div>
+          <div class="form-check form-check-inline mb-1">
+            <input class="form-check-input" type="checkbox" value="1" id="homeTutorialDontShow">
+            <label class="form-check-label small" for="homeTutorialDontShow">
+              次回から自動表示しない
+            </label>
+          </div>
+          <div class="home-tutorial-steps">
+            ステップ <span id="homeTutorialStepLabel">1 / 3</span>
+          </div>
+        </div>
+        <div class="home-tutorial-actions">
+          <button id="homeTutorialPrevBtn" class="btn btn-sm btn-outline-secondary me-1">
+            ← 戻る
+          </button>
+          <button id="homeTutorialNextBtn" class="btn btn-sm btn-primary">
+            次へ →
+          </button>
+          <button id="homeTutorialCloseBtn" class="btn btn-sm btn-success" style="display:none;">
+            OK、はじめる
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- アプリ全体フィードバック用モーダル -->
+  <div class="modal fade" id="appFeedbackModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="border-radius: 1rem;">
+        <div class="modal-header">
+          <h5 class="modal-title">このアプリへのご意見</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted">
+            Ishikawa Facilities &amp; Parks 全体について、気づいたことや改善してほしい点などがあれば教えてください。<br>
+            （<b>任意・匿名</b>ですが、ログイン中のユーザーIDとひも付きで保存されます）
+          </p>
+
+          <form id="appFeedbackForm" class="mt-2">
+            <div class="mb-3">
+              <label class="form-label small">このアプリの「使いやすさ」はどうでしたか？</label>
+              <select id="appFeedbackRating" class="form-select form-select-sm" required>
+                <option value="">選択してください</option>
+                <option value="4">とても使いやすい</option>
+                <option value="3">だいたい使いやすい</option>
+                <option value="2">少し使いづらい</option>
+                <option value="1">かなり使いづらい</option>
+              </select>
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label small">
+                ご意見・ご感想
+                <span class="text-muted">(必須)</span>
+              </label>
+              <textarea
+                id="appFeedbackComment"
+                class="form-control"
+                rows="4"
+                maxlength="1000"
+                required
+                placeholder="例）スマホで○○のボタンが押しづらかった／ここが良かった／こんな機能がほしい など"
+              ></textarea>
+            </div>
+
+            <div id="appFeedbackMsg" class="small mt-1" style="min-height:1.2em;"></div>
+          </form>
+        </div>
+        <div class="modal-footer justify-content-end">
+          {# ★ admin だけに見えるボタン #}
+          {% if user and user.role == "admin" %}
+            <a href="/admin/app_feedback"
+              class="btn btn-outline-danger btn-sm me-2">
+              🛠 管理者：フィードバック一覧
+            </a>
+          {% endif %}
+
+          <button type="button"
+                  class="btn btn-outline-secondary btn-sm me-2"
+                  data-bs-dismiss="modal"
+                  id="appFeedbackCloseBtn">
+            閉じる
+          </button>
+
+          <button type="submit"
+                  form="appFeedbackForm"
+                  class="btn btn-primary btn-sm"
+                  id="appFeedbackSubmit">
+            送信する
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center text-muted mt-4 mb-3" style="font-size:0.85rem;">
+  BGM: MusMus（フリーBGM・音楽素材 <a href="https://musmus.main.jp" target="_blank">https://musmus.main.jp</a>）
+</footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -695,6 +1287,7 @@
       const btn   = document.getElementById("bgmToggleBtn");
       if (!audio || !btn) return;
 
+      audio.volume = 0.5;
       const STORAGE_KEY = "ifp_bgm_enabled";
 
       let enabled = localStorage.getItem(STORAGE_KEY);
@@ -732,6 +1325,359 @@
           await playIfAllowed();
         } else {
           audio.pause();
+        }
+      });
+    })();
+  </script>
+
+  <!-- HOME チュートリアル制御 -->
+  <script>
+    (function() {
+      const STORAGE_KEY = "ifp_home_tutorial_hide";
+
+      const backdrop   = document.getElementById("homeTutorialBackdrop");
+      const helpBtn    = document.getElementById("homeHelpBtn");
+      if (!backdrop) return;
+
+      const pages      = Array.from(backdrop.querySelectorAll(".home-tutorial-page"));
+      const prevBtn    = document.getElementById("homeTutorialPrevBtn");
+      const nextBtn    = document.getElementById("homeTutorialNextBtn");
+      const closeBtn   = document.getElementById("homeTutorialCloseBtn");
+      const stepLabel  = document.getElementById("homeTutorialStepLabel");
+      const dontShowCb = document.getElementById("homeTutorialDontShow");
+
+      if (!pages.length || !prevBtn || !nextBtn || !closeBtn || !stepLabel) return;
+
+      const total = pages.length;
+      let currentPage = 1;
+
+      const applyPage = () => {
+        pages.forEach((p) => {
+          const pageNo = Number(p.dataset.page || "0");
+          p.classList.toggle("active", pageNo === currentPage);
+        });
+        stepLabel.textContent = `${currentPage} / ${total}`;
+
+        prevBtn.disabled = currentPage === 1;
+        nextBtn.style.display  = currentPage < total ? "inline-block" : "none";
+        closeBtn.style.display = currentPage === total ? "inline-block" : "none";
+      };
+
+      const openTutorial = (page = 1) => {
+        currentPage = Math.min(Math.max(1, page), total);
+        applyPage();
+        backdrop.style.display = "flex";
+      };
+
+      const closeTutorial = () => {
+        backdrop.style.display = "none";
+        if (dontShowCb && dontShowCb.checked) {
+          try {
+            localStorage.setItem(STORAGE_KEY, "true");
+          } catch(e) {}
+        }
+      };
+
+      prevBtn.addEventListener("click", () => {
+        if (currentPage > 1) {
+          currentPage -= 1;
+          applyPage();
+        }
+      });
+
+      nextBtn.addEventListener("click", () => {
+        if (currentPage < total) {
+          currentPage += 1;
+          applyPage();
+        }
+      });
+
+      closeBtn.addEventListener("click", () => {
+        closeTutorial();
+      });
+
+      // 背景クリックで閉じる（カード内クリックでは閉じない）
+      backdrop.addEventListener("click", (ev) => {
+        if (ev.target === backdrop) {
+          closeTutorial();
+        }
+      });
+
+      // ESCキーで閉じる
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape" && backdrop.style.display !== "none") {
+          closeTutorial();
+        }
+      });
+
+      // 「❓あそびかた」ボタン → 手動表示
+      if (helpBtn) {
+        helpBtn.addEventListener("click", () => {
+          openTutorial(1);
+        });
+      }
+
+      // 初回だけ自動表示
+      try {
+        const hide = localStorage.getItem(STORAGE_KEY) === "true";
+        if (!hide) {
+          openTutorial(1);
+        }
+      } catch(e) {
+        openTutorial(1);
+      }
+    })();
+  </script>
+
+  <!-- 殿堂入りエリアのデータ読み込み＋スライダー制御 -->
+  <script>
+    (function() {
+      async function loadHallOfFame() {
+        const topEl = document.getElementById("hofTopPlayers");
+        const kingEl = document.getElementById("hofKingClear");
+        if (!topEl || !kingEl) return;
+
+        try {
+          // 1) クイズプレイ数ランキング
+          const r1 = await fetch("/api/home/top_quiz_players");
+          const d1 = await r1.json();
+          const items1 = Array.isArray(d1.items) ? d1.items : [];
+
+          if (items1.length === 0) {
+            topEl.innerHTML = '<li class="hof-empty">まだ集計中です… クイズに参加してみよう！</li>';
+          } else {
+            topEl.innerHTML = items1.map((p, idx) => {
+              const rank = idx + 1;
+              const rankPill = (rank <= 3)
+                ? `<span class="hof-rank-pill">${rank}</span>`
+                : `<span class="hof-rank-pill" style="opacity:.65;">${rank}</span>`;
+              return `
+                <li>
+                  <span class="hof-name">${rankPill}<span>${p.display_name}</span></span>
+                  <span class="hof-meta">${p.count} プレイ</span>
+                </li>
+              `;
+            }).join("");
+          }
+
+          // 2) キングを倒した人一覧
+          const r2 = await fetch("/api/home/king_clearers");
+          const d2 = await r2.json();
+          const items2 = Array.isArray(d2.items) ? d2.items : [];
+
+          if (items2.length === 0) {
+            kingEl.innerHTML = '<li class="hof-empty">まだキングを倒したプレイヤーはいません。</li>';
+          } else {
+            kingEl.innerHTML = items2.map((p, idx) => {
+              const rank = idx + 1;
+              const rankPill = `<span class="hof-rank-pill">${rank}</span>`;
+              return `
+                <li>
+                  <span class="hof-name">${rankPill}<span>${p.display_name}</span></span>
+                  <span class="hof-meta">King撃破</span>
+                </li>
+              `;
+            }).join("");
+          }
+
+        } catch (e) {
+          console.error("hall-of-fame load error:", e);
+        }
+      }
+
+      function initHallOfFameCarousel() {
+        const root = document.querySelector(".hall-of-fame");
+        if (!root) return;
+
+        const track = root.querySelector(".hof-track");
+        const slides = root.querySelectorAll(".hof-slide");
+        const indicators = root.querySelectorAll(".hof-indicator");
+
+        if (!track || slides.length === 0) return;
+
+        let currentIndex = 0;
+        const total = slides.length;
+        let timerId = null;
+        const INTERVAL_MS = 6000;
+
+        const apply = () => {
+          track.style.transform = `translateX(-${currentIndex * 100}%)`;
+          indicators.forEach((btn, idx) => {
+            btn.classList.toggle("active", idx === currentIndex);
+          });
+        };
+
+        const startAuto = () => {
+          stopAuto();
+          timerId = setInterval(() => {
+            currentIndex = (currentIndex + 1) % total;
+            apply();
+          }, INTERVAL_MS);
+        };
+
+        const stopAuto = () => {
+          if (timerId) {
+            clearInterval(timerId);
+            timerId = null;
+          }
+        };
+
+        indicators.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const idx = Number(btn.dataset.index || "0");
+            currentIndex = Math.min(Math.max(idx, 0), total - 1);
+            apply();
+            startAuto();
+          });
+        });
+
+        root.addEventListener("mouseenter", stopAuto);
+        root.addEventListener("mouseleave", startAuto);
+
+        apply();
+        startAuto();
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        loadHallOfFame();
+        initHallOfFameCarousel();
+      });
+    })();
+  </script>
+
+  <!-- アプリ全体フィードバック送信 JS -->
+  <script>
+    (function() {
+      const openBtn   = document.getElementById("appFeedbackBtn");
+      const modalEl   = document.getElementById("appFeedbackModal");
+      const form      = document.getElementById("appFeedbackForm");
+      const ratingSel = document.getElementById("appFeedbackRating");
+      const commentEl = document.getElementById("appFeedbackComment");
+      const msgEl     = document.getElementById("appFeedbackMsg");
+      const submitBtn = document.getElementById("appFeedbackSubmit");
+
+      if (!openBtn || !modalEl || !form || !ratingSel || !commentEl || !msgEl || !submitBtn) return;
+      if (typeof bootstrap === "undefined") return;
+
+      const modal = new bootstrap.Modal(modalEl);
+
+      openBtn.addEventListener("click", () => {
+        form.reset();
+        msgEl.textContent = "";
+        msgEl.style.color = "#6b7280";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "送信する";
+        modal.show();
+      });
+
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+
+        const rating = Number(ratingSel.value || "0");
+        const comment = (commentEl.value || "").trim();
+
+        if (!rating || !comment) {
+          msgEl.textContent = "評価とご意見を入力してください。";
+          msgEl.style.color = "#b91c1c";
+          return;
+        }
+
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = "送信中…";
+        msgEl.textContent = "";
+        msgEl.style.color = "#6b7280";
+
+        try {
+          const res = await fetch("/api/feedback/app", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ rating, comment })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.ok) {
+            const msg = data.detail || data.message || `送信に失敗しました。（HTTP ${res.status}）`;
+            msgEl.textContent = msg;
+            msgEl.style.color = "#b91c1c";
+          } else {
+            msgEl.textContent = "ご意見ありがとうございます！";
+            msgEl.style.color = "#166534";
+            setTimeout(() => { modal.hide(); }, 800);
+          }
+        } catch (e) {
+          console.error(e);
+          msgEl.textContent = "通信エラーが発生しました。ネットワークを確認してください。";
+          msgEl.style.color = "#b91c1c";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
+      });
+    })();
+  </script>
+
+  <!-- 管理者権限カードの JS -->
+  <script>
+    (function() {
+      const form = document.getElementById("roleForm");
+      const emailInput = document.getElementById("roleEmail");
+      const roleSelect = document.getElementById("roleValue");
+      const resultEl = document.getElementById("roleResult");
+      const submitBtn = document.getElementById("roleSubmitBtn");
+
+      if (!form || !emailInput || !roleSelect || !resultEl || !submitBtn) {
+        return;
+      }
+
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+
+        const email = emailInput.value.trim();
+        const role = roleSelect.value.trim();
+
+        if (!email || !role) {
+          resultEl.textContent = "メールアドレスとロールを入力してください。";
+          resultEl.style.color = "#b91c1c";
+          return;
+        }
+
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = "更新中…";
+        resultEl.textContent = "";
+        resultEl.style.color = "#6b7280";
+
+        try {
+          const res = await fetch("/admin/set_role", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email, role })
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok || !data.ok) {
+            const msg = data.detail || data.message || `更新に失敗しました。（HTTP ${res.status}）`;
+            resultEl.textContent = msg;
+            resultEl.style.color = "#b91c1c";
+          } else {
+            resultEl.textContent = data.message || "権限を更新しました。";
+            resultEl.style.color = "#166534";
+            roleSelect.value = data.new_role || role;
+          }
+        } catch (e) {
+          console.error(e);
+          resultEl.textContent = "通信エラーが発生しました。ネットワークを確認してください。";
+          resultEl.style.color = "#b91c1c";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
         }
       });
     })();

@@ -25,7 +25,7 @@
 
   <!-- 到達半径（サーバから渡す） -->
   <script>
-    window.ARRIVAL_RADIUS = {{ (radius_m | default(50, true) | int) | tojson }};
+    window.ARRIVAL_RADIUS = {{ (radius_m | default(50000, true) | int) | tojson }};
   </script>
 
   <!-- heatmap.js + Leaflet.heat -->
@@ -109,16 +109,22 @@
       position: sticky;
       top: 0;
       z-index: 1000;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px 14px;
+      padding: 8px 14px 10px;
       background: rgba(255,255,255,0.96);
       border-bottom: 1px solid rgba(148,163,184,0.45);
       box-shadow: 0 10px 30px rgba(15,23,42,0.06);
       backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .topbar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .topbar-left,
@@ -215,6 +221,15 @@
       background: #ffffff;
     }
 
+    /* controls row 用の左右 */
+    .controls-left,
+    .controls-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
     #map {
       width: 100%;
       height: calc(100vh - var(--hdr, 56px));
@@ -282,7 +297,7 @@
       border: 1px solid rgba(148,163,184,0.35);
     }
 
-    /* 写真＋コメントパネル（右からスライド） */
+    /* 写真＋コメントパネル（施設改善レポート用） */
     .photo-panel {
       position: fixed;
       top: calc(var(--hdr, 56px) + 10px);
@@ -295,9 +310,10 @@
       padding: 12px;
       display: none;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       z-index: 4000;
       border: 1px solid rgba(148,163,184,0.35);
+      overflow: hidden;
     }
     .photo-panel.open {
       display: flex;
@@ -308,6 +324,36 @@
       justify-content: space-between;
       gap: 8px;
       margin-bottom: 4px;
+    }
+
+    /* パネル内のセクションを箱でまとめる */
+    .photo-panel__body {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .photo-section {
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 8px 10px;
+      background: #f9fafb;
+    }
+    .photo-section + .photo-section {
+      margin-top: 2px;
+    }
+    .photo-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #111827;
+    }
+    .photo-section-title span.icon {
+      font-size: 14px;
     }
 
     .photo-grid {
@@ -328,7 +374,61 @@
       font-size: 12px;
     }
 
-    /* モーダル共通（図鑑・分析・ゲット確認） */
+    /* 改善レポート用ガイドボックス */
+    .report-note {
+      border-radius: 10px;
+      background: #eff6ff;
+      border: 1px dashed #93c5fd;
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #1e293b;
+      margin: 4px 0 6px;
+    }
+    .report-note ul {
+      margin: 3px 0 0;
+      padding-left: 1.1rem;
+    }
+    .report-note li {
+      margin: 0;
+    }
+
+    .photo-panel__uploader-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    #photoFile {
+      max-width: 220px;
+      font-size: 12px;
+    }
+    .uploader-hint {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.5;
+      flex-basis: 100%;
+    }
+
+    .comment-helper-text {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .comment-item-meta {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 2px;
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .comment-item-meta-name {
+      font-weight: 600;
+    }
+
+    /* モーダル共通（図鑑・分析・ゲット確認・遊び方） */
     .modal {
       position: fixed;
       inset: 0;
@@ -396,16 +496,7 @@
     /* スマホ向けレイアウト調整 */
     @media (max-width: 768px) {
       header.topbar {
-        align-items: flex-start;
-      }
-      .topbar-left {
-        flex: 1 1 100%;
-        order: 1;
-      }
-      .topbar-right {
-        flex: 1 1 100%;
-        justify-content: flex-start;
-        order: 2;
+        padding: 8px 10px 10px;
       }
       .topbar-title {
         font-size: 13px;
@@ -427,46 +518,440 @@
       .credit {
         bottom: 10px;
       }
+      .photo-panel {
+        right: 6px;
+        width: 94vw;
+      }
+      #photoFile {
+        max-width: 100%;
+      }
     }
+
+    /* ▼ 「マップ・スタンプをゲット」の遊び方モーダル専用 ▼ */
+    #howtoModal .modal-card.howto-card {
+      max-width: 720px;
+      width: 96vw;
+      padding: 18px 18px 16px;
+    }
+    .howto-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .howto-title {
+      font-weight: 800;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .howto-title span.icon {
+      font-size: 20px;
+    }
+    .howto-tagline {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .howto-step-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    @media (min-width: 640px) {
+      .howto-step-list {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .howto-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 8px 9px;
+      border-radius: 12px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      font-size: 13px;
+    }
+    .howto-step-num {
+      min-width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4f46e5;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .howto-step-body {
+      flex: 1;
+    }
+    .howto-step-title {
+      font-weight: 700;
+      margin-bottom: 2px;
+      font-size: 13px;
+    }
+    .howto-step-text {
+      font-size: 12px;
+      color: #4b5563;
+    }
+
+    .howto-footer-note {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #6b7280;
+    }
+    /* HOW TO PLAY バッジ（home / quiz と同系統） */
+    .howto-badge {
+      font-size: .75rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+      margin-bottom: .25rem;
+    }
+
+    /* タイトルのテキスト部分だけグラデーションにする */
+    .howto-title span:not(.icon) {
+      background: linear-gradient(110deg,#6366f1,#f97316);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    /* ===== 現在地ピン（波紋付き） ===== */
+    .leaflet-marker-icon.me-pulse-pin {
+      background: transparent;
+      border: none;
+    }
+
+    .me-pulse-wrapper {
+      position: relative;
+      width: 30px;
+      height: 30px;
+    }
+
+    .me-pulse-core {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 22px;
+      height: 22px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #f97316, #ec4899 45%, #7c3aed 100%);
+      border: 2px solid #ffffff;
+      box-shadow:
+        0 0 0 3px rgba(59, 130, 246, 0.55),
+        0 6px 10px rgba(15, 23, 42, 0.45);
+    }
+
+    .me-pulse-inner {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #ffffff;
+      text-shadow: 0 1px 3px rgba(15, 23, 42, 0.9);
+    }
+
+    .me-pulse-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 22px;
+      height: 22px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      border: 2px solid rgba(59, 130, 246, 0.8);
+      animation: me-pulse 1.6s ease-out infinite;
+    }
+
+    .me-pulse-ring.ring2 {
+      animation-delay: 0.7s;
+    }
+
+    @keyframes me-pulse {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.9;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(7.0);
+        opacity: 0;
+      }
+    }
+
+    /* ===== 🎁 プレゼントボックスアニメ（スタンプ獲得用） ===== */
+
+    .gift-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      margin: 4px 0 8px;
+      height: 140px;
+    }
+
+    .gift {
+      position: relative;
+      width: 90px;
+      height: 90px;
+      transform-origin: center bottom;
+      /* 「ぽよぽよぽよ」する待機アニメーション */
+      animation: gift-bounce 1.4s ease-in-out infinite;
+    }
+
+    .gift-box {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 80px;
+      height: 60px;
+      transform: translateX(-50%);
+      border-radius: 10px 10px 12px 12px;
+      background: linear-gradient(135deg, #f97316, #ec4899);
+      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.35);
+    }
+
+    .gift-lid {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      width: 86px;
+      height: 20px;
+      transform: translateX(-50%);
+      border-radius: 12px 12px 8px 8px;
+      background: linear-gradient(135deg, #facc15, #f97316);
+      box-shadow: 0 8px 10px rgba(15, 23, 42, 0.25);
+      transform-origin: bottom center;
+    }
+
+    .gift-ribbon-vert {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 14px;
+      height: 80px;
+      transform: translateX(-50%);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f9fafb, #fee2e2);
+    }
+
+    .gift-ribbon-horiz {
+      position: absolute;
+      bottom: 25px;
+      left: 50%;
+      width: 82px;
+      height: 14px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(90deg, #fef9c3, #fee2e2);
+    }
+
+    .gift-sparkle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 30% 30%, #ffffff, #facc15);
+      opacity: 0;
+    }
+    .gift-sparkle::before,
+    .gift-sparkle::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 1px solid rgba(248, 250, 252, 0.9);
+    }
+
+    .gift-sparkle.s1 {
+      bottom: 90px;
+      left: 10px;
+    }
+    .gift-sparkle.s2 {
+      bottom: 105px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .gift-sparkle.s3 {
+      bottom: 90px;
+      right: 10px;
+    }
+
+    /* 「ぽよぽよぽよ」待機アニメ */
+    @keyframes gift-bounce {
+      0% {
+        transform: translateY(0) scale(1);
+      }
+      12% {
+        transform: translateY(-7px) scale(1.04);
+      }
+      24% {
+        transform: translateY(0) scale(0.99);
+      }
+      36% {
+        transform: translateY(-5px) scale(1.03);
+      }
+      48% {
+        transform: translateY(0) scale(1);
+      }
+      64% {
+        transform: translateY(-3px) scale(1.02);
+      }
+      80% {
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* フタがパカッと開くアニメ */
+    @keyframes gift-open-lid {
+      0% {
+        transform: translateX(-50%) rotate(0deg);
+      }
+      40% {
+        transform: translateX(-50%) rotate(-8deg);
+      }
+      100% {
+        transform: translateX(-50%) translateY(-34px) rotate(-35deg);
+      }
+    }
+
+    /* キラキラが飛ぶアニメ */
+    @keyframes gift-spark {
+      0% {
+        transform: translateY(0) scale(0.4);
+        opacity: 0;
+      }
+      25% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-40px) scale(1.1);
+        opacity: 0;
+      }
+    }
+
+    /* 箱が消えるときのフェード */
+    @keyframes gift-box-fade {
+      0% {
+        opacity: 1;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* 「開く」とき用のクラス */
+    .gift.open {
+      /* 開いている間は待機バウンス止める */
+      animation: none;
+    }
+    .gift.open .gift-lid {
+      animation: gift-open-lid 0.7s ease-out forwards;
+    }
+    .gift.open .gift-sparkle {
+      animation: gift-spark 0.9s ease-out forwards;
+    }
+    .gift.open .gift-sparkle.s2 {
+      animation-delay: 0.05s;
+    }
+    .gift.open .gift-sparkle.s3 {
+      animation-delay: 0.1s;
+    }
+
+    /* 箱本体＆リボンをフェードアウト（少し遅らせて消える） */
+    .gift.open .gift-box,
+    .gift.open .gift-ribbon-vert,
+    .gift.open .gift-ribbon-horiz {
+      animation: gift-box-fade 0.45s ease-out forwards;
+      animation-delay: 0.45s;
+    }
+
+    /* 完全に非表示にするフラグ（JSから付ける） */
+    .gift.hide {
+      opacity: 0;
+    }
+
+    /* スタンプ画像は最初は隠しておき、あとでふわっと出す */
+    #gotImg {
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+    }
+    #gotImg.stamp-show {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+
   </style>
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-left">
-      <a class="brand-mark" href="/home">
-        <span class="brand-logo">IF</span>
-        <span>Ishikawa Facilities &amp; Parks</span>
-      </a>
-      <span class="topbar-title">公共施設・公園マップ</span>
-      <span class="pill">
-        📏 到達半径 {{ radius_m|int if radius_m is defined else 50 }}m
-      </span>
-
-      <button id="locateBtn" class="btn">📍 現在地</button>
-      <button id="toggleParks" class="btn">🌳 公園 ON/OFF</button>
-      <button id="toggleFacilities" class="btn">🏛 公共施設 ON/OFF</button>
-
-      <div class="field" style="gap:8px; margin-left:4px;">
-        <input id="csvQuery" type="text"
-               placeholder="CSV内を検索（名称/住所で部分一致）" />
-        <button class="btn" onclick="searchCSV()">検索</button>
+    <!-- 上段：ロゴ・タイトル・ユーザ・ナビ -->
+    <div class="topbar-row">
+      <div class="topbar-left">
+        <a class="brand-mark" href="/home">
+          <span class="brand-logo">IF</span>
+          <span>Ishikawa Facilities &amp; Parks</span>
+        </a>
+        <span class="topbar-title">公共施設・公園マップ</span>
       </div>
-
-      <button id="openDash" class="btn">📊 分析</button>
+      <div class="topbar-right">
+        {% if user and not user.is_guest %}
+          <span class="pill success" id="whoami">
+            ✅ {{ user.display_name or user.email }} さんログイン中
+          </span>
+        {% else %}
+          <span class="pill warn">ゲスト表示中（チェックイン不可）</span>
+        {% endif %}
+        <a class="btn" href="/home">🏠 ホーム</a>
+        <!-- 遊び方ボタン -->
+        <button class="btn" type="button" onclick="openHowto()">❓ 遊び方</button>
+        <button class="btn" onclick="openCharsAll()">🦫 所持スタンプ</button>
+      </div>
     </div>
 
-    <!-- 右側：ログイン中表示・ホーム・ログアウト・スタンプ -->
-    <div class="topbar-right">
-      {% if user and not user.is_guest %}
-        <span class="pill success" id="whoami">
-          ✅ {{ user.display_name or user.email }} さんログイン中
+    <!-- 下段：地図操作系 -->
+    <div class="topbar-row">
+      <div class="controls-left">
+        <span class="pill">
+          📏 到達半径 {{ radius_m|int if radius_m is defined else 50 }}m
         </span>
-      {% else %}
-        <span class="pill warn">ゲスト表示中（チェックイン不可）</span>
-      {% endif %}
-      <a class="btn" href="/home">🏠 ホーム</a>
-      <a class="btn" href="/auth/logout">ログアウト</a>
-      <button class="btn" onclick="openCharsAll()">🦫 所持スタンプ</button>
+        <button id="locateBtn" class="btn">📍 現在地</button>
+        <button id="toggleParks" class="btn">🌳 公園 ON/OFF</button>
+        <button id="toggleFacilities" class="btn">🏛 公共施設 ON/OFF</button>
+      </div>
+      <div class="controls-right">
+        <div class="field">
+          <input id="csvQuery" type="text"
+                 placeholder="CSV内を検索（名称/住所で部分一致）" />
+          <button class="btn" onclick="searchCSV()">検索</button>
+        </div>
+        <button id="openDash" class="btn">📊 分析</button>
+      </div>
+    </div>
+
+    <!-- BGM -->
+    <audio id="bgmAudio" loop>
+      <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+    </audio>
+    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+      <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+        🎵 BGM ON
+      </button>
     </div>
   </header>
 
@@ -481,65 +966,167 @@
     <div id="searchResults" style="margin-top:8px; font-size:14px;"></div>
   </div>
 
-  <!-- 写真＋コメントパネル -->
+  <!-- 写真＋コメントパネル（施設・公園の改善レポート用） -->
   <div id="photoPanel" class="photo-panel">
     <div class="photo-panel__header">
-      <div style="font-weight:700; flex:1;">写真（<span id="photoPanelTitle">未選択</span>）</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;">みんなのレポート</div>
+        <div style="font-size:11px;color:#64748b;">
+          対象スポット：<span id="photoPanelTitle" style="font-weight:600;">未選択</span>
+        </div>
+      </div>
       <button class="btn" onclick="closePhotoPanel()">閉じる</button>
     </div>
 
-    <div class="photo-panel__uploader">
-      <form id="photoForm" onsubmit="return submitPhoto(event)">
-        <input type="hidden" id="photoPlaceId" />
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <input id="photoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif"/>
-          <button class="btn primary" type="submit">アップロード</button>
-          <span class="hint" style="font-size:11px;color:#64748b;">
-            対応: png, jpg, jpeg, webp, gif / 上限 8MB
-          </span>
+    <div class="photo-panel__body">
+      <!-- セクション1: ガイド -->
+      <div class="photo-section">
+        <div class="photo-section-title">
+          <span class="icon">📝</span><span>どんなことを書けばいい？</span>
         </div>
-      </form>
-    </div>
-
-    <div id="photoList" class="photo-grid"></div>
-
-    <!-- コメント欄 -->
-    <div class="comments" style="border-top:1px solid #e5e7eb;margin-top:10px;padding-top:10px;">
-      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-        <div style="font-weight:700;">コメント</div>
-        <small id="commentCount" style="color:#64748b;"></small>
+        <div class="report-note">
+          このボードは<strong>「壊れている箇所」や「改善してほしい点」</strong>を共有するためのスペースです。<br>
+          例：
+          <ul>
+            <li>遊具が壊れている / サビがひどい</li>
+            <li>夜間は暗くて危ない / ゴミが多い</li>
+            <li>よかったところ・気に入ったポイント など</li>
+          </ul>
+        </div>
       </div>
 
-      <div id="commentList" style="display:flex;flex-direction:column;gap:8px;margin:8px 0;"></div>
-
-      <form id="commentForm" onsubmit="return submitComment(event)" style="display:flex;flex-direction:column;gap:8px;">
-        <textarea id="commentText" rows="2"
-          placeholder="この場所にコメント（500文字まで）"
-          maxlength="500"
-          style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></textarea>
-        <div style="display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn" type="button" onclick="refreshComments()">再読み込み</button>
-          <button class="btn primary" type="submit">送信</button>
+      <!-- セクション2: 写真アップロード -->
+      <div class="photo-section">
+        <div class="photo-section-title">
+          <span class="icon">📷</span><span>状態が分かる写真を送る</span>
         </div>
-      </form>
+        <form id="photoForm" onsubmit="return submitPhoto(event)">
+          <input type="hidden" id="photoPlaceId" />
+          <div class="photo-panel__uploader-row">
+            <input id="photoFile" type="file" accept=".png,.jpg,.jpeg,.webp,.gif"/>
+            <button class="btn primary" type="submit">写真をアップロード</button>
+            <div class="uploader-hint">
+              壊れている箇所や設備の様子が伝わる写真を選んでください。<br>
+              対応: png, jpg, jpeg, webp, gif / 上限 8MB
+            </div>
+          </div>
+        </form>
+
+        <div id="photoList" class="photo-grid"></div>
+      </div>
+
+      <!-- セクション3: コメント（改善・不具合レポート） -->
+      <div class="photo-section comments">
+        <div class="photo-section-title">
+          <span class="icon">💬</span><span>改善・不具合レポート</span>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;margin-bottom:2px;">
+          <small id="commentCount" style="color:#64748b;"></small>
+        </div>
+
+        <div class="comment-helper-text">
+          例：「〇〇のすべり台が割れていて危ない」「ベンチが壊れている」「トイレが暗くて怖い」など、<br>
+          現地で気づいたこと・改善してほしい点・良かった点を自由に書いてください。
+        </div>
+
+        <div id="commentList" style="display:flex;flex-direction:column;gap:8px;margin:8px 0;"></div>
+
+        <form id="commentForm" onsubmit="return submitComment(event)" style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+          <textarea id="commentText" rows="3"
+            placeholder="壊れている箇所や危ないところ、使いづらかった点・良かった点など（500文字まで）"
+            maxlength="500"
+            style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;"></textarea>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="btn" type="button" onclick="refreshComments()">再読み込み</button>
+            <button class="btn primary" type="submit">レポートを送信</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
   <!-- 凡例＆クレジット -->
-  <div class="legend">
-    <div>● 公共施設・公園（統一ピン：石川県CSV）</div>
-    <div><span style="color:#f59e0b;">●</span> 茅野市CSV（金ピン：施設・公園）</div>
-    <div><span style="color:#0ea5e9;">●</span> 現在地</div>
-  </div>
-
   <div class="credit">
-    データ: 石川県全体CSV（{{ '170003_public_facility.csv' }}） /
-    茅野市CSV（202142_public_facility.csv / 202142_public_park.csv） /
-    写真はユーザー投稿（/uploads 保存）
+    <div>● 公共施設・公園（統一ピン：石川県CSV）</div>
+    <div><span style="color:#0ea5e9;">●</span> 現在地</div>    
+    データ: 石川県全体CSV（{{ 'public_facility.csv' }}） /
+    写真・レポートはユーザー投稿（/uploads 保存）
   </div>
 
   <!-- トースト -->
   <div id="toast" class="toast"></div>
+
+  <!-- 「マップ・スタンプをゲット」の遊び方モーダル -->
+  <div id="howtoModal" class="modal">
+    <div class="modal-card howto-card">
+      <div class="howto-header">
+        <div>
+          <div class="howto-badge">HOW TO PLAY</div>
+          <div class="howto-title">
+            <span class="icon">📍</span>
+            <span>「マップ・スタンプをゲット」の遊び方</span>
+          </div>
+          <div class="howto-tagline">
+            まずは地図を開いて現在地の近くのスポットをさがし、チェックインでスタンプを集めます。
+          </div>
+        </div>
+        <button class="btn" onclick="closeHowto()">閉じる</button>
+      </div>
+
+      <div class="howto-step-list">
+        <div class="howto-step">
+          <div class="howto-step-num">1</div>
+          <div class="howto-step-body">
+            <div class="howto-step-title">ここで出来ること</div>
+            <div class="howto-step-text">
+              石川県の公共施設・公園がマップ上に表示されます。<br>
+              <strong>実際にその場所へ行ってチェックイン</strong>すると、クイズで使えるスタンプが解放されます。
+            </div>
+          </div>
+        </div>
+
+        <div class="howto-step">
+          <div class="howto-step-num">2</div>
+          <div class="howto-step-body">
+            <div class="howto-step-title">チェックインの手順</div>
+            <div class="howto-step-text">
+              ①「📍 現在地」ボタンで自分の位置を表示<br>
+              ② 行きたいスポットのピンをタップ<br>
+              ③ <strong>到達半径（{{ radius_m|int if radius_m is defined else 50 }}m）内</strong>に入ったら、ポップアップの「チェックイン」ボタンを押します。
+            </div>
+          </div>
+        </div>
+
+        <div class="howto-step">
+          <div class="howto-step-num">3</div>
+          <div class="howto-step-body">
+            <div class="howto-step-title">スタンプとクイズの関係</div>
+            <div class="howto-step-text">
+              チェックインでゲットしたスタンプは、クイズ対戦（ランダム・フレンド・チャレンジ）で送れる「リアクション画像」として使えます。<br>
+              たくさんの施設を回るほど、使えるスタンプが増えていきます。
+            </div>
+          </div>
+        </div>
+
+        <div class="howto-step">
+          <div class="howto-step-num">4</div>
+          <div class="howto-step-body">
+            <div class="howto-step-title">レポートで施設を良くする</div>
+            <div class="howto-step-text">
+              各スポットでは、写真と文章で<strong>壊れている箇所や改善してほしい点</strong>を投稿できます。<br>
+              「どんな遊具が危ないか」「ここが暗くて怖い」「ここが気に入った」などを共有することで、<strong>公共施設・公園の改善に役立つデータ</strong>になります。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="howto-footer-note">
+        ※ チェックインとスタンプ獲得・レポート投稿にはログインが必要です（ゲスト表示中は記録されません）。<br>
+        ※ 取得したスタンプは、右上の「🦫 所持スタンプ」やホーム画面の「所持スタンプ」からいつでも確認できます。
+      </div>
+    </div>
+  </div>
 
   <!-- スタンプ図鑑モーダル -->
   <div id="charsModal" class="modal">
@@ -616,12 +1203,32 @@
   <!-- スタンプをゲット確認モーダル -->
   <div id="gotModal" class="modal">
     <div class="modal-card" style="max-width:520px;text-align:center;">
-      <div style="font-weight:800;font-size:20px;margin-bottom:6px;">スタンプをゲット！</div>
-      <div style="display:flex;justify-content:center;margin:10px 0;">
+      <!-- タイトルは JS で「○○をゲット！」に差し替える -->
+      <div id="gotTitle" style="font-weight:800;font-size:20px;margin-bottom:4px;">
+        スタンプをゲット！
+      </div>
+
+      <!-- 🎁 プレゼントアニメ -->
+      <div class="gift-wrapper">
+        <div class="gift">
+          <div class="gift-box"></div>
+          <div class="gift-lid"></div>
+          <div class="gift-ribbon-vert"></div>
+          <div class="gift-ribbon-horiz"></div>
+          <div class="gift-sparkle s1"></div>
+          <div class="gift-sparkle s2"></div>
+          <div class="gift-sparkle s3"></div>
+        </div>
+      </div>
+
+      <!-- 実際のスタンプ画像 -->
+      <div style="display:flex;justify-content:center;margin:4px 0 10px;">
         <img id="gotImg" src="" alt="キャラ画像"
              style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
       </div>
+      
       <div id="gotName" style="font-size:18px;font-weight:700;color:#0f172a;">???</div>
+
       <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
         <button class="btn primary" onclick="openCharsAll(); closeGotModal();">スタンプを見る</button>
         <button class="btn" onclick="shareGot()">共有する</button>
@@ -632,5 +1239,118 @@
 
   <!-- 外部JS -->
   <script src="/static/app.js"></script>
+
+  <!-- 🎁 プレゼントを「開く」アニメを走らせる関数 -->
+  <script>
+    function triggerGiftOpen() {
+      const gift = document.querySelector(".gift");
+      const imgEl = document.getElementById("gotImg");
+      if (!gift || !imgEl) return;
+
+      // 毎回リセット：箱を見える状態＆スタンプ非表示に戻す
+      gift.classList.remove("open", "hide");
+      imgEl.classList.remove("stamp-show");
+      imgEl.style.opacity = "0";
+      imgEl.style.transform = "scale(0.8)";
+
+      // リフローしてから open クラスを付ける（アニメ再スタート）
+      void gift.offsetWidth;
+      gift.classList.add("open");
+
+      // フタが開いてキラキラしたあとに、
+      // ・箱本体を消す
+      // ・スタンプをふわっと表示
+      setTimeout(() => {
+        gift.classList.add("hide");
+        imgEl.classList.add("stamp-show");
+
+        imgEl.style.opacity = "1";
+        imgEl.style.transform = "scale(1)";
+      }, 900); // 0.7s(フタ) + 0.2sくらいのタイミング
+    }
+  </script>
+
+  <!-- BGM制御 -->
+  <script>
+    (function () {
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;
+
+      audio.volume = 0.5;
+      const STORAGE_KEY = "ifp_bgm_enabled";
+
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
+
+      const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+      };
+
+      const playIfAllowed = async () => {
+        if (!enabled) {
+          try { audio.pause(); } catch(e) {}
+          return;
+        }
+        try {
+          await audio.play();
+        } catch (e) {
+          console.log("BGM autoplay blocked:", e);
+        }
+      };
+
+      updateButtonText();
+
+      const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+      };
+      document.addEventListener("click", onFirstInteract);
+
+      btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+          await playIfAllowed();
+        } else {
+          audio.pause();
+        }
+      });
+    })();
+  </script>
+
+  <!-- 「マップ・スタンプをゲット」遊び方モーダル制御 -->
+  <script>
+    function openHowto() {
+      const m = document.getElementById("howtoModal");
+      if (m) m.style.display = "flex";
+    }
+    function closeHowto() {
+      const m = document.getElementById("howtoModal");
+      if (m) m.style.display = "none";
+    }
+    document.addEventListener("click", (e) => {
+      const m = document.getElementById("howtoModal");
+      if (!m || m.style.display !== "flex") return;
+      if (e.target === m) {
+        m.style.display = "none";
+      }
+    });
+  </script>
+
+  <script>
+    // --- マップ・スタンプ説明 初回だけ強制表示 ---
+    (function () {
+      const KEY = "ifp_map_tutorial_seen";
+      const seen = localStorage.getItem(KEY);
+
+      if (!seen) {
+        const modal = document.getElementById("howtoModal");
+        if (modal) modal.style.display = "flex";
+        localStorage.setItem(KEY, "true");
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -203,6 +203,16 @@
     </div>
   </nav>
 
+  <!-- BGM -->
+    <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+    </audio>
+    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+        🎵 BGM ON
+    </button>
+    </div>
+
   <main class="container page-root">
     <!-- ページヘッダ -->
     <header class="page-header">
@@ -237,6 +247,16 @@
               <option value="公共施設">公共施設</option>
             </select>
           </div>
+
+          <div class="col-md-2">
+            <label class="form-label">年代</label>
+            <select id="ageGroup" class="form-select">
+              <option value="">すべて</option>
+              <option value="child">子ども</option>
+              <option value="adult">おとな</option>
+              <option value="senior">高齢者</option>
+            </select>
+          </div>          
           <div class="col-md-2 d-flex gap-2">
             <button type="button" class="btn btn-primary flex-grow-1 btn-soft" onclick="loadSummary()">
               🔄 更新
@@ -326,10 +346,49 @@
         </div>
       </div>
     </section>
+    <!-- 年代別人気施設 -->
+    <section class="row g-3 mt-3">
+      <div class="col-md-12">
+        <div class="card card-analytic">
+          <div class="card-body">
+            <div class="section-subtitle">BY AGE GROUP</div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h6 mb-0">年代別人気施設（選択した年代）</h2>
+              <a id="ageCsvLink" href="#" class="btn btn-sm btn-outline-secondary btn-soft">
+                ⬇ 年代別CSVダウンロード
+              </a>
+            </div>
+            <p class="text-muted mb-2" id="ageChartNote">
+              上のフィルタで「年代」を選ぶと、このグラフが表示されます。
+            </p>
+            <div style="height:260px;">
+              <canvas id="ageFacChart"></canvas>
+            </div>
+            <div class="table-wrap mt-3">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">施設名</th>
+                    <th scope="col">種別</th>
+                    <th scope="col">年代</th>
+                    <th scope="col" class="text-end">件数</th>
+                  </tr>
+                </thead>
+                <tbody id="ageFacTableBody">
+                  <tr><td colspan="4" class="text-muted">年代を選択すると表示されます</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <script>
     let facChart = null;
+    let ageFacChart = null;
 
     function toLocalInput(d){
       const pad = n => String(n).padStart(2,'0');
@@ -341,11 +400,13 @@
       const from = document.getElementById('dateFrom').value;
       const to   = document.getElementById('dateTo').value;
       const kind = document.getElementById('kind').value;
+      const age  = document.getElementById('ageGroup').value;  // ★追加
 
       const params = new URLSearchParams();
       if (from) params.set('date_from', new Date(from).toISOString());
       if (to)   params.set('date_to',   new Date(to).toISOString());
       if (kind) params.set('kind', kind);
+      if (age)  params.set('age_group', age);  // ★追加
       return params;
     }
 
@@ -392,6 +453,7 @@
       const labels = top.map(it => it.place_name || '(名称不明)');
       const values = top.map(it => it.count);
       drawFacChart(labels, values);
+      await loadAgeSummary();
     }
 
     function drawFacChart(labels, values){
@@ -424,6 +486,95 @@
       }[m]));
     }
 
+    async function loadAgeSummary(){
+      const params = buildQueryParams();
+      const age = document.getElementById('ageGroup').value;
+      const noteEl = document.getElementById('ageChartNote');
+      const tbody = document.getElementById('ageFacTableBody');
+      const csvLink = document.getElementById('ageCsvLink');
+
+      if (!age) {
+        // 年代が未選択のときは案内表示だけ
+        noteEl.textContent = "上のフィルタで「年代」を選ぶと、このグラフが表示されます。";
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">年代を選択すると表示されます</td></tr>';
+        csvLink.href = "#";
+        if (ageFacChart) {
+          ageFacChart.destroy();
+          ageFacChart = null;
+        }
+        return;
+      }
+
+      const url = '/api/checkins/by-age?' + params.toString();
+      const csvUrl = '/api/export/checkins_by_age.csv?' + params.toString();
+      csvLink.href = csvUrl;
+
+      const res = await fetch(url);
+      const js = await res.json();
+
+      if (!res.ok || !js.ok){
+        alert(js.detail || '年代別集計の取得に失敗しました');
+        return;
+      }
+
+      noteEl.textContent = `年代: ${
+        age === 'child' ? '子ども' : age === 'adult' ? 'おとな' : '高齢者'
+      } の上位施設（チェックイン数順）`;
+
+      if (!js.items.length){
+        tbody.innerHTML = '<tr><td colspan="4" class="text-muted">該当データがありません</td></tr>';
+        if (ageFacChart) {
+          ageFacChart.destroy();
+          ageFacChart = null;
+        }
+        return;
+      }
+
+      // テーブル
+      tbody.innerHTML = js.items.slice(0, 20).map(it => `
+        <tr>
+          <td>${escapeHtml(it.place_name || '(名称不明)')}</td>
+          <td>${escapeHtml(it.kind || '')}</td>
+          <td>${
+            it.age_group === 'child' ? '子ども' :
+            it.age_group === 'adult' ? 'おとな' :
+            it.age_group === 'senior' ? '高齢者' : '不明'
+          }</td>
+          <td class="text-end">${it.count}</td>
+        </tr>
+      `).join('');
+
+      // 上位10件でグラフ
+      const top = js.items.slice(0, 10);
+      const labels = top.map(it => it.place_name || '(名称不明)');
+      const values = top.map(it => it.count);
+      drawAgeFacChart(labels, values);
+    }
+
+    function drawAgeFacChart(labels, values){
+      const ctx = document.getElementById('ageFacChart');
+      if (!ctx) return;
+      if (ageFacChart) ageFacChart.destroy();
+      ageFacChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'チェックイン数（選択した年代）',
+            data: values
+          }]
+        },
+        options: {
+          responsive:true,
+          maintainAspectRatio:false,
+          scales:{
+            x: { ticks: { maxRotation: 30, minRotation: 0 } },
+            y: { beginAtZero:true }
+          }
+        }
+      });
+    }
+
     // 初期化：直近30日をセットしてからロード
     (function init(){
       const now  = new Date();
@@ -433,5 +584,57 @@
       loadSummary();
     })();
   </script>
+<script>
+  (function () {
+    const audio = document.getElementById("bgmAudio");
+    const btn   = document.getElementById("bgmToggleBtn");
+    if (!audio || !btn) return;
+
+    /* ▼ 音量を50%に設定 ▼ */
+    audio.volume = 0.5;
+
+    const STORAGE_KEY = "ifp_bgm_enabled";
+
+    let enabled = localStorage.getItem(STORAGE_KEY);
+    enabled = (enabled === null) ? true : (enabled === "true");
+
+    const updateButtonText = () => {
+      btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+    };
+
+    const playIfAllowed = async () => {
+      if (!enabled) {
+        try { audio.pause(); } catch(e) {}
+        return;
+      }
+      try {
+        await audio.play();
+      } catch (e) {
+        console.log("BGM autoplay blocked:", e);
+      }
+    };
+
+    updateButtonText();
+
+    // 初回クリックで再生開始（ブラウザ制限対策）
+    const onFirstInteract = () => {
+      document.removeEventListener("click", onFirstInteract);
+      playIfAllowed();
+    };
+    document.addEventListener("click", onFirstInteract);
+
+    btn.addEventListener("click", async () => {
+      enabled = !enabled;
+      localStorage.setItem(STORAGE_KEY, String(enabled));
+      updateButtonText();
+      if (enabled) {
+        await playIfAllowed();
+      } else {
+        audio.pause();
+      }
+    });
+  })();
+</script>
+
 </body>
 </html>

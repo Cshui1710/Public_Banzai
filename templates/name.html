@@ -194,6 +194,16 @@
     </div>
   </nav>
 
+  <!-- BGM -->
+  <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+  </audio>
+  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+      🎵 BGM ON
+    </button>
+  </div>
+
   <main class="page-root">
     <section class="name-card">
       <header class="name-header">
@@ -236,6 +246,56 @@
             1〜20文字。実名である必要はありませんが、他人を不快にさせる表現は避けてください。
           </div>
         </div>
+        <div class="mb-3">
+          <label class="form-label">あなたの年代</label>
+
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="age_group"
+              id="age_child"
+              value="child"
+              {% if user.age_group == 'child' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="age_child">
+              子ども（〜18歳くらい）
+            </label>
+          </div>
+
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="age_group"
+              id="age_adult"
+              value="adult"
+              {% if user.age_group == 'adult' or not user.age_group %}checked{% endif %}
+            >
+            <label class="form-check-label" for="age_adult">
+              おとな（19〜64歳くらい）
+            </label>
+          </div>
+
+          <div class="form-check">
+            <input
+              class="form-check-input"
+              type="radio"
+              name="age_group"
+              id="age_senior"
+              value="senior"
+              {% if user.age_group == 'senior' %}checked{% endif %}
+            >
+            <label class="form-check-label" for="age_senior">
+              高齢者（65歳以上くらい）
+            </label>
+          </div>
+
+          <div class="form-text">
+            ざっくりした年代でOKです。統計にだけ使われます。
+          </div>
+        </div>
+
 
         <div class="actions-row">
           <a href="/home" class="btn btn-outline-secondary">
@@ -250,5 +310,57 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (function () {
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;
+
+      /* ▼ 音量を50%に設定 ▼ */
+      audio.volume = 0.5;
+
+      const STORAGE_KEY = "ifp_bgm_enabled";
+
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
+
+      const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+      };
+
+      const playIfAllowed = async () => {
+        if (!enabled) {
+          try { audio.pause(); } catch(e) {}
+          return;
+        }
+        try {
+          await audio.play();
+        } catch (e) {
+          console.log("BGM autoplay blocked:", e);
+        }
+      };
+
+      updateButtonText();
+
+      // 初回クリックで再生開始（ブラウザ制限対策）
+      const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+      };
+      document.addEventListener("click", onFirstInteract);
+
+      btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+          await playIfAllowed();
+        } else {
+          audio.pause();
+        }
+      });
+    })();
+  </script>
+
 </body>
 </html>

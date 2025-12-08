@@ -215,6 +215,121 @@
         padding: 1.2rem 1.1rem 1.4rem;
       }
     }
+
+    /* ===== 作問ページチュートリアル ===== */
+    .tutorial-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 3000;
+      padding: 16px;
+    }
+    .tutorial-card {
+      background: #ffffff;
+      border-radius: 18px;
+      max-width: 780px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(15,23,42,0.5);
+      border: 1px solid rgba(148,163,184,0.55);
+      padding: 18px 18px 16px;
+    }
+    .tutorial-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .tutorial-title {
+      font-size: 1rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .tutorial-title span.badge {
+      font-size: .75rem;
+      border-radius: 999px;
+      background: #eef2ff;
+      color: #4f46e5;
+      padding: .15rem .6rem;
+    }
+    .tutorial-body {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr);
+      gap: 14px;
+      font-size: .85rem;
+      color: #4b5563;
+    }
+    @media (max-width: 768px) {
+      .tutorial-body {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+    .tutorial-block {
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 10px 11px;
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .tutorial-block h3 {
+      font-size: .86rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      color: #111827;
+    }
+    .tutorial-block h3 span.no {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #4f46e5;
+      color: #f9fafb;
+      font-size: .72rem;
+    }
+    .tutorial-block ul {
+      padding-left: 1.2rem;
+      margin: 0;
+    }
+    .tutorial-block li {
+      margin-bottom: 3px;
+    }
+    .tutorial-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .tutorial-footer .note {
+      font-size: .7rem;
+      color: #9ca3af;
+    }
+    /* HOW TO PLAYバッジ（他ページと統一） */
+    .tutorial-badge-label {
+      font-size: .75rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6366f1;
+      font-weight: 700;
+      margin-bottom: .25rem;
+    }
+
+    /* タイトル文字をグラデーションに */
+    .tutorial-title-main {
+      background: linear-gradient(110deg,#6366f1,#f97316);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
   </style>
 </head>
 <body>
@@ -231,11 +346,83 @@
             👤 {{ user.display_name or user.email }} さん
           </span>
         {% endif %}
-        <a href="/quiz" class="btn btn-outline-primary btn-sm btn-soft">🎮 クイズへ</a>
+        <!-- ❓ あそびかたボタン（チュートリアルを開く） -->
+        <button id="howToBtn" class="btn btn-outline-primary btn-sm btn-soft" type="button">
+          ❓ あそびかた
+        </button>
         <a href="/home" class="btn btn-outline-secondary btn-sm btn-soft">🏠 ホームへ</a>
       </div>
     </div>
   </nav>
+
+  <!-- BGM -->
+  <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+  </audio>
+  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+      🎵 BGM ON
+    </button>
+  </div>
+
+  <!-- 作問チュートリアル（初回だけ表示） -->
+  <div id="makerTutorial" class="tutorial-overlay">
+    <div class="tutorial-card">
+      <div class="tutorial-header">
+        <div>
+          <!-- ★ 追加：HOW TO PLAYバッジ -->
+          <div class="tutorial-badge-label">HOW TO PLAY</div>
+          <!-- ★ タイトル＋QUIZ MAKERバッジ（タイトルにグラデ用クラスを付与） -->
+          <div class="tutorial-title">
+            <span class="tutorial-title-main">📝 作問ページのあそびかた</span>
+            <span class="badge">QUIZ MAKER</span>
+          </div>
+        </div>
+        <button id="makerTutorialLater" class="btn btn-sm btn-outline-secondary">
+          とじる
+        </button>
+      </div>
+      <div class="tutorial-body">
+        <div class="tutorial-block">
+          <h3><span class="no">1</span>どんなページ？</h3>
+          <ul>
+            <li>あなたの <strong>ローカル知識や推しスポット</strong> を 4択クイズにできます。</li>
+            <li>登録した問題は、ランダムマッチやチャレンジモードで<br> <strong>実際に出題される可能性</strong> があります。</li>
+            <li>「マップ・スタンプをゲット」で訪れた公園や公共施設を<br> ネタにした問題を作ると、現地とクイズがつながります。</li>
+          </ul>
+        </div>
+        <div class="tutorial-block">
+          <h3><span class="no">2</span>作問の流れ</h3>
+          <ul>
+            <li><strong>問題文</strong> に聞きたい内容を書きます（できるだけ具体的に）。</li>
+            <li>必要なら <strong>ヒント</strong> を追加（市町名・目印・交通など）。</li>
+            <li><strong>選択肢1〜4</strong> を入力し、どれが正解か「番号」で指定します。</li>
+            <li>「✅ この内容で登録する」を押すと保存され、<br>
+              タブ「📚 あなたの作った問題」で一覧が見られます。</li>
+          </ul>
+        </div>
+        <div class="tutorial-block">
+          <h3><span class="no">3</span>作問のコツ</h3>
+          <ul>
+            <li><strong>実在する施設・公園・市町名</strong> をベースにしましょう。</li>
+            <li>個人情報や誹謗中傷、事実と違う内容は NG です。</li>
+            <li>授業・イベント用に「野々市特集」「○○線沿い特集」など<br>
+              テーマをそろえて作ると、あとで使いやすくなります。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="tutorial-footer">
+        <div class="note">
+          ※ このガイドは <strong>この端末のブラウザで1回だけ</strong> 自動表示されます。
+        </div>
+        <div class="d-flex gap-2">
+          <button id="makerTutorialClose" class="btn btn-primary btn-soft btn-sm">
+            OK、作問をはじめる
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <main class="container page-root">
     <div class="page-header">
@@ -318,147 +505,234 @@
     </section>
   </main>
 
-<script>
-  const form = document.getElementById("qForm");
-  const tabForm = document.getElementById("tabForm");
-  const tabList = document.getElementById("tabList");
-  const sectionForm = document.getElementById("sectionForm");
-  const sectionList = document.getElementById("sectionList");
-  const listEl = document.getElementById("myQuestions");
+  <script>
+    const form = document.getElementById("qForm");
+    const tabForm = document.getElementById("tabForm");
+    const tabList = document.getElementById("tabList");
+    const sectionForm = document.getElementById("sectionForm");
+    const sectionList = document.getElementById("sectionList");
+    const listEl = document.getElementById("myQuestions");
 
-  function setActiveTab(which) {
-    if (which === "form") {
-      tabForm.classList.add("active");
-      tabList.classList.remove("active");
-      sectionForm.style.display = "";
-      sectionList.style.display = "none";
-    } else {
-      tabForm.classList.remove("active");
-      tabList.classList.add("active");
-      sectionForm.style.display = "none";
-      sectionList.style.display = "block";
-      loadList();  // タブを開いたときに毎回読み込み
-    }
-  }
-
-  tabForm.addEventListener("click", () => setActiveTab("form"));
-  tabList.addEventListener("click", () => setActiveTab("list"));
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    try {
-      const r = await fetch("/api/quiz/maker/add", { method: "POST", body: fd });
-      const js = await r.json();
-      console.log("maker/add response:", js);
-      if (js.ok) {
-        alert("登録しました！");
-        form.reset();
-        // 直後に一覧も更新しておく
-        if (tabList.classList.contains("active")) {
-          loadList();
-        }
+    function setActiveTab(which) {
+      if (which === "form") {
+        tabForm.classList.add("active");
+        tabList.classList.remove("active");
+        sectionForm.style.display = "";
+        sectionList.style.display = "none";
       } else {
-        alert("エラー: " + (js.error || "登録に失敗しました"));
+        tabForm.classList.remove("active");
+        tabList.classList.add("active");
+        sectionForm.style.display = "none";
+        sectionList.style.display = "block";
+        loadList();  // タブを開いたときに毎回読み込み
       }
-    } catch (err) {
-      console.error(err);
-      alert("通信エラーが発生しました");
     }
-  });
 
-  async function loadList() {
-    if (!listEl) return;
-    listEl.innerHTML = "<li class='list-group-item text-muted'>読み込み中...</li>";
+    tabForm.addEventListener("click", () => setActiveTab("form"));
+    tabList.addEventListener("click", () => setActiveTab("list"));
 
-    try {
-      const r = await fetch("/api/quiz/maker/list", {
-        credentials: "same-origin",   // クッキー付きで投げる
-      });
-
-      if (r.status === 401) {
-        listEl.innerHTML =
-          "<li class='list-group-item text-muted'>ログインが必要です。いったんログインし直してください。</li>";
-        return;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      try {
+        const r = await fetch("/api/quiz/maker/add", { method: "POST", body: fd });
+        const js = await r.json();
+        console.log("maker/add response:", js);
+        if (js.ok) {
+          alert("登録しました！");
+          form.reset();
+          // 直後に一覧も更新しておく
+          if (tabList.classList.contains("active")) {
+            loadList();
+          }
+        } else {
+          alert("エラー: " + (js.error || "登録に失敗しました"));
+        }
+      } catch (err) {
+        console.error(err);
+        alert("通信エラーが発生しました");
       }
+    });
 
-      if (!r.ok) {
+    async function loadList() {
+      if (!listEl) return;
+      listEl.innerHTML = "<li class='list-group-item text-muted'>読み込み中...</li>";
+
+      try {
+        const r = await fetch("/api/quiz/maker/list", {
+          credentials: "same-origin",   // クッキー付きで投げる
+        });
+
+        if (r.status === 401) {
+          listEl.innerHTML =
+            "<li class='list-group-item text-muted'>ログインが必要です。いったんログインし直してください。</li>";
+          return;
+        }
+
+        if (!r.ok) {
+          listEl.innerHTML =
+            "<li class='list-group-item text-muted'>サーバエラーが発生しました。</li>";
+          return;
+        }
+
+        const js = await r.json();
+        console.log("maker/list response:", js);
+
+        // 形：{ ok: true, questions: [...] } または { ok: true, items: [...] } のどちらかを想定
+        if (!js.ok) {
+          listEl.innerHTML =
+            "<li class='list-group-item text-muted'>データの取得に失敗しました。</li>";
+          return;
+        }
+
+        const questions = Array.isArray(js.questions)
+          ? js.questions
+          : Array.isArray(js.items)
+          ? js.items
+          : [];
+
+        if (!questions.length) {
+          listEl.innerHTML =
+            "<li class='list-group-item text-muted'>まだ作問がありません。</li>";
+          return;
+        }
+
+        listEl.innerHTML = "";
+        questions.forEach((q) => {
+          const li = document.createElement("li");
+          li.className = "list-group-item";
+
+          const choices = Array.isArray(q.choices) ? q.choices : [];
+          const choicesText = choices.length
+            ? choices.map((c, i) => `${i + 1}: ${escapeHtml(c)}`).join(" / ")
+            : "";
+
+          const correctIdx =
+            typeof q.correct_idx === "number" ? q.correct_idx + 1 : "？";
+
+          const hintHtml = q.hint
+            ? `<br><small class="text-muted">ヒント: ${escapeHtml(q.hint)}</small>`
+            : "";
+
+          li.innerHTML =
+            `<b>${escapeHtml(q.stem)}</b>` +
+            (choicesText ? `<br>${choicesText}` : "") +
+            `<br><small class="text-muted">正解: ${correctIdx}</small>` +
+            hintHtml;
+
+          listEl.appendChild(li);
+        });
+      } catch (err) {
+        console.error("loadList error:", err);
         listEl.innerHTML =
-          "<li class='list-group-item text-muted'>サーバエラーが発生しました。</li>";
-        return;
+          "<li class='list-group-item text-muted'>通信エラーが発生しました。</li>";
       }
-
-      const js = await r.json();
-      console.log("maker/list response:", js);
-
-      // 形：{ ok: true, questions: [...] } または { ok: true, items: [...] } のどちらかを想定
-      if (!js.ok) {
-        listEl.innerHTML =
-          "<li class='list-group-item text-muted'>データの取得に失敗しました。</li>";
-        return;
-      }
-
-      const questions = Array.isArray(js.questions)
-        ? js.questions
-        : Array.isArray(js.items)
-        ? js.items
-        : [];
-
-      if (!questions.length) {
-        listEl.innerHTML =
-          "<li class='list-group-item text-muted'>まだ作問がありません。</li>";
-        return;
-      }
-
-      listEl.innerHTML = "";
-      questions.forEach((q) => {
-        const li = document.createElement("li");
-        li.className = "list-group-item";
-
-        const choices = Array.isArray(q.choices) ? q.choices : [];
-        const choicesText = choices.length
-          ? choices.map((c, i) => `${i + 1}: ${escapeHtml(c)}`).join(" / ")
-          : "";
-
-        const correctIdx =
-          typeof q.correct_idx === "number" ? q.correct_idx + 1 : "？";
-
-        const hintHtml = q.hint
-          ? `<br><small class="text-muted">ヒント: ${escapeHtml(q.hint)}</small>`
-          : "";
-
-        li.innerHTML =
-          `<b>${escapeHtml(q.stem)}</b>` +
-          (choicesText ? `<br>${choicesText}` : "") +
-          `<br><small class="text-muted">正解: ${correctIdx}</small>` +
-          hintHtml;
-
-        listEl.appendChild(li);
-      });
-    } catch (err) {
-      console.error("loadList error:", err);
-      listEl.innerHTML =
-        "<li class='list-group-item text-muted'>通信エラーが発生しました。</li>";
     }
-  }
 
-  function escapeHtml(s) {
-    return String(s ?? "").replace(/[&<>"']/g, (m) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    }[m]));
-  }
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      }[m]));
+    }
 
-  // 初期状態はフォームタブ
-  document.addEventListener("DOMContentLoaded", () => {
-    setActiveTab("form");
-    // ここで一度だけ一覧も取得しておく（タブを切り替えたとき即表示される）
-    loadList();
-  });
-</script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // 初期状態はフォームタブ
+      setActiveTab("form");
+      // 一覧も一度読み込んでおく
+      loadList();
+
+      // 作問チュートリアル（端末ごとに初回だけ表示）
+      const key = "ifp_maker_tutorial_seen";
+      const overlay = document.getElementById("makerTutorial");
+      const closeBtn = document.getElementById("makerTutorialClose");
+      const laterBtn = document.getElementById("makerTutorialLater");
+      const howToBtn = document.getElementById("howToBtn");
+
+      if (overlay && closeBtn) {
+        const seen = localStorage.getItem(key) === "true";
+        if (!seen) {
+          overlay.style.display = "flex";
+        }
+
+        closeBtn.addEventListener("click", () => {
+          overlay.style.display = "none";
+          localStorage.setItem(key, "true");
+        });
+
+        if (laterBtn) {
+          laterBtn.addEventListener("click", () => {
+            overlay.style.display = "none";
+            // 「とじる」ではフラグは立てない（次回また表示される）
+          });
+        }
+
+        // 「❓ あそびかた」ボタンでいつでもチュートリアルを開く
+        if (howToBtn) {
+          howToBtn.addEventListener("click", () => {
+            overlay.style.display = "flex";
+          });
+        }
+      }
+    });
+
+  </script>
+
+  <!-- BGM制御 -->
+  <script>
+    (function () {
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;
+
+      /* ▼ 音量を50%に設定 ▼ */
+      audio.volume = 0.5;
+
+      const STORAGE_KEY = "ifp_bgm_enabled";
+
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
+
+      const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+      };
+
+      const playIfAllowed = async () => {
+        if (!enabled) {
+          try { audio.pause(); } catch(e) {}
+          return;
+        }
+        try {
+          await audio.play();
+        } catch (e) {
+          console.log("BGM autoplay blocked:", e);
+        }
+      };
+
+      updateButtonText();
+
+      // 初回クリックで再生開始（ブラウザ制限対策）
+      const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+      };
+      document.addEventListener("click", onFirstInteract);
+
+      btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+          await playIfAllowed();
+        } else {
+          audio.pause();
+        }
+      });
+    })();
+  </script>
 
 </body>
 </html>

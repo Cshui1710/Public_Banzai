@@ -79,21 +79,46 @@ COOLDOWN_MINUTES = 30
 # ===== 図鑑カタログ（10種類） =====
 CHAR_CATALOG = [
     {"code": "marmot",  "name": "マーモット", "sprite": "/static/stamp/marmot.png",  "w": 256, "h": 256},
-    {"code": "tanuki",  "name": "タヌキ",     "sprite": "/static/stamp/tanuki.png",  "w": 256, "h": 256},
-    {"code": "kitsune", "name": "キツネ",     "sprite": "/static/stamp/kitsune.png", "w": 256, "h": 256},
-    {"code": "odoroki",    "name": "驚き",       "sprite": "/static/stamp/1.png",    "w": 256, "h": 256},
-    {"code": "naki",     "name": "泣き泣き",       "sprite": "/static/stamp/2.png",     "w": 256, "h": 256},
-    {"code": "sakibi",   "name": "叫び",     "sprite": "/static/stamp/3.png",   "w": 256, "h": 256},
-    {"code": "yorosiki",   "name": "よろしく",     "sprite": "/static/stamp/4.png",   "w": 256, "h": 256},
-    {"code": "banzai",   "name": "バンザイ",     "sprite": "/static/stamp/banzai.png",   "w": 256, "h": 256},
+    {"code": "naki",  "name": "泣き",     "sprite": "/static/stamp/2.png",  "w": 256, "h": 256},
+    {"code": "sakebu", "name": "叫ぶ",     "sprite": "/static/stamp/3.png", "w": 256, "h": 256},
+    {"code": "yorosiku",    "name": "よろしく",       "sprite": "/static/stamp/4.png",    "w": 256, "h": 256},
+    {"code": "no1",    "name": "ナンバー1",       "sprite": "/static/stamp/5.png",    "w": 256, "h": 256},
+    {"code": "ikari",    "name": "怒り",       "sprite": "/static/stamp/6.png",    "w": 256, "h": 256},
+    {"code": "hakushu",    "name": "拍手",       "sprite": "/static/stamp/7.png",    "w": 256, "h": 256},
+    {"code": "suberu",    "name": "滑る",       "sprite": "/static/stamp/8.png",    "w": 256, "h": 256},
+    {"code": "hadou",    "name": "波動",       "sprite": "/static/stamp/10.png",    "w": 256, "h": 256},
+    {"code": "ozigi",    "name": "お辞儀",       "sprite": "/static/stamp/11.png",    "w": 256, "h": 256},
+    {"code": "hunhun",    "name": "フンフン",       "sprite": "/static/stamp/12.png",    "w": 256, "h": 256},
+    {"code": "sute",    "name": "捨てマーモット",       "sprite": "/static/stamp/13.png",    "w": 256, "h": 256},
+    {"code": "ehhen",    "name": "えっへん",       "sprite": "/static/stamp/14.png",    "w": 256, "h": 256},
+    {"code": "tikara",    "name": "力こぶ",       "sprite": "/static/stamp/15.png",    "w": 256, "h": 256},
+    {"code": "guruguru",    "name": "グルグル",       "sprite": "/static/stamp/16.png",    "w": 256, "h": 256},
+    {"code": "tensi",    "name": "天使",       "sprite": "/static/stamp/17.png",    "w": 256, "h": 256},
+    {"code": "sun",    "name": "サングラス",       "sprite": "/static/stamp/18.png",    "w": 256, "h": 256},
+    {"code": "yonda",    "name": "呼んだ？",       "sprite": "/static/stamp/19.png",    "w": 256, "h": 256},
+    {"code": "flesh",    "name": "フレッシュ",       "sprite": "/static/stamp/20.png",    "w": 256, "h": 256},
+    {"code": "let",    "name": "レッツゴー",       "sprite": "/static/stamp/22.png",    "w": 256, "h": 256},
+    {"code": "heart",    "name": "ハート",       "sprite": "/static/stamp/23.png",    "w": 256, "h": 256},
+    {"code": "tokeru",    "name": "溶ける",       "sprite": "/static/stamp/24.png",    "w": 256, "h": 256},
+    {"code": "shoku",    "name": "食べる",       "sprite": "/static/stamp/25.png",    "w": 256, "h": 256},
+    {"code": "dame",    "name": "ダメ",       "sprite": "/static/stamp/26.png",    "w": 256, "h": 256},
+    {"code": "good",    "name": "いいんじゃない",       "sprite": "/static/stamp/27.png",    "w": 256, "h": 256},
+    {"code": "houbari",    "name": "ほおばり",       "sprite": "/static/stamp/28.png",    "w": 256, "h": 256},
+    {"code": "jukusui",    "name": "熟睡",       "sprite": "/static/stamp/29.png",    "w": 256, "h": 256},
+    {"code": "nikkori",    "name": "ニッコリ",       "sprite": "/static/stamp/30.png",    "w": 256, "h": 256},
+    {"code": "sword",    "name": "ソード",       "sprite": "/static/stamp/31.png",    "w": 256, "h": 256},
+    {"code": "kyodo",    "name": "挙動不審",       "sprite": "/static/stamp/32.png",    "w": 256, "h": 256},
+    {"code": "sirohata",    "name": "白旗",       "sprite": "/static/stamp/33.png",    "w": 256, "h": 256},
+    {"code": "thank",    "name": "ありがとう",       "sprite": "/static/stamp/50.png",    "w": 256, "h": 256},
+    {"code": "yareyare",    "name": "やれやれ",       "sprite": "/static/stamp/52.png",    "w": 256, "h": 256},
 ]
 from sqlmodel import Session, select, delete
 
-REMOVE_CODES = ["inu", "neko","kappa","tori","usagi","kanazawa","nanao"]
+# REMOVE_CODES = ["sakibi","yorosiki"]
 
-with Session(engine) as s:
-    s.exec(delete(Character).where(Character.code.in_(REMOVE_CODES)))
-    s.commit()
+# with Session(engine) as s:
+#     s.exec(delete(Character).where(Character.code.in_(REMOVE_CODES)))
+#     s.commit()
     
 ALLOWED_CHAR_CODES = {c["code"] for c in CHAR_CATALOG}
 
@@ -242,8 +267,28 @@ def list_all_characters(request: Request, session: Session = Depends(get_session
 
 
 from models import UserCharacter, Stamp
+from typing import List
 
+@router.get("/checkins/places")
+def get_checked_places(
+    u = Depends(get_current_user),
+    s: Session = Depends(get_session),
+):
+    # ログイン必須（ゲストは 401 にする）
+    login_required(u, allow_guest=False)
 
+    q = select(Stamp.place_id).where(Stamp.user_id == u.id)
+    place_ids: List[str] = [row[0] for row in s.exec(q).all() if row[0] is not None]
+
+    # 重複除去
+    unique_ids = sorted(set(map(str, place_ids)))
+
+    return {
+        "ok": True,
+        "place_ids": unique_ids,
+        "count": len(unique_ids),
+    }
+    
 @router.post("/checkin")
 def checkin(req: CheckinIn, request: Request, session: Session = Depends(get_session)):
     user = get_current_user(request)

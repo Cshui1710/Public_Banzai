@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from sqlmodel import SQLModel, Field, create_engine, Session, select, Relationship
 
 # SQLite エンジン
 engine = create_engine("sqlite:///./nonoji.db", echo=False)
@@ -13,13 +13,19 @@ class User(SQLModel, table=True):
     password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     display_name: Optional[str] = Field(default=None, max_length=32)
+    age_group: Optional[str] = Field(
+        default=None, max_length=16, index=True
+    )    
     # ★ 追加: ユーザーのロール
     #   - "normal"     : ふつうのプレイヤー（デフォルト）
     #   - "researcher" : 認知率データを見られる人
     #   - "admin"      : 開発者・先生など
     role: str = Field(default="normal", max_length=16, index=True)
-
-
+    quiz_play_count: int = Field(default=0)
+    king_cleared: bool = Field(default=False)
+    king_cleared_at: Optional[datetime] = None    
+    app_feedbacks: List["AppFeedback"] = Relationship(back_populates="user")
+    
 class Stamp(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(index=True)
@@ -124,3 +130,20 @@ class RecognitionStat(SQLModel, table=True):
     correct_count: int = Field(default=0)
     total_count: int = Field(default=0)
     last_answered_at: datetime = Field(default_factory=datetime.utcnow)
+
+class AppFeedback(SQLModel, table=True):
+    """
+    アプリ全体に対するフィードバック。
+    """
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")
+    page: str = Field(default="app", max_length=64)
+
+    rating: Optional[int] = Field(default=None)  # 1〜4
+    comment: str = Field(max_length=1000)
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    resolved: bool = Field(default=False)
+
+    user: Optional["User"] = Relationship(back_populates="app_feedbacks")

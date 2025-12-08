@@ -172,7 +172,7 @@ async def login(
 
         # ★ ここでリダイレクト先を決める
         target = "/home"
-        if not getattr(u, "display_name", None):
+        if not getattr(u, "display_name", None) or not getattr(u, "age_group", None):
             target = "/name"
 
     print("[DEBUG] CT:", request.headers.get("content-type"))
@@ -219,6 +219,7 @@ def whoami(request: Request):
         "is_guest": bool(getattr(u, "is_guest", False)),
         "display_name": getattr(u, "display_name", None),
         "role": getattr(u, "role", "normal"),  
+        "age_group": getattr(u, "age_group", None),  # ★追加
     }
 
 
@@ -239,6 +240,7 @@ def name_page(request: Request):
 def name_update(
     request: Request,
     display_name: str = Form(...),
+    age_group: str = Form(...),  # ★追加
 ):
     u = get_current_user(request)
     login_required(u, allow_guest=False)
@@ -261,6 +263,7 @@ def name_update(
         if not dbu:
             raise HTTPException(404, "ユーザーが見つかりません")
         dbu.display_name = dn
+        dbu.age_group = age_group 
         s.add(dbu)
         s.commit()
 
@@ -333,7 +336,7 @@ async def google_callback(request: Request):
     with Session(engine) as s:
         u = s.get(User, user_id)
         target = "/home"
-        if not u or not getattr(u, "display_name", None):
+        if not u or not getattr(u, "display_name", None) or not getattr(u, "age_group", None):
             target = "/name"
 
     resp = RedirectResponse(url=target, status_code=303)
@@ -373,7 +376,7 @@ async def line_callback(request: Request):
     with Session(engine) as s:
         u = s.get(User, user_id)
         target = "/home"
-        if not u or not getattr(u, "display_name", None):
+        if not u or not getattr(u, "display_name", None) or not getattr(u, "age_group", None):
             target = "/name"
 
     resp = RedirectResponse(url=target, status_code=303)
@@ -400,13 +403,13 @@ from datetime import datetime
 GUEST_PREFIX = "guest_"
 
 class _SimpleUser:
-    def __init__(self, id, email, is_guest=False, display_name=None, role="normal"):
+    def __init__(self, id, email, is_guest=False, display_name=None, role="normal", age_group=None):
         self.id = id
         self.email = email
         self.is_guest = is_guest
         self.display_name = display_name
         self.role = role  # ★ 追加
-
+        self.age_group = age_group  # ★追加
         
 def _mk_guest_user(req: Request):
     """
@@ -442,6 +445,7 @@ def _normalize_user(u) -> _SimpleUser | None:
             is_guest=bool(u.get("is_guest")),
             display_name=u.get("display_name"),
             role=u.get("role", "normal"),
+            age_group=u.get("age_group"),  # ★追加
         )
     # SQLModel 等
     uid = getattr(u, "id", None)
@@ -451,7 +455,9 @@ def _normalize_user(u) -> _SimpleUser | None:
     is_guest = bool(getattr(u, "is_guest", False))
     display_name = getattr(u, "display_name", None)
     role = getattr(u, "role", "normal")
-    return _SimpleUser(uid, email, is_guest, display_name, role)
+    age_group = getattr(u, "age_group", None)  # ★追加
+    return _SimpleUser(uid, email, is_guest, display_name, role, age_group)
+
 
 # まず、後半にある get_current_user / _normalize_user など
 # 「セッションだけを見る版」の重複定義は削除してください。
@@ -476,6 +482,7 @@ def get_current_user(request: Request) -> Optional[_SimpleUser]:
                             is_guest=False,
                             display_name=getattr(u, "display_name", None),
                             role=getattr(u, "role", "normal"),    # ★ ここ！
+                            age_group=getattr(u, "age_group", None),  # ★ここ
                         )
         except JWTError:
             pass

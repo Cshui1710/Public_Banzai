@@ -9,7 +9,7 @@ from auth import require_research_role   # ★ 追加
 from sqlalchemy import Integer, and_, or_, case
 from fastapi.responses import StreamingResponse
 from sqlmodel import col
-from models import engine, Stamp 
+from models import engine, Stamp , User
 from fastapi.responses import JSONResponse, HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
@@ -302,6 +302,156 @@ def stats_by_kind(
     res = {"ok": True, "from": dt_from.isoformat()+"Z", "to": dt_to.isoformat()+"Z", "items": items}
     if hr: res["hour_range"] = hr
     return res
+
+@router.get("/checkins/by-age")
+async def api_checkins_by_age(
+    date_from: str | None = Query(None, description="ISO8601形式の開始日時"),
+    date_to:   str | None = Query(None, description="ISO8601形式の終了日時"),
+    kind:      str | None = Query(None, description="公園/公共施設 等"),
+    age_group: str | None = Query(None, description="child/adult/senior"),
+    session: Session = Depends(get_session),
+):
+    """
+    年代別（User.age_group）に施設ごとのチェックイン数を集計して返す。
+    """
+    valid_age_groups = {"child", "adult", "senior"}
+    if age_group and age_group not in valid_age_groups:
+        raise HTTPException(400, "invalid age_group (child/adult/senior)")
+
+    q = select(
+        Stamp.place_id,
+        Stamp.place_name,
+        Stamp.kind,
+        func.coalesce(User.age_group, "unknown").label("age_group"),
+        func.count(Stamp.id).label("count"),
+        func.min(Stamp.checked_at).label("first_ts"),
+        func.max(Stamp.checked_at).label("last_ts"),
+    ).join(User, User.id == Stamp.user_id)
+
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at >= dt_from)
+        except Exception:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at <= dt_to)
+        except Exception:
+            pass
+
+    if kind:
+        q = q.where(Stamp.kind == kind)
+    if age_group:
+        q = q.where(User.age_group == age_group)
+
+    q = q.group_by(
+        Stamp.place_id,
+        Stamp.place_name,
+        Stamp.kind,
+        User.age_group,
+    ).order_by(func.count(Stamp.id).desc())
+
+    rows = session.exec(q).all()
+
+    total_count = sum(r.count for r in rows) if rows else 0
+    items = [
+        {
+            "place_id":   r.place_id,
+            "place_name": r.place_name,
+            "kind":       r.kind,
+            "age_group":  r.age_group,
+            "count":      r.count,
+            "first_ts":   r.first_ts.isoformat() if r.first_ts else None,
+            "last_ts":    r.last_ts.isoformat()  if r.last_ts else None,
+        }
+        for r in rows
+    ]
+
+    return JSONResponse({
+        "ok": True,
+        "items": items,
+        "total_count": total_count,
+    })
+
+@router.get("/export/checkins_by_age.csv")
+async def export_checkins_by_age_csv(
+    date_from: str | None = Query(None),
+    date_to:   str | None = Query(None),
+    kind:      str | None = Query(None),
+    age_group: str | None = Query(None),
+    session: Session = Depends(get_session),
+):
+    """
+    年代別チェックイン集計を CSV としてダウンロードするエンドポイント。
+    """
+    valid_age_groups = {"child", "adult", "senior"}
+    if age_group and age_group not in valid_age_groups:
+        raise HTTPException(400, "invalid age_group (child/adult/senior)")
+
+    q = select(
+        Stamp.place_id,
+        Stamp.place_name,
+        Stamp.kind,
+        func.coalesce(User.age_group, "unknown").label("age_group"),
+        func.count(Stamp.id).label("count"),
+        func.min(Stamp.checked_at).label("first_ts"),
+        func.max(Stamp.checked_at).label("last_ts"),
+    ).join(User, User.id == Stamp.user_id)
+
+    if date_from:
+        try:
+            dt_from = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at >= dt_from)
+        except Exception:
+            pass
+    if date_to:
+        try:
+            dt_to = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
+            q = q.where(Stamp.checked_at <= dt_to)
+        except Exception:
+            pass
+    if kind:
+        q = q.where(Stamp.kind == kind)
+    if age_group:
+        q = q.where(User.age_group == age_group)
+
+    q = q.group_by(
+        Stamp.place_id,
+        Stamp.place_name,
+        Stamp.kind,
+        User.age_group,
+    ).order_by(func.count(Stamp.id).desc())
+
+    rows = session.exec(q).all()
+
+    bom = "\ufeff"
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["place_id", "place_name", "kind", "age_group", "count", "first_ts", "last_ts"])
+    for r in rows:
+        writer.writerow([
+            r.place_id,
+            r.place_name,
+            r.kind,
+            r.age_group,
+            r.count,
+            r.first_ts.isoformat() if r.first_ts else "",
+            r.last_ts.isoformat()  if r.last_ts else "",
+        ])
+
+    buf.seek(0)
+    text = bom + buf.getvalue()
+    headers = {
+        "Content-Disposition": 'attachment; filename="checkins_by_age.csv"'
+    }
+    return StreamingResponse(
+        iter([text]),
+        media_type="text/csv; charset=utf-8",
+        headers=headers,
+    )
+
 
 
 # ====== 4) GeoJSON エクスポート ======
