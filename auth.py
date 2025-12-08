@@ -84,7 +84,7 @@ def read_token(token: str) -> dict:
 def set_login_cookie(user_id: int) -> JSONResponse:
     token_jwt = create_token({"uid": user_id})
     res = JSONResponse({"ok": True, "msg": "ログイン成功"})
-    res.set_cookie(AUTH_COOKIE, token_jwt, httponly=True, samesite="lax", secure=False, max_age=60*60*24*30)
+    res.set_cookie(AUTH_COOKIE, token_jwt, httponly=True, samesite="lax", secure=True, max_age=60*60*24*30)
     return res
 
 def _login_redirect(user_id: int, to="/home"):
@@ -94,7 +94,7 @@ def _login_redirect(user_id: int, to="/home"):
         create_token({"uid": user_id}),
         httponly=True,
         samesite="lax",
-        secure=False,          # 本番 https なら True に
+        secure=True,          # 本番 https なら True に
         max_age=60*60*24*30,
         path="/",
     )
@@ -102,7 +102,7 @@ def _login_redirect(user_id: int, to="/home"):
 
 def _logout_response():
     resp = RedirectResponse(url="/auth/login", status_code=303)
-    resp.delete_cookie(AUTH_COOKIE, httponly=True, samesite="lax", secure=False, path="/")
+    resp.delete_cookie(AUTH_COOKIE, httponly=True, samesite="lax", secure=True, path="/")
     return resp
 
 # ===== Password auth =====
@@ -345,7 +345,7 @@ async def google_callback(request: Request):
         create_token({"uid": user_id}),
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,
         max_age=60*60*24*30,
     )
     return resp
@@ -385,7 +385,7 @@ async def line_callback(request: Request):
         create_token({"uid": user_id}),
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=True,
         max_age=60*60*24*30,
     )
     return resp

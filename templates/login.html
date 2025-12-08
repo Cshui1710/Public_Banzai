@@ -91,13 +91,6 @@
       gap: 1.5rem;
     }
 
-    @media (max-width: 768px) {
-      .login-card {
-        grid-template-columns: minmax(0, 1fr);
-        padding: 1.4rem 1.3rem 1.6rem;
-      }
-    }
-
     .login-left-header {
       margin-bottom: 1rem;
     }
@@ -113,11 +106,13 @@
       font-size: 1.3rem;
       margin: 0 0 .35rem;
       font-weight: 800;
+      line-height: 1.4;
     }
     .login-left-header p {
       font-size: .9rem;
       color: #6b7280;
       margin: 0;
+      line-height: 1.6;
     }
 
     .login-highlight {
@@ -140,12 +135,13 @@
 
     .field-input {
       width: 100%;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border-radius: 999px;
       border: 1px solid #cbd5e1;
       font-size: .9rem;
       outline: none;
       transition: border-color .12s ease, box-shadow .12s ease;
+      min-height: 42px; /* タップしやすく */
     }
     .field-input:focus {
       border-color: #6366f1;
@@ -162,7 +158,7 @@
     .btn-base {
       cursor: pointer;
       border-radius: 999px;
-      padding: 7px 14px;
+      padding: 9px 16px;
       border: 1px solid #cbd5e1;
       background: #ffffff;
       font-size: .85rem;
@@ -170,6 +166,7 @@
       align-items: center;
       gap: 4px;
       transition: background .12s ease, box-shadow .12s ease, transform .06s ease;
+      line-height: 1.4;
     }
     .btn-base:hover {
       background: #f9fafb;
@@ -235,6 +232,7 @@
       font-size: .86rem;
       color: #4b5563;
       margin-bottom: .5rem;
+      line-height: 1.6;
     }
     .guest-list {
       list-style: none;
@@ -271,9 +269,80 @@
       align-self:flex-start;
     }
 
+    /* ====== タブレット以下の調整 ====== */
     @media (max-width: 768px) {
+      .page-root {
+        padding: 1.4rem 1rem 1.8rem;
+      }
+
+      .login-card {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 1.4rem 1.3rem 1.5rem;
+        gap: 1.2rem;
+      }
+
+      /* ゲストパネルを上に持ってくる */
       .guest-panel {
         order: -1;
+      }
+
+      /* ナビを中央寄せ */
+      .nav-glass > div {
+        justify-content: center;
+      }
+
+      .login-left-header h1 {
+        font-size: 1.15rem;
+      }
+    }
+
+    /* ====== スマホ狭幅（～480px）向け ====== */
+    @media (max-width: 480px) {
+      .page-root {
+        padding: 1rem .9rem 1.6rem;
+      }
+
+      .login-card {
+        border-radius: 1rem;
+        padding: 1.2rem 1rem 1.3rem;
+        box-shadow: 0 10px 22px rgba(15,23,42,0.18);
+      }
+
+      .login-left-header h1 {
+        font-size: 1.05rem;
+      }
+      .login-left-header p {
+        font-size: .85rem;
+      }
+
+      /* ボタンを縦並び＆全幅にしてタップしやすく */
+      .login-actions {
+        flex-direction: column;
+      }
+      .btn-base {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+      }
+
+      .guest-panel {
+        padding: .9rem .85rem 1rem;
+      }
+      .guest-panel h2 {
+        font-size: .95rem;
+      }
+      .guest-panel p,
+      .guest-list {
+        font-size: .8rem;
+      }
+
+      .brand-logo {
+        width: 24px;
+        height: 24px;
+        font-size: .8rem;
+      }
+      .brand-mark span:last-child {
+        font-size: .9rem;
       }
     }
   </style>
@@ -284,7 +353,7 @@
     <div style="max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
       <a href="/home" class="brand-mark">
         <span class="brand-logo">IF</span>
-        <span>石川県 公共施設・公園クイズ</span>
+        <span>Ishikawa Facilities & Parks</span>
       </a>
     </div>
   </nav>

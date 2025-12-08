@@ -18,6 +18,10 @@
       --border-subtle: rgba(148,163,184,0.45);
     }
 
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -26,6 +30,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      font-size: 0.95rem;
     }
 
     /* ────────────────────────────
@@ -67,11 +72,20 @@
       border: 1px solid #e5e7eb;
       background: #f9fafb;
       color: #0f172a;
+      white-space: nowrap;
     }
     .btn-soft {
       border-radius: 999px !important;
       padding-inline: 1rem;
       font-size: .8rem;
+    }
+
+    /* BGM ボタン共通 */
+    .bgm-floating {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 2000;
     }
 
     /* ────────────────────────────
@@ -99,6 +113,11 @@
       font-weight: 800;
       margin-bottom: .35rem;
     }
+    .page-header p {
+      margin: 0;
+      font-size: .9rem;
+      color: #6b7280;
+    }
     .chip-note {
       display: inline-flex;
       align-items: center;
@@ -112,7 +131,7 @@
     }
 
     /* ────────────────────────────
-        3) パネル（余白改善）
+        3) パネル / カード
        ──────────────────────────── */
     .panel {
       background: #ffffff;
@@ -127,12 +146,12 @@
       box-shadow: var(--shadow-soft);
     }
 
-    /* ★ 重要：ここで余白を最適化！ */
+    .panel .card-body,
     .card-analytic .card-body {
-      padding-top: 1.55rem !important;
-      padding-bottom: 1.35rem !important;
-      padding-left: 1.5rem !important;
-      padding-right: 1.5rem !important;
+      padding-top: 1.55rem;
+      padding-bottom: 1.35rem;
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
     }
 
     .section-subtitle {
@@ -141,6 +160,7 @@
       color: #9ca3af;
       margin-bottom: .35rem;
       font-weight: 600;
+      text-transform: uppercase;
     }
 
     .chart-container {
@@ -149,20 +169,118 @@
       height: 360px;
     }
 
-    @media (min-width: 992px) {
+    /* 2カラムグリッド（PC） */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      gap: 1.4rem;
+    }
+
+    @media (max-width: 991.98px) {
       .chart-grid {
-        display: grid;
-        grid-template-columns: 1.2fr 1fr;
-        gap: 1.4rem;
+        grid-template-columns: minmax(0, 1fr);
       }
     }
 
+    /* ────────────────────────────
+        4) レスポンシブ調整
+       ──────────────────────────── */
+
+    /* タブレット程度まで少し詰める */
     @media (max-width: 768px) {
+      body {
+        font-size: 0.9rem;
+      }
+
       main.page-root {
         padding-top: 1.6rem;
+        padding-bottom: 2.2rem;
       }
+
+      .panel .card-body,
       .card-analytic .card-body {
-        padding-top: 1.35rem !important;
+        padding: 1.2rem 1.1rem 1.2rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.25rem;
+      }
+
+      .chart-container {
+        height: 280px;
+      }
+
+      .chart-container[style*="height: 260px;"] {
+        height: 230px !important;
+      }
+      .chart-container[style*="height: 200px;"] {
+        height: 190px !important;
+      }
+    }
+
+    /* スマホ向け：文字と高さをさらに小さく */
+    @media (max-width: 576px) {
+      body {
+        font-size: 0.86rem;
+      }
+
+      .page-header {
+        margin-bottom: 1.1rem;
+      }
+      .page-header .tagline {
+        font-size: .7rem;
+      }
+      .page-header h1 {
+        font-size: 1.15rem;
+      }
+      .page-header p {
+        font-size: .8rem;
+      }
+
+      .chip-note {
+        font-size: .72rem;
+        padding: .2rem .6rem;
+      }
+
+      .pill {
+        font-size: 11px;
+        padding: 2px 8px;
+      }
+
+      .btn-soft {
+        font-size: .76rem;
+        padding-inline: 0.9rem;
+      }
+
+      .panel .card-body,
+      .card-analytic .card-body {
+        padding: 1rem 0.9rem 1.1rem;
+      }
+
+      .section-subtitle {
+        font-size: .72rem;
+        letter-spacing: .16em;
+      }
+
+      .chart-container {
+        height: 230px;
+      }
+      .chart-container[style*="height: 260px;"] {
+        height: 210px !important;
+      }
+      .chart-container[style*="height: 200px;"] {
+        height: 180px !important;
+      }
+
+      /* BGMボタンを少し小さく＆寄せる */
+      .bgm-floating {
+        right: 0.75rem;
+        bottom: 0.75rem;
+      }
+      #bgmToggleBtn {
+        padding: 0.35rem 0.9rem;
+        font-size: 0.78rem;
+        border-radius: 999px;
       }
     }
   </style>
@@ -173,7 +291,7 @@
     <div class="container">
       <a class="navbar-brand brand-mark" href="/home">
         <span class="brand-logo">IF</span>
-        <span>Ishikawa Facilities & Parks</span>
+        <span>Ishikawa Facilities &amp; Parks</span>
       </a>
 
       <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
@@ -184,15 +302,16 @@
       </div>
     </div>
   </nav>
-    <!-- BGM -->
-    <audio id="bgmAudio" loop>
+
+  <!-- BGM -->
+  <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
-    </audio>
-    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+  </audio>
+  <div class="bgm-floating">
     <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
-        🎵 BGM ON
+      🎵 BGM ON
     </button>
-    </div>
+  </div>
 
   <main class="container page-root">
     <!-- ヘッダ -->
@@ -210,7 +329,7 @@
       <div class="card-body py-3 px-3 px-md-4 d-flex flex-wrap align-items-center gap-2">
         <div class="input-group" style="max-width: 280px;">
           <label class="input-group-text" for="minTotalInput" style="font-size:.8rem;">最小回答数</label>
-          <input id="minTotalInput" type="number" class="form-control" value="3" min="1" max="999">
+          <input id="minTotalInput" type="number" class="form-control" value="1" min="1" max="999">
         </div>
 
         <button id="reloadBtn" class="btn btn-outline-primary btn-sm btn-soft">🔄 再読み込み</button>
@@ -267,20 +386,20 @@
     </section>
   </main>
 
-  <!-- Chart.js + ロジック（元のまま） -->
+  <!-- Chart.js + ロジック（中身は元のまま） -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
     (function() {
-      const facilityCtx = document.getElementById("facilityChart");
-      const cityCtx     = document.getElementById("cityChart");
-      const distCtx     = document.getElementById("distChart");
+      const facilityCtx   = document.getElementById("facilityChart");
+      const cityCtx       = document.getElementById("cityChart");
+      const distCtx       = document.getElementById("distChart");
       const minTotalInput = document.getElementById("minTotalInput");
       const reloadBtn     = document.getElementById("reloadBtn");
       const statusText    = document.getElementById("statusText");
 
       let facilityChart = null;
-      let cityChart = null;
-      let distChart = null;
+      let cityChart     = null;
+      let distChart     = null;
 
       const fmtRate = (r) => r.toFixed(1) + "%";
 
@@ -296,6 +415,7 @@
             `施設: ${js.facilities.length}件 / 市: ${js.cities.length}件（min_total=${js.min_total}）`;
           return js;
         } catch (e) {
+          console.error(e);
           statusText.textContent = "読み込みに失敗しました";
           return null;
         }
@@ -305,9 +425,9 @@
         if (!facilityCtx) return;
         if (facilityChart) facilityChart.destroy();
 
-        const labels = data.facilities.map(f => `${f.place_name}（${f.city || "不明"}）`);
-        const rates  = data.facilities.map(f => f.rate);
-        const totals = data.facilities.map(f => f.total);
+        const labels   = data.facilities.map(f => `${f.place_name}（${f.city || "不明"}）`);
+        const rates    = data.facilities.map(f => f.rate);
+        const totals   = data.facilities.map(f => f.total);
         const corrects = data.facilities.map(f => f.correct);
 
         facilityChart = new Chart(facilityCtx, {
@@ -344,9 +464,9 @@
         if (!cityCtx) return;
         if (cityChart) cityChart.destroy();
 
-        const labels = data.cities.map(c => c.city);
-        const rates  = data.cities.map(c => c.rate);
-        const totals = data.cities.map(c => c.total);
+        const labels   = data.cities.map(c => c.city);
+        const rates    = data.cities.map(c => c.rate);
+        const totals   = data.cities.map(c => c.total);
         const corrects = data.cities.map(c => c.correct);
 
         cityChart = new Chart(cityCtx, {
@@ -413,62 +533,63 @@
         renderDistChart(js);
       }
 
-      reloadBtn.addEventListener("click", reloadAll);
+      if (reloadBtn) {
+        reloadBtn.addEventListener("click", reloadAll);
+      }
 
       reloadAll();
     })();
   </script>
-    <script>
+
+  <!-- BGM制御 -->
+  <script>
     (function () {
-        const audio = document.getElementById("bgmAudio");
-        const btn   = document.getElementById("bgmToggleBtn");
-        if (!audio || !btn) return;
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;
 
-        /* ▼ 音量を50%に設定 ▼ */
-        audio.volume = 0.5;
+      audio.volume = 0.5;
+      const STORAGE_KEY = "ifp_bgm_enabled";
 
-        const STORAGE_KEY = "ifp_bgm_enabled";
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
 
-        let enabled = localStorage.getItem(STORAGE_KEY);
-        enabled = (enabled === null) ? true : (enabled === "true");
-
-        const updateButtonText = () => {
+      const updateButtonText = () => {
         btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
-        };
+      };
 
-        const playIfAllowed = async () => {
+      const playIfAllowed = async () => {
         if (!enabled) {
-            try { audio.pause(); } catch(e) {}
-            return;
+          try { audio.pause(); } catch(e) {}
+          return;
         }
         try {
-            await audio.play();
+          await audio.play();
         } catch (e) {
-            console.log("BGM autoplay blocked:", e);
+          console.log("BGM autoplay blocked:", e);
         }
-        };
+      };
 
-        updateButtonText();
+      updateButtonText();
 
-        // 初回クリックで再生開始（ブラウザ制限対策）
-        const onFirstInteract = () => {
+      const onFirstInteract = () => {
         document.removeEventListener("click", onFirstInteract);
         playIfAllowed();
-        };
-        document.addEventListener("click", onFirstInteract);
+      };
+      document.addEventListener("click", onFirstInteract);
 
-        btn.addEventListener("click", async () => {
+      btn.addEventListener("click", async () => {
         enabled = !enabled;
         localStorage.setItem(STORAGE_KEY, String(enabled));
         updateButtonText();
         if (enabled) {
-            await playIfAllowed();
+          await playIfAllowed();
         } else {
-            audio.pause();
+          audio.pause();
         }
-        });
+      });
     })();
-    </script>
+  </script>
 
 </body>
 </html>

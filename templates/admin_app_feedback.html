@@ -57,6 +57,7 @@
     main.admin-root {
       padding-top: 1.8rem;
       padding-bottom: 2.4rem;
+      max-width: 1024px;
     }
 
     .admin-card {
@@ -201,14 +202,98 @@
       background: rgba(248,250,252,0.9);
     }
 
-    /* ★ 評価セルを改行させない */
+    /* ★ 評価セルを改行させない（PC用） */
     .admin-rating-cell {
       white-space: nowrap;
     }
 
+    /* ▼ スマホ向けレイアウト調整 ▼ */
     @media (max-width: 575.98px) {
+      main.admin-root {
+        padding-top: 1.2rem;
+        padding-bottom: 1.8rem;
+      }
+
       .admin-card {
-        padding-inline: 1.1rem;
+        padding: 1.1rem 1.05rem 1.2rem;
+        border-radius: 1rem;
+      }
+
+      .admin-header-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .4rem;
+      }
+
+      .admin-title {
+        font-size: 1rem;
+      }
+
+      .admin-subtext {
+        font-size: .75rem;
+      }
+
+      .admin-meta-pill {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .meta-row {
+        font-size: .75rem;
+      }
+
+      /* テーブルをカード風に変形 */
+      .admin-table-wrapper table {
+        border: 0;
+      }
+
+      .admin-table-wrapper thead {
+        display: none;  /* ヘッダ非表示 */
+      }
+
+      .admin-table-wrapper tbody tr {
+        display: block;
+        margin-bottom: .85rem;
+        border-radius: .8rem;
+        border: 1px solid rgba(148,163,184,0.45);
+        background: #ffffff;
+        box-shadow: 0 6px 16px rgba(15,23,42,0.08);
+        padding: .55rem .6rem;
+      }
+
+      .admin-table-wrapper tbody tr:hover {
+        background: #ffffff;
+      }
+
+      .admin-table-wrapper tbody td {
+        display: block;
+        padding: .25rem 0;
+        border: 0 !important;
+        font-size: .78rem;
+      }
+
+      .admin-table-wrapper tbody td::before {
+        content: attr(data-label);
+        display: block;
+        font-size: .7rem;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: .05rem;
+      }
+
+      /* 日時は少し目立たせる */
+      .admin-table-wrapper tbody td[data-label="日時"] {
+        font-weight: 600;
+      }
+
+      /* 評価バッジはそのまま中央寄せぎみで */
+      .admin-rating-cell {
+        white-space: normal;
+      }
+
+      /* コメント欄の行間を少しだけ広げる */
+      .admin-comment {
+        line-height: 1.4;
       }
     }
   </style>
@@ -292,17 +377,17 @@
             <tbody>
               {% for fb, u in rows %}
                 <tr>
-                  <td class="small text-nowrap">
+                  <td class="small text-nowrap" data-label="日時">
                     {{ fb.created_at.astimezone().strftime("%Y-%m-%d %H:%M") if fb.created_at else "" }}
                   </td>
-                  <td class="small">
+                  <td class="small" data-label="ユーザー">
                     {% if u %}
                       {{ u.display_name or u.email }}
                     {% else %}
                       匿名ユーザー
                     {% endif %}
                   </td>
-                  <td class="small admin-rating-cell">
+                  <td class="small admin-rating-cell" data-label="評価">
                     {% if fb.rating == 4 %}
                       <span class="badge-rating badge-rating-4">
                         👍 <span>とても使いやすい</span>
@@ -323,7 +408,7 @@
                       -
                     {% endif %}
                   </td>
-                  <td class="small">
+                  <td class="small" data-label="コメント">
                     <div class="admin-comment mb-0">
                       {{ fb.comment }}
                     </div>

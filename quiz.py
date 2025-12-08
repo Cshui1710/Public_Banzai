@@ -913,11 +913,14 @@ class Room:
                 if not self.round_end_scheduled:
                     self.round_end_scheduled = True
                     schedule_next = True
-                    
-            await asyncio.sleep(2.0)
-            asyncio.create_task(self.next_round())
+
+            # ★ ここを修正：schedule_next が True のときだけ次ラウンドへ
+            if schedule_next:
+                await asyncio.sleep(2.0)
+                asyncio.create_task(self.next_round())
 
         return True
+
 
 
     async def _finish(self):

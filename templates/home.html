@@ -52,6 +52,15 @@
       box-shadow: 0 0 0 2px #e5e7eb;
     }
 
+    /* ナビ右側のラッパー（スマホで折り返し制御） */
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      flex-wrap: wrap;
+    }
+
     /* ===== レイアウト全体 ===== */
     .home-root {
       padding-top: 1.5rem;
@@ -696,6 +705,107 @@
       }
     }
 
+    /* ====== タブレット以下のレイアウト調整 ====== */
+    @media (max-width: 991.98px) {
+      .home-root {
+        padding-top: 1.2rem;
+        padding-bottom: 2rem;
+      }
+    }
+
+    /* ====== スマホ向け微調整（～768px） ====== */
+    @media (max-width: 767.98px) {
+      .navbar .container {
+        padding-inline: 1rem;
+      }
+
+      .nav-right {
+        width: 100%;
+        justify-content: flex-start;
+        margin-top: .35rem;
+      }
+      .nav-right .btn,
+      .nav-right .btn-soft {
+        font-size: .75rem;
+        padding-inline: .7rem;
+        padding-block: .25rem .3rem;
+      }
+      .nav-right span.small {
+        font-size: .75rem;
+      }
+
+      .panel-left {
+        border-radius: 1.1rem;
+        padding: 1.3rem 1.1rem 1.6rem;
+      }
+      .hero-sub {
+        max-width: 100%;
+        font-size: .88rem;
+      }
+
+      .station-card {
+        padding: .85rem .85rem .9rem;
+      }
+      .station-body {
+        font-size: .8rem;
+      }
+    }
+
+    /* ====== さらに狭いスマホ向け（～576px） ====== */
+    @media (max-width: 575.98px) {
+      .home-root {
+        padding-top: 1rem;
+        padding-bottom: 1.8rem;
+      }
+
+      .brand-logo {
+        width: 24px;
+        height: 24px;
+        font-size: .8rem;
+      }
+      .brand-mark span:last-child {
+        font-size: .9rem;
+      }
+
+      .hero-title {
+        font-size: 1.25rem;
+      }
+
+      .mini-map {
+        height: 170px;
+      }
+
+      /* カード内ボタンを縦並び＆広めに */
+      .station-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .station-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .station-note {
+        text-align: left;
+      }
+
+      /* フローティングボタンが邪魔になりすぎないよう少し内側に */
+      .home-root + div[style*="position: fixed"] {
+        right: .7rem !important;
+        bottom: .7rem !important;
+      }
+
+      .home-tutorial-card {
+        padding: 1.3rem 1.2rem 1.1rem;
+        width: 94%;
+      }
+      .home-tutorial-title {
+        font-size: 1.15rem;
+      }
+      .home-tutorial-list li {
+        font-size: .88rem;
+      }
+    }
+    
   </style>
 </head>
 <body>
@@ -705,7 +815,7 @@
         <span class="brand-logo">IF</span>
         <span>Ishikawa Facilities &amp; Parks</span>
       </a>
-      <div class="ms-auto d-flex align-items-center gap-2">
+      <div class="nav-right ms-auto d-flex align-items-center gap-2">
         <button id="homeHelpBtn" class="btn btn-outline-primary btn-sm btn-soft">
           ❓ あそびかた
         </button>
@@ -1195,7 +1305,7 @@
           <button id="homeTutorialNextBtn" class="btn btn-sm btn-primary">
             次へ →
           </button>
-          <button id="homeTutorialCloseBtn" class="btn btn-sm btn-success" style="display:none;">
+          <button id="homeTutorialCloseBtn" class="btn btn-sm btn成功" style="display:none;">
             OK、はじめる
           </button>
         </div>
@@ -1248,7 +1358,6 @@
           </form>
         </div>
         <div class="modal-footer justify-content-end">
-          {# ★ admin だけに見えるボタン #}
           {% if user and user.role == "admin" %}
             <a href="/admin/app_feedback"
               class="btn btn-outline-danger btn-sm me-2">
@@ -1275,8 +1384,8 @@
   </div>
 
   <footer class="text-center text-muted mt-4 mb-3" style="font-size:0.85rem;">
-  BGM: MusMus（フリーBGM・音楽素材 <a href="https://musmus.main.jp" target="_blank">https://musmus.main.jp</a>）
-</footer>
+    BGM: MusMus（フリーBGM・音楽素材 <a href="https://musmus.main.jp" target="_blank">https://musmus.main.jp</a>）
+  </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -1396,28 +1505,24 @@
         closeTutorial();
       });
 
-      // 背景クリックで閉じる（カード内クリックでは閉じない）
       backdrop.addEventListener("click", (ev) => {
         if (ev.target === backdrop) {
           closeTutorial();
         }
       });
 
-      // ESCキーで閉じる
       document.addEventListener("keydown", (ev) => {
         if (ev.key === "Escape" && backdrop.style.display !== "none") {
           closeTutorial();
         }
       });
 
-      // 「❓あそびかた」ボタン → 手動表示
       if (helpBtn) {
         helpBtn.addEventListener("click", () => {
           openTutorial(1);
         });
       }
 
-      // 初回だけ自動表示
       try {
         const hide = localStorage.getItem(STORAGE_KEY) === "true";
         if (!hide) {
@@ -1438,7 +1543,6 @@
         if (!topEl || !kingEl) return;
 
         try {
-          // 1) クイズプレイ数ランキング
           const r1 = await fetch("/api/home/top_quiz_players");
           const d1 = await r1.json();
           const items1 = Array.isArray(d1.items) ? d1.items : [];
@@ -1460,7 +1564,6 @@
             }).join("");
           }
 
-          // 2) キングを倒した人一覧
           const r2 = await fetch("/api/home/king_clearers");
           const d2 = await r2.json();
           const items2 = Array.isArray(d2.items) ? d2.items : [];

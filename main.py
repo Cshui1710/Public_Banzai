@@ -23,7 +23,7 @@ from auth import get_current_user, _SimpleUser, login_required  # ★まとめ�
 from app_feedback import router as app_feedback_router
 
 app = FastAPI(title="Ishikawa Facilities & Parks")
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax", https_only=False)
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax", https_only=True)
 
 # Mount static & uploads
 app.mount("/static", StaticFiles(directory="static"), name="static")

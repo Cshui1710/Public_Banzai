@@ -210,12 +210,6 @@
       display: none; /* 初期状態はフォームのみ表示 */
     }
 
-    @media (max-width: 576px) {
-      .panel {
-        padding: 1.2rem 1.1rem 1.4rem;
-      }
-    }
-
     /* ===== 作問ページチュートリアル ===== */
     .tutorial-overlay {
       position: fixed;
@@ -235,6 +229,10 @@
       box-shadow: 0 24px 60px rgba(15,23,42,0.5);
       border: 1px solid rgba(148,163,184,0.55);
       padding: 18px 18px 16px;
+
+      /* ★ 画面に収めてスクロール可にする */
+      max-height: 90vh;
+      overflow-y: auto;
     }
     .tutorial-header {
       display: flex;
@@ -263,11 +261,6 @@
       gap: 14px;
       font-size: .85rem;
       color: #4b5563;
-    }
-    @media (max-width: 768px) {
-      .tutorial-body {
-        grid-template-columns: minmax(0, 1fr);
-      }
     }
     .tutorial-block {
       border-radius: 12px;
@@ -330,6 +323,78 @@
       color: transparent;
     }
 
+    /* BGM 浮遊ボタン */
+    .bgm-floating {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 2000;
+    }
+
+    @media (max-width: 768px) {
+      .tutorial-body {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    @media (max-width: 576px) {
+      .panel {
+        padding: 1.2rem 1.1rem 1.4rem;
+      }
+      .page-header {
+        margin-bottom: 1rem;
+      }
+      .page-header .tagline {
+        font-size: .72rem;
+        letter-spacing: .16em;
+      }
+      .page-header h1 {
+        font-size: 1.1rem;
+      }
+      .page-header p {
+        font-size: .82rem;
+      }
+
+      .page-root {
+        padding-top: 1.2rem;
+        padding-bottom: 2rem;
+      }
+
+      .hint-chip {
+        font-size: .75rem;
+        margin-top: .2rem;
+      }
+
+      .tutorial-card {
+        padding: 12px 12px 10px;
+        max-height: 88vh;
+      }
+      .tutorial-body {
+        gap: 8px;
+        font-size: .8rem;
+      }
+      .tutorial-block {
+        padding: 8px 9px;
+      }
+      .tutorial-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .tutorial-footer .note {
+        font-size: .68rem;
+      }
+
+      .bgm-floating {
+        right: .75rem;
+        bottom: .75rem;
+      }
+      #bgmToggleBtn {
+        padding: .35rem .9rem;
+        font-size: .78rem;
+        border-radius: 999px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -359,7 +424,7 @@
   <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
   </audio>
-  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+  <div class="bgm-floating">
     <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
       🎵 BGM ON
     </button>
@@ -370,9 +435,9 @@
     <div class="tutorial-card">
       <div class="tutorial-header">
         <div>
-          <!-- ★ 追加：HOW TO PLAYバッジ -->
+          <!-- HOW TO PLAYバッジ -->
           <div class="tutorial-badge-label">HOW TO PLAY</div>
-          <!-- ★ タイトル＋QUIZ MAKERバッジ（タイトルにグラデ用クラスを付与） -->
+          <!-- タイトル＋QUIZ MAKERバッジ -->
           <div class="tutorial-title">
             <span class="tutorial-title-main">📝 作問ページのあそびかた</span>
             <span class="badge">QUIZ MAKER</span>
@@ -652,23 +717,34 @@
       const laterBtn = document.getElementById("makerTutorialLater");
       const howToBtn = document.getElementById("howToBtn");
 
-      if (overlay && closeBtn) {
+      if (overlay) {
         const seen = localStorage.getItem(key) === "true";
         if (!seen) {
           overlay.style.display = "flex";
         }
 
-        closeBtn.addEventListener("click", () => {
-          overlay.style.display = "none";
-          localStorage.setItem(key, "true");
-        });
+        // 「OK、作問をはじめる」ボタン
+        if (closeBtn) {
+          closeBtn.addEventListener("click", () => {
+            overlay.style.display = "none";
+            localStorage.setItem(key, "true");
+          });
+        }
 
+        // 「とじる」ボタン（フラグは立てない）
         if (laterBtn) {
           laterBtn.addEventListener("click", () => {
             overlay.style.display = "none";
-            // 「とじる」ではフラグは立てない（次回また表示される）
           });
         }
+
+        // 背景クリックで閉じる（カードの外側のみ）
+        overlay.addEventListener("click", (e) => {
+          if (e.target === overlay) {
+            overlay.style.display = "none";
+            // ここでは「見た」扱いにしない（次回また出したいので）
+          }
+        });
 
         // 「❓ あそびかた」ボタンでいつでもチュートリアルを開く
         if (howToBtn) {
@@ -678,7 +754,6 @@
         }
       }
     });
-
   </script>
 
   <!-- BGM制御 -->

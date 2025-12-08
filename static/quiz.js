@@ -6,6 +6,12 @@
   const IS_CHALLENGE = !!window.__CHALLENGE_LEVEL__;   // ★ チャレンジモード判定
   const j = (sel) => document.querySelector(sel);
 
+  // ★ モバイル判定（ざっくり）
+  const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent || "");
+
+  // ★ タイマーの更新間隔（モバイルは少し長めにして軽量化）
+  const TIMER_INTERVAL_MS = IS_MOBILE ? 220 : 120;
+
   const MY_NAME = (() => {
     if (user.display_name) return user.display_name;              // ニックネーム最優先
     if (user.email && !user.is_guest) return user.email;          // 本登録で display_name 未設定ならメール
@@ -24,10 +30,12 @@
   const SE_QUESTION_START = "/static/bgm/クイズ・出題02.mp3";
   const SE_THINKING       = "/static/bgm/クイズ・シンキングタイム.mp3";
 
+  // ★ Audio は 1 回だけ作って再利用
   let thinkingAudio = null;
   let questionStartAudio = null;
+  let judgeAudioCorrect = null;
+  let judgeAudioWrong = null;
 
-  
   // ========= チュートリアルモーダル（全モード共通） =========
   const TUTORIAL_HIDE_KEY = "ifp_quiz_tutorial_hide";
 
@@ -107,25 +115,27 @@
       }
     });
 
-    // 「❓ あそびかた」ボタン → 手動表示
+    // 🔹「❓ あそびかた」ボタン → いつでも開ける（自動表示フラグは無視）
     if (helpBtn) {
       helpBtn.addEventListener("click", () => {
         openTutorial(1);
       });
     }
 
-    // 自動表示（初回のみ）
+    // 🔹 自動表示（初回のみ）※ random-wait のときは自動表示しない
     try {
       const hide = localStorage.getItem(TUTORIAL_HIDE_KEY) === "true";
-      if (!hide) {
-        // 全モード共通だが、play画面/チャレンジ選択/待機などで自然に出る想定
+      if (!hide && mode !== "random-wait") {
         openTutorial(1);
       }
     } catch (e) {
-      // localStorage にアクセスできなくても無視
-      openTutorial(1);
+      if (mode !== "random-wait") {
+        openTutorial(1);
+      }
     }
   };
+
+
 
   document.addEventListener("DOMContentLoaded", setupTutorial);
 
@@ -256,11 +266,16 @@
 
     j("#cancelBtn")?.addEventListener("click", async () => {
       alive = false;
-      await fetch("/api/matchmaking/cancel", { method: "POST" });
-      history.back();
+      try {
+        await fetch("/api/matchmaking/cancel", { method: "POST" });
+      } catch (e) {
+        // 失敗してもとりあえずホームへ戻る
+      }
+      window.location.href = "/home";   // ★ ここを history.back() の代わりに
     });
     return;
   }
+
 
   // ========= ルーム作成 =========
   if (mode === "room-created") {
@@ -295,24 +310,34 @@
     const stampToggleBtn = document.getElementById("stampToggleBtn");
     const showStampFloat = () => { if (stampFloat) stampFloat.style.display = "block"; };
     const hideStampFloat = () => { if (stampFloat) stampFloat.style.display = "none"; };
-    let stampCollapsed = false;
     let hintTimer = null;
 
     // ゲーム終了状態フラグ
     let gameFinished = false;
 
-    // ★ ボス戦HPの初期化（window.initBossBattleHp は quiz.html 側で定義）
-    if (IS_CHALLENGE && typeof window.initBossBattleHp === "function") {
-      window.initBossBattleHp();
-    }
+    // ▼ スタンプパネル表示/非表示（パネルそのもの）
+    // ▼ 最初は「畳んである」状態にする
+    let stampCollapsed = true;  // ← 初期値を true に変更
 
-    stampToggleBtn?.addEventListener("click", () => {
-      stampCollapsed = !stampCollapsed;
-      const body = stampFloat?.querySelector(".stamp-fab-body");
-      if (!body) return;
-      body.style.display = stampCollapsed ? "none" : "block";
-      stampToggleBtn.textContent = stampCollapsed ? "ひらく" : "たたむ";
-    });
+    if (stampFloat) {
+      const body = stampFloat.querySelector(".stamp-fab-body");
+      if (body) body.style.display = "none";       // 中身を非表示
+    }
+    if (stampToggleBtn) {
+      stampToggleBtn.textContent = "ひらく";       // ボタンの初期表示
+      stampToggleBtn.addEventListener("click", () => {
+        stampCollapsed = !stampCollapsed;
+        const body = stampFloat?.querySelector(".stamp-fab-body");
+        if (!body) return;
+        if (stampCollapsed) {
+          body.style.display = "none";
+          stampToggleBtn.textContent = "ひらく";
+        } else {
+          body.style.display = "block";
+          stampToggleBtn.textContent = "とじる";
+        }
+      });
+    }
 
     // 開始ボタン（ランダムは非表示）
     if (isRandom) {
@@ -322,17 +347,32 @@
 
     let current = { qid: null, choices: [], locked: true };
     const setRoundInfo = (no, max) => {
-      const el = j("#roundInfo");
-      if (!el) return;
+      const inlineEl = j("#roundInfo");         // カード内の表示（従来の場所）
+      const topBar   = j("#roundTopBar");       // 新しい上部バー
+      const label    = j("#roundInfoLabel");    // バー内のテキスト部分
 
+      let text = "";
       if (no && max) {
-        // ★ 通常時：今が何問目で、全何問か分かる
-        el.textContent = `第 ${no} 問 / 全 ${max} 問`;
+        text = `第 ${no} 問 / 全 ${max} 問`;
       } else if (max) {
-        // ★ もし今の問題番号がまだ分からないけど、総数だけ分かる時用（保険）
-        el.textContent = `全 ${max} 問`;
+        text = `全 ${max} 問`;
       } else {
-        el.textContent = "";
+        text = "";
+      }
+
+      // 既存位置にも一応反映（残しておきたい場合用）
+      if (inlineEl) inlineEl.textContent = text;
+
+      // 新しい上部バーに反映
+      if (label) label.textContent = text;
+
+      // 文言があるときだけバーを表示
+      if (topBar) {
+        if (text) {
+          topBar.style.display = "block";
+        } else {
+          topBar.style.display = "none";
+        }
       }
     };
 
@@ -369,11 +409,11 @@
           current.locked = true;
           disableAllChoices();
         }
-      }, 100);
+      }, TIMER_INTERVAL_MS);
     };
 
     // ========= スタンプUI =========
-    const stamp = { list: [] };  // ★ クールタイム関連は削除
+    const stamp = { list: [] };  // ★ クールタイム関連は削除（サーバ側で制御）
 
     const renderStampGrid = () => {
       // 優先：右下パネル、なければ従来サイドバー
@@ -410,7 +450,7 @@
       } catch (e) { /* ignore */ }
     };
 
-    // ★ 自分のスタンプ：右下パネルの上に大きくポップ（既存の挙動）
+    // ★ 自分のスタンプ：右下パネルの上に大きくポップ
     const playStampFxSelf = (key) => {
       const img = document.createElement("img");
       img.src = `/static/stamp/${encodeURIComponent(key)}`;
@@ -444,6 +484,12 @@
 
     // ★ 他人のスタンプ：その人のスコア名の右横に小さくポップ
     const playStampFxOther = (key, whoName, whoId) => {
+      // （もしスマホで重ければ、ここを無効化することも可能）
+      if (IS_MOBILE) {
+        // モバイル負荷を減らしたければ return; にしてもOK
+        // return;
+      }
+
       const rows = Array.from(document.querySelectorAll(".score-row"));
       let targetRow = null;
 
@@ -480,11 +526,24 @@
 
     // ========= ○× ジャッジ画像表示 =========
     const playJudgeFx = (isCorrect) => {
+      // ★ Audio を再利用
       try {
-        const audio = new Audio(isCorrect ? JUDGE_SE_CORRECT : JUDGE_SE_WRONG);
-        audio.volume = 0.6;  
-        audio.play().catch(() => {});
-      } catch(e) {}
+        if (isCorrect) {
+          if (!judgeAudioCorrect) {
+            judgeAudioCorrect = new Audio(JUDGE_SE_CORRECT);
+            judgeAudioCorrect.volume = 0.6;
+          }
+          judgeAudioCorrect.currentTime = 0;
+          judgeAudioCorrect.play().catch(() => {});
+        } else {
+          if (!judgeAudioWrong) {
+            judgeAudioWrong = new Audio(JUDGE_SE_WRONG);
+            judgeAudioWrong.volume = 0.6;
+          }
+          judgeAudioWrong.currentTime = 0;
+          judgeAudioWrong.play().catch(() => {});
+        }
+      } catch (e) {}
 
       const src = isCorrect ? JUDGE_IMG_CORRECT : JUDGE_IMG_WRONG;
       if (!src) return;
@@ -519,25 +578,28 @@
     // ========= 問題レンダリング =========
     const renderQuestion = (q) => {
       j("#qStem").textContent = q.stem;
-      // 出題音
+
+      // 出題音：Audio を再利用
       try {
-        if (questionStartAudio) questionStartAudio.pause();
-        questionStartAudio = new Audio(SE_QUESTION_START);
-        questionStartAudio.volume = 1.0;
-        questionStartAudio.play().catch(()=>{});
-      } catch(e) {}
+        if (!questionStartAudio) {
+          questionStartAudio = new Audio(SE_QUESTION_START);
+          questionStartAudio.volume = 1.0;
+        }
+        questionStartAudio.currentTime = 0;
+        questionStartAudio.play().catch(() => {});
+      } catch (e) {}
 
       // シンキングタイム開始（ループ再生）
+      // ★ モバイルは負荷軽減のためオフ
       try {
-        if (thinkingAudio) {
-          thinkingAudio.pause();
-          thinkingAudio = null;
+        if (!thinkingAudio) {
+          thinkingAudio = new Audio(SE_THINKING);
+          thinkingAudio.volume = 1.0;
+          thinkingAudio.loop = true;
         }
-        thinkingAudio = new Audio(SE_THINKING);
-        thinkingAudio.volume = 1.0;
-        thinkingAudio.loop = true;
-        thinkingAudio.play().catch(()=>{});
-      } catch(e) {}
+        thinkingAudio.currentTime = 0;
+        thinkingAudio.play().catch(() => {});
+      } catch (e) {}
 
       // ヒント処理
       const hintBox  = j("#qHintBox");
@@ -684,15 +746,63 @@
         }
 
         if (m.type === "game" && m.event === "started") {
+          // ★ ゲーム開始時にヘッダ説明を消す
+          const intro = document.getElementById("playIntro");
+          if (intro) {
+            intro.classList.add("d-none");   // 説明を隠す
+          }
+
+          // ★ ゲーム開始ボタン自体を消す（バトル中は非表示）
+          const startBtn = document.getElementById("startBtn");
+          if (startBtn) {
+            startBtn.style.display = "none";
+          }
+
+          // ★ 一番上のタブ（IF / あそびかた / ホームへ）をバトル中だけ消す
+          const nav = document.getElementById("quizNavbar");
+          if (nav) {
+            nav.classList.add("d-none");
+          }
+
+          const topBar = document.getElementById("roundTopBar");
+          if (topBar) {
+            topBar.classList.remove("d-none");
+          }
+
           setRoundInfo(1, m.round_max);
           renderMembers(m.members);
-          j("#startBtn")?.setAttribute("disabled", "disabled");
+          // j("#startBtn")?.setAttribute("disabled", "disabled");  // 非表示にするのでこれは不要
         }
 
+
         if (m.type === "q") {
+          // ★ 問題が来たタイミングでも念のため非表示にしておく
+          const intro = document.getElementById("playIntro");
+          if (intro) {
+            intro.classList.add("d-none");
+          }
+
+          // ★ バトル中なので開始ボタンは消したまま
+          const startBtn = document.getElementById("startBtn");
+          if (startBtn) {
+            startBtn.style.display = "none";
+          }
+
+          // ★ 念のため、タブも隠しておく（started が飛ばないパターン対策）
+          const nav = document.getElementById("quizNavbar");
+          if (nav) {
+            nav.classList.add("d-none");
+          }
+
+          const topBar = document.getElementById("roundTopBar");
+          if (topBar) {
+            topBar.classList.remove("d-none");
+          }          
           setRoundInfo(m.round_no, m.round_max);
           renderQuestion(m);
         }
+
+
 
         if (m.type === "answer_result") {
           renderMembers(m.scores);
@@ -720,13 +830,92 @@
         }
 
         if (m.type === "game" && m.event === "finished") {
-          const r = m.ranking || [];
-          const msg = r.map((x, i) => `${i + 1}位 ${x.name}（${x.score}）`).join("<br>");
-          showOverlay(`<div class="text-center"><div class="mb-2">🎉 試合終了！</div>${msg}</div>`);
-          setTimeout(hideOverlay, 4000);
+          const ranking = Array.isArray(m.ranking) ? m.ranking : [];
+          const myId = user.id;
+          const myName = MY_NAME;
+
+          const rowsHtml = ranking
+            .map((x, i) => {
+              const rank = i + 1;
+              let medal = "";
+              let extraClass = "";
+
+              if (rank === 1) {
+                medal = "🥇";
+                extraClass = " rank-1";
+              } else if (rank === 2) {
+                medal = "🥈";
+                extraClass = " rank-2";
+              } else if (rank === 3) {
+                medal = "🥉";
+                extraClass = " rank-3";
+              }
+
+              const name  = x.name ?? `プレイヤー${rank}`;
+              const score = x.score ?? 0;
+
+              // ★ 自分の行かどうか判定
+              const isMe =
+                (x.user_id != null && Number(x.user_id) === Number(myId)) ||
+                (x.id != null && Number(x.id) === Number(myId)) ||
+                (x.name && x.name === myName);
+
+              const meClass = isMe ? " me" : "";
+
+              return `
+                <li class="result-ranking-item${extraClass}${meClass}">
+                  <div class="result-rank-left">
+                    <span class="result-rank-no">${rank}</span>
+                    <span class="result-rank-medal">${medal}</span>
+                    <span class="result-rank-name">
+                      ${name}
+                      ${isMe ? '<span class="result-rank-you">YOU</span>' : ""}
+                    </span>
+                  </div>
+                  <div class="result-rank-score">${score} pt</div>
+                </li>
+              `;
+            })
+            .join("");
+
+          const html = `
+            <div class="result-card">
+              <div class="result-card-icon">🏁</div>
+              <div class="result-card-title">試合終了！</div>
+              <div class="result-card-sub">今回の順位</div>
+              <ol class="result-ranking">
+                ${
+                  rowsHtml
+                    || '<li class="result-ranking-empty">参加者がいませんでした。</li>'
+                }
+              </ol>
+              <div class="result-card-footer">
+                この結果は数秒後に自動で閉じます。
+              </div>
+            </div>
+          `;
+
+          showOverlay(html);
+          setTimeout(hideOverlay, 7000);
 
           gameFinished = true;
           updateStartButton();
+
+          const nav = document.getElementById("quizNavbar");
+          if (nav) {
+            nav.classList.remove("d-none");
+          }
+
+          // ★ ゲーム開始ボタンも（フレンド戦なら）位置だけ戻す
+          const startBtn = document.getElementById("startBtn");
+          if (startBtn && !isRandom) {
+            startBtn.style.display = "inline-block";  // or ""
+          }        
+
+          const topBar = document.getElementById("roundTopBar");
+          if (topBar) {
+            topBar.classList.add("d-none");
+          }
 
           setRoundInfo(null, null);
           j("#qStem").textContent = "ゲーム終了。この部屋ではこれ以上対戦できません。";
@@ -748,7 +937,26 @@
       disableAllChoices();
       stopQuestionTimer(true);
       current.locked = true;
+
+      // ★ 接続が切れたらタブを戻す
+      const nav = document.getElementById("quizNavbar");
+      if (nav) {
+        nav.classList.remove("d-none");
+      }
+
+      const topBar = document.getElementById("roundTopBar");
+      if (topBar) {
+        topBar.classList.add("d-none");
+      }      
+      // ★ 開始ボタンも（フレンド戦なら）位置だけ戻す
+      const startBtn = document.getElementById("startBtn");
+      if (startBtn && !isRandom) {
+        startBtn.style.display = "inline-block";  // or ""
+      }
+
+      try { if (thinkingAudio) thinkingAudio.pause(); } catch(e) {}
     });
+
 
     // ========= ボタンイベント =========
     j("#startBtn")?.addEventListener("click", () => {

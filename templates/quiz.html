@@ -584,7 +584,7 @@
       align-items: center;
       gap: .75rem;
       margin-top: .75rem;
-      padding-top: .6rem;
+      padding-top: .4rem;
       border-top: 1px solid #e5e7eb;
     }
 
@@ -608,10 +608,397 @@
       gap: .3rem;
     }
 
+    /* ===== 試合終了オーバーレイ用 ===== */
+    .result-card {
+      background: #ffffff;
+      border-radius: 1.4rem;
+      padding: 1.8rem 2rem 1.4rem;
+      max-width: 560px;   /* PC向けサイズ */
+      width: 94%;
+      margin: 0 auto;
+      box-shadow: 0 26px 70px rgba(15,23,42,0.7);
+      border: 1px solid rgba(148,163,184,0.6);
+      text-align: left;
+      color: #0f172a; /* overlayContent の text-white を上書き */
+    }
+
+    .result-card-icon {
+      font-size: 2.4rem;
+      margin-bottom: .25rem;
+    }
+
+    .result-card-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: .15rem;
+    }
+
+    .result-card-sub {
+      font-size: .95rem;
+      color: #6b7280;
+      margin-bottom: .9rem;
+    }
+
+    .result-ranking {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 .9rem;
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+
+    .result-ranking-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      padding: .55rem .85rem;
+      border-radius: .9rem;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      font-size: .95rem;
+    }
+
+    .result-ranking-item.rank-1 {
+      border-color: #fbbf24;
+      background: radial-gradient(circle at 0% 0%, #fef3c7 0, #fffbeb 40%, #ffffff 100%);
+      box-shadow: 0 10px 28px rgba(250,204,21,0.45);
+    }
+    .result-ranking-item.rank-2 {
+      border-color: #93c5fd;
+      background: radial-gradient(circle at 0% 0%, #dbeafe 0, #eff6ff 40%, #ffffff 100%);
+    }
+    .result-ranking-item.rank-3 {
+      border-color: #a7f3d0;
+      background: radial-gradient(circle at 0% 0%, #d1fae5 0, #ecfdf5 40%, #ffffff 100%);
+    }
+
+    /* ★ 自分の行だけさらに強調 */
+    .result-ranking-item.me {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px rgba(129,140,248,0.6);
+      background: radial-gradient(circle at 0% 0%, #e0ecff 0, #eef2ff 38%, #ffffff 100%);
+    }
+
+    .result-rank-left {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      min-width: 0;
+    }
+
+    .result-rank-no {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.9rem;
+      height: 1.9rem;
+      border-radius: 999px;
+      background: #111827;
+      color: #f9fafb;
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .result-rank-medal {
+      font-size: 1.2rem;
+      min-width: 1.2rem;
+      text-align: center;
+    }
+
+    .result-rank-name {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 260px;
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+    }
+
+    /* ★ YOU バッジ */
+    .result-rank-you {
+      font-size: .68rem;
+      font-weight: 700;
+      padding: .05rem .45rem;
+      border-radius: 999px;
+      background: #4f46e5;
+      color: #f9fafb;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .result-rank-score {
+      font-weight: 700;
+      font-size: .95rem;
+      white-space: nowrap;
+    }
+
+    .result-ranking-empty {
+      padding: .4rem .2rem;
+      font-size: .86rem;
+      color: #6b7280;
+    }
+
+    .result-card-footer {
+      font-size: .82rem;
+      color: #9ca3af;
+      text-align: right;
+    }
+
+    /* ===== BGMトグル（位置だけクラスで制御） ===== */
+    .quiz-bgm-toggle {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 2000;
+    }
+
+    /* ===== ここからスマホ専用調整 ===== */
+    @media (max-width: 576px) {
+      main.quiz-root {
+        padding-top: 1rem;
+        padding-bottom: 1.5rem;
+      }
+
+      .navbar .container {
+        padding-inline: 0.75rem;
+      }
+
+      .navbar-brand span:last-child {
+        font-size: 0.9rem;
+      }
+
+      .card {
+        border-radius: 0.9rem;
+      }
+
+      .play-card,
+      .play-card-boss {
+        padding: 1.1rem !important;
+      }
+
+      #qStem {
+        font-size: 1rem;
+      }
+
+      .quiz-tagline-sm {
+        font-size: 0.7rem;
+      }
+
+      .boss-row {
+        gap: 0.85rem;
+      }
+      .boss-card {
+        min-height: auto;
+      }
+      .boss-visual {
+        min-height: 120px;
+      }
+      .boss-bg-circle {
+        width: 120px;
+        height: 120px;
+      }
+
+      /* ボスHUDを縦並びにして見やすく */
+      .boss-hud {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .boss-hud-vs {
+        align-self: center;
+      }
+
+      /* スコアボードの文字もちょっと大きめに */
+      .score-row {
+        font-size: 0.9rem;
+      }
+
+      /* 結果カードを画面にフィットさせる */
+      .result-card {
+        max-width: 100%;
+        padding: 1.3rem 1.4rem 1rem;
+        border-radius: 1rem;
+      }
+      .result-card-title {
+        font-size: 1.35rem;
+      }
+      .result-card-sub {
+        font-size: 0.9rem;
+      }
+      .result-ranking-item {
+        padding: 0.5rem 0.7rem;
+      }
+      .result-rank-no {
+        width: 2rem;
+        height: 2rem;
+        font-size: 0.9rem;
+      }
+      .result-rank-medal {
+        font-size: 1.1rem;
+      }
+      .result-rank-name {
+        max-width: 200px;
+        font-size: 0.9rem;
+      }
+      .result-rank-score {
+        font-size: 1rem;
+      }
+
+      /* チュートリアルモーダルをスマホにフィット */
+      .tutorial-backdrop {
+        padding: 1rem;
+      }
+      .tutorial-card {
+        width: 100%;
+        padding: 1.3rem 1.3rem 1rem;
+      }
+      .tutorial-title {
+        font-size: 1.1rem;
+      }
+      .tutorial-body {
+        font-size: 0.9rem;
+        min-height: 110px;
+      }
+
+      /* BGMボタンを少し小さく＆端に */
+      .quiz-bgm-toggle {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        transform: scale(0.95);
+      }
+      .quiz-bgm-toggle .btn {
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
+      }
+    }
+/* ===== ラウンド表示バー（第○問 / 全○問） ===== */
+    .round-top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 1020;
+      display: flex;
+      justify-content: center;
+      padding: 0.35rem 0.75rem;
+      background: linear-gradient(
+        to right,
+        rgba(99,102,241,0.16),
+        rgba(14,165,233,0.10)
+      );
+    }
+
+    .round-top-bar-inner {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.25rem 0.9rem;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.96);
+      box-shadow: 0 10px 25px rgba(15,23,42,0.55);
+      color: #f9fafb;
+      font-size: 0.9rem;
+    }
+
+    .round-top-label {
+      font-size: 0.7rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #a5b4fc;
+    }
+
+    .round-top-text {
+      font-weight: 700;
+    }
+
+    /* スマホだと少しコンパクトに */
+    @media (max-width: 576px) {
+      .round-top-bar {
+        padding: 0.25rem 0.6rem;
+      }
+      .round-top-bar-inner {
+        padding: 0.18rem 0.8rem;
+        font-size: 0.82rem;
+      }
+    }
+
+    @media (max-width: 576px) {
+      /* 既存のスマホ用CSSはそのまま残してOK。その一番下に追加してね */
+
+      /* 画面上下の余白を少し減らす */
+      main.quiz-root {
+        padding-top: 0.5rem;
+        padding-bottom: 1rem;
+      }
+
+      /* 問題カードのパディング & マージンを少し削る */
+      .play-card,
+      .play-card-boss {
+        padding: 0.85rem !important;
+        margin-bottom: 0.75rem;
+      }
+
+      /* 問題文の行間を少し詰める */
+      #qStem {
+        margin-bottom: 0.75rem;
+      }
+
+      /* ボスHUDの下の余白を少し詰める */
+      .boss-hud {
+        margin-bottom: 0.3rem;
+      }
+
+      /* 区切り線の上下余白を少し減らす */
+      hr.my-3 {
+        margin-top: 0.6rem !important;
+        margin-bottom: 0.7rem !important;
+      }
+
+      /* 右側（スコア & 参加者）のカードも薄くする */
+      .col-lg-4 .card.p-3 {
+        padding: 0.75rem !important;
+      }
+
+      .score-wrapper {
+        margin-bottom: 0.5rem;
+      }
+
+      /* 選択肢ボタンの上下余白を少し詰める */
+      #choices .btn {
+        padding-top: 0.45rem;
+        padding-bottom: 0.45rem;
+      }
+    }
+
+    /* 自分の行ハイライトをちょっと大きく（すでにあれば不要） */
+    .result-ranking-item.me {
+      transform: scale(1.03);
+      background: rgba(129, 140, 248, 0.10);
+    }
+    .result-ranking-item.me .result-rank-you {
+      font-size: 0.68rem;
+      margin-left: 0.35rem;
+    }
+    #qStem + br,
+    #qStem + .text-muted,
+    #qStem + .small,
+    #roundInfo {
+      display: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }  
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand-lg">
+  <div id="roundTopBar" class="round-top-bar d-none">
+    <div class="round-top-bar-inner">
+      <span class="round-top-label">ROUND</span>
+      <span id="roundInfoLabel" class="round-top-text"></span>
+    </div>
+  </div>
+
+  <nav id="quizNavbar" class="navbar navbar-expand-lg">
     <div class="container">
       <a class="navbar-brand brand-mark" href="/home">
         <span class="brand-logo">IF</span>
@@ -867,35 +1254,35 @@
       <div class="row g-3">
         <div class="col-lg-8">
           <div class="card p-4 mb-3 play-card {% if is_challenge %}play-card-boss{% endif %}">
-            <div class="d-flex flex-wrap justify-content-between align-items-start mb-2">
+            <div id="playHeader" class="d-flex flex-wrap justify-content-between align-items-start mb-2">
               <div class="me-3">
-                {% if is_challenge %}
-                  <div class="quiz-tagline-sm" style="color:#f97316;">BOSS BATTLE</div>
-                  <h1 class="h5 mb-1">CPU と 1 vs 1 の白熱バトル</h1>
-                  <div class="text-muted small mb-1">
-                    「ボス戦スタート」を押すとボスとの対戦が始まります。
-                  </div>
-                  <div class="small fw-semibold" style="color:#b91c1c;">
-                    VS
-                    {% if challenge_level == "jack" %}
-                      ジャック
-                    {% elif challenge_level == "queen" %}
-                      クイーン
-                    {% elif challenge_level == "king" %}
-                      キング
-                    {% else %}
-                      CPU
-                    {% endif %}
-                  </div>
-                {% else %}
-                  <div class="quiz-tagline-sm">ONLINE BATTLE</div>
-                  <h1 class="h5 mb-1">石川 公共施設・公園クイズ</h1>
-                  <div class="text-muted small">
-                    参加者が揃ったら「ゲーム開始」を押してください。
-                  </div>
-                {% endif %}
-                <div id="roundInfo" class="text-muted small mt-1"></div>
+                <!-- ★ ゲーム開始後に畳みたい部分をひとまとめにする -->
+                <div id="playIntro">
+                  {% if is_challenge %}
+                    <div class="quiz-tagline-sm" style="color:#f97316;">BOSS BATTLE</div>
+                    <h1 class="h5 mb-1">CPU と 1 vs 1 の白熱バトル</h1>
+                    <div class="text-muted small mb-1">
+                      「ボス戦スタート」を押すとボスとの対戦が始まります。
+                    </div>
+                    <div class="small fw-semibold" style="color:#b91c1c;">
+                      VS
+                      {% if challenge_level == "jack" %}ジャック
+                      {% elif challenge_level == "queen" %}クイーン
+                      {% elif challenge_level == "king" %}キング
+                      {% else %}CPU{% endif %}
+                    </div>
+                  {% else %}
+                    <div class="quiz-tagline-sm">ONLINE BATTLE</div>
+                    <h1 class="h5 mb-1">石川 公共施設・公園クイズ</h1>
+                    <div class="text-muted small">
+                      参加者が揃ったら「ゲーム開始」を押してください。
+                    </div>
+                  {% endif %}
+                </div>
+
+                <!-- ★ ここは常に残す：「第1問 / 全10問」など -->
               </div>
+
               <div class="mt-2 mt-lg-0">
                 <button id="startBtn"
                         class="btn {% if is_challenge %}btn-danger{% else %}btn-success{% endif %}">
@@ -907,6 +1294,7 @@
                 </button>
               </div>
             </div>
+
 
             {% if is_challenge %}
             <!-- ボス戦HUD：YOU vs BOSS -->
@@ -944,7 +1332,7 @@
             </div>
             {% endif %}
 
-            <hr class="my-3">
+            <hr id="playHeaderHr" class="my-3">
 
             <h2 id="qStem" class="h5 mb-3">問題が表示されます</h2>
 
@@ -1090,7 +1478,8 @@
       <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
     {% endif %}
   </audio>
-  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+  <!-- ★ インラインstyleをやめてクラスで制御 -->
+  <div class="quiz-bgm-toggle">
     <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
       🎵 BGM ON
     </button>
@@ -1209,7 +1598,21 @@
       });
     })();
   </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const startBtn   = document.getElementById("startBtn");
+      const playHeader = document.getElementById("playHeader");
+      const playHeaderHr = document.getElementById("playHeaderHr");
 
+      if (!startBtn || !playHeader || !playHeaderHr) return;
+
+      // 1回押されたタイミングでヘッダーと区切り線を消す
+      startBtn.addEventListener("click", () => {
+        playHeader.style.display = "none";
+        playHeaderHr.style.display = "none";
+      });
+    });
+  </script>
   <script src="/static/quiz.js"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@
 
   <!-- 到達半径（サーバから渡す） -->
   <script>
-    window.ARRIVAL_RADIUS = {{ (radius_m | default(50000, true) | int) | tojson }};
+    window.ARRIVAL_RADIUS = {{ (radius_m | default(100, true) | int) | tojson }};
   </script>
 
   <!-- heatmap.js + Leaflet.heat -->
@@ -690,14 +690,101 @@
       }
     }
 
-    /* ===== 🎁 プレゼントボックスアニメ（スタンプ獲得用） ===== */
+    /* ===== 🎁 プレゼントボックス＆スタンプ演出（1カラム版） ===== */
+    .got-card {
+      max-width: 520px;
+      width: 96vw;
+      padding: 18px 18px 14px;
+      background:
+        radial-gradient(circle at top, #fef3c7 0, #ffffff 45%, #eff6ff 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .got-card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(251,191,36,0.18), transparent 55%),
+        radial-gradient(circle at 100% 0%, rgba(96,165,250,0.18), transparent 55%);
+      pointer-events: none;
+      opacity: 0.9;
+    }
+
+    .got-modal-header {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+      z-index: 1;
+    }
+
+    .got-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fed7aa;
+      margin-bottom: 4px;
+    }
+
+    .got-title {
+      font-weight: 800;
+      font-size: 20px;
+      margin-bottom: 2px;
+      background: linear-gradient(120deg,#f97316,#ec4899,#6366f1);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .got-subtitle {
+      font-size: 12px;
+      color: #4b5563;
+    }
+
+    .got-visual {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .got-step-label {
+      font-size: 11px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+
+    .got-stage {
+      position: relative;
+      width: 100%;
+      max-width: 240px;
+      height: 220px;
+      margin: 6px auto;
+    }
 
     .gift-wrapper {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      height: 100%;
       display: flex;
       justify-content: center;
       align-items: flex-end;
-      margin: 4px 0 8px;
-      height: 140px;
     }
 
     .gift {
@@ -705,7 +792,6 @@
       width: 90px;
       height: 90px;
       transform-origin: center bottom;
-      /* 「ぽよぽよぽよ」する待機アニメーション */
       animation: gift-bounce 1.4s ease-in-out infinite;
     }
 
@@ -773,62 +859,42 @@
       border: 1px solid rgba(248, 250, 252, 0.9);
     }
 
-    .gift-sparkle.s1 {
-      bottom: 90px;
-      left: 10px;
-    }
-    .gift-sparkle.s2 {
-      bottom: 105px;
+    .gift-sparkle.s1 { bottom: 90px; left: 10px; }
+    .gift-sparkle.s2 { bottom: 105px; left: 50%; transform: translateX(-50%); }
+    .gift-sparkle.s3 { bottom: 90px; right: 10px; }
+
+    .gift-aura {
+      position: absolute;
+      bottom: 0;
       left: 50%;
+      width: 120px;
+      height: 50px;
       transform: translateX(-50%);
-    }
-    .gift-sparkle.s3 {
-      bottom: 90px;
-      right: 10px;
+      background: radial-gradient(circle at center,
+        rgba(248,250,252,0.9),
+        rgba(239,246,255,0.0) 70%);
+      filter: blur(2px);
+      opacity: 0.9;
+      pointer-events: none;
     }
 
-    /* 「ぽよぽよぽよ」待機アニメ */
     @keyframes gift-bounce {
-      0% {
-        transform: translateY(0) scale(1);
-      }
-      12% {
-        transform: translateY(-7px) scale(1.04);
-      }
-      24% {
-        transform: translateY(0) scale(0.99);
-      }
-      36% {
-        transform: translateY(-5px) scale(1.03);
-      }
-      48% {
-        transform: translateY(0) scale(1);
-      }
-      64% {
-        transform: translateY(-3px) scale(1.02);
-      }
-      80% {
-        transform: translateY(0) scale(1);
-      }
-      100% {
-        transform: translateY(0) scale(1);
-      }
+      0%   { transform: translateY(0) scale(1); }
+      12%  { transform: translateY(-7px) scale(1.04); }
+      24%  { transform: translateY(0) scale(0.99); }
+      36%  { transform: translateY(-5px) scale(1.03); }
+      48%  { transform: translateY(0) scale(1); }
+      64%  { transform: translateY(-3px) scale(1.02); }
+      80%  { transform: translateY(0) scale(1); }
+      100% { transform: translateY(0) scale(1); }
     }
 
-    /* フタがパカッと開くアニメ */
     @keyframes gift-open-lid {
-      0% {
-        transform: translateX(-50%) rotate(0deg);
-      }
-      40% {
-        transform: translateX(-50%) rotate(-8deg);
-      }
-      100% {
-        transform: translateX(-50%) translateY(-34px) rotate(-35deg);
-      }
+      0%   { transform: translateX(-50%) rotate(0deg); }
+      40%  { transform: translateX(-50%) rotate(-8deg); }
+      100% { transform: translateX(-50%) translateY(-34px) rotate(-35deg); }
     }
 
-    /* キラキラが飛ぶアニメ */
     @keyframes gift-spark {
       0% {
         transform: translateY(0) scale(0.4);
@@ -843,19 +909,12 @@
       }
     }
 
-    /* 箱が消えるときのフェード */
     @keyframes gift-box-fade {
-      0% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 0;
-      }
+      0% { opacity: 1; }
+      100% { opacity: 0; }
     }
 
-    /* 「開く」とき用のクラス */
     .gift.open {
-      /* 開いている間は待機バウンス止める */
       animation: none;
     }
     .gift.open .gift-lid {
@@ -864,14 +923,9 @@
     .gift.open .gift-sparkle {
       animation: gift-spark 0.9s ease-out forwards;
     }
-    .gift.open .gift-sparkle.s2 {
-      animation-delay: 0.05s;
-    }
-    .gift.open .gift-sparkle.s3 {
-      animation-delay: 0.1s;
-    }
+    .gift.open .gift-sparkle.s2 { animation-delay: 0.05s; }
+    .gift.open .gift-sparkle.s3 { animation-delay: 0.1s; }
 
-    /* 箱本体＆リボンをフェードアウト（少し遅らせて消える） */
     .gift.open .gift-box,
     .gift.open .gift-ribbon-vert,
     .gift.open .gift-ribbon-horiz {
@@ -879,22 +933,128 @@
       animation-delay: 0.45s;
     }
 
-    /* 完全に非表示にするフラグ（JSから付ける） */
     .gift.hide {
       opacity: 0;
     }
 
-    /* スタンプ画像は最初は隠しておき、あとでふわっと出す */
+    .got-stamp-frame {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at top, #fef9c3 0, #fee2e2 35%, #eff6ff 100%);
+      border: 1px solid #facc15;
+      padding: 10px;
+      box-shadow: 0 10px 30px rgba(248, 250, 252, 0.9),
+                  0 16px 35px rgba(15, 23, 42, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.35s ease-out;
+    }
+
+    #gotStampFrame.stamp-frame-show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
     #gotImg {
       opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+      transform: scale(0.7) translateY(8px);
+      transition:
+        opacity 0.45s ease-out,
+        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
     }
     #gotImg.stamp-show {
       opacity: 1;
-      transform: scale(1);
+      transform: scale(1) translateY(0);
     }
 
+    .got-stamp-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .got-stamp-note {
+      font-size: 11px;
+      color: #4b5563;
+    }
+
+    .got-footer {
+      position: relative;
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      z-index: 1;
+    }
+
+    @media (max-width: 640px) {
+      .got-card {
+        padding: 16px 14px 12px;
+      }
+    }
+    /* BGM トグル配置 */
+    .bgm-toggle-wrap {
+      position: fixed;
+      right: 8rem;
+      bottom: 2.9rem;
+      z-index: 2000;
+    }
+
+    /* スマホではヘッダー内に収める（固定をやめる） */
+
+    /* 共通サイズ（PC） */
+    .got-img {
+      width: 180px;
+      height: 180px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    /* スマホ用に全体をコンパクトに */
+    @media (max-width: 640px) {
+      .got-card {
+        max-width: 360px;
+        width: 94vw;
+        padding: 14px 12px 10px;
+      }
+
+      .got-title {
+        font-size: 17px;
+      }
+
+      .got-subtitle {
+        font-size: 11px;
+      }
+
+      .got-stamp-name {
+        font-size: 14px;
+      }
+
+      .got-stamp-note {
+        font-size: 10px;
+      }
+
+      .got-stage {
+        max-width: 180px;
+        height: 180px;   /* 以前より少し低く */
+      }
+
+      .got-img {
+        width: 140px;
+        height: 140px;
+      }
+
+      .got-footer .btn {
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+    }
 
   </style>
 </head>
@@ -924,15 +1084,13 @@
       </div>
     </div>
 
-    <!-- 下段：地図操作系 -->
+    <!-- 下段：地図操作系（ON/OFFボタン削除してスッキリ版） -->
     <div class="topbar-row">
       <div class="controls-left">
         <span class="pill">
           📏 到達半径 {{ radius_m|int if radius_m is defined else 50 }}m
         </span>
         <button id="locateBtn" class="btn">📍 現在地</button>
-        <button id="toggleParks" class="btn">🌳 公園 ON/OFF</button>
-        <button id="toggleFacilities" class="btn">🏛 公共施設 ON/OFF</button>
       </div>
       <div class="controls-right">
         <div class="field">
@@ -945,14 +1103,14 @@
     </div>
 
     <!-- BGM -->
-    <audio id="bgmAudio" loop>
-      <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
-    </audio>
-    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
-      <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
-        🎵 BGM ON
-      </button>
-    </div>
+  <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+  </audio>
+  <div class="bgm-toggle-wrap">
+    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
+      🎵 BGM ON
+    </button>
+  </div>
   </header>
 
   <div id="map"></div>
@@ -1202,73 +1360,72 @@
 
   <!-- スタンプをゲット確認モーダル -->
   <div id="gotModal" class="modal">
-    <div class="modal-card" style="max-width:520px;text-align:center;">
-      <!-- タイトルは JS で「○○をゲット！」に差し替える -->
-      <div id="gotTitle" style="font-weight:800;font-size:20px;margin-bottom:4px;">
-        スタンプをゲット！
+    <div class="modal-card got-card">
+      <!-- ヘッダー -->
+      <div class="got-modal-header">
+        <div>
+          <div class="got-chip">CHECK-IN REWARD</div>
+          <div id="gotTitle" class="got-title">
+            スタンプをゲット！
+          </div>
+          <div id="gotSubtitle" class="got-subtitle">
+            チェックインおつかれさま！プレゼントボックスが開くと、スタンプがあらわれます。
+          </div>
+        </div>
+        <button class="btn" onclick="closeGotModal()">閉じる</button>
       </div>
 
-      <!-- 🎁 プレゼントアニメ -->
-      <div class="gift-wrapper">
-        <div class="gift">
-          <div class="gift-box"></div>
-          <div class="gift-lid"></div>
-          <div class="gift-ribbon-vert"></div>
-          <div class="gift-ribbon-horiz"></div>
-          <div class="gift-sparkle s1"></div>
-          <div class="gift-sparkle s2"></div>
-          <div class="gift-sparkle s3"></div>
+      <!-- 中央エリア：箱→スタンプを同じ場所で -->
+      <div class="got-visual">
+        <div class="got-step-label">STEP 1 → STEP 2</div>
+
+        <!-- 箱とスタンプを同じステージに重ねる -->
+        <div class="got-stage">
+          <!-- 上：プレゼントボックス（最初に見える） -->
+          <div class="gift-wrapper">
+            <div class="gift">
+              <div class="gift-box"></div>
+              <div class="gift-lid"></div>
+              <div class="gift-ribbon-vert"></div>
+              <div class="gift-ribbon-horiz"></div>
+              <div class="gift-sparkle s1"></div>
+              <div class="gift-sparkle s2"></div>
+              <div class="gift-sparkle s3"></div>
+              <div class="gift-aura"></div>
+            </div>
+          </div>
+
+          <!-- 下：スタンプ用フレーム（あとから同じ位置に出る） -->
+          <div id="gotStampFrame" class="got-stamp-frame">
+            <img
+              id="gotImg"
+              src=""
+              alt="キャラ画像"
+              class="got-img"
+            />
+          </div>
+        </div>
+
+        <div id="gotName" class="got-stamp-name">???</div>
+        <div class="got-stamp-note">
+          このスタンプはクイズ対戦のリアクションで使えるようになりました。
         </div>
       </div>
 
-      <!-- 実際のスタンプ画像 -->
-      <div style="display:flex;justify-content:center;margin:4px 0 10px;">
-        <img id="gotImg" src="" alt="キャラ画像"
-             style="width:180px;height:180px;object-fit:contain;image-rendering:pixelated;" />
-      </div>
-      
-      <div id="gotName" style="font-size:18px;font-weight:700;color:#0f172a;">???</div>
-
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-        <button class="btn primary" onclick="openCharsAll(); closeGotModal();">スタンプを見る</button>
-        <button class="btn" onclick="shareGot()">共有する</button>
-        <button class="btn" onclick="closeGotModal()">閉じる</button>
+      <!-- 下部ボタン -->
+      <div class="got-footer">
+        <button class="btn primary" onclick="openCharsAll(); closeGotModal();">
+          🦫 図鑑でスタンプを見る
+        </button>
+        <button class="btn" onclick="shareGot()">
+          🔗 友だちに共有する
+        </button>
       </div>
     </div>
   </div>
 
   <!-- 外部JS -->
   <script src="/static/app.js"></script>
-
-  <!-- 🎁 プレゼントを「開く」アニメを走らせる関数 -->
-  <script>
-    function triggerGiftOpen() {
-      const gift = document.querySelector(".gift");
-      const imgEl = document.getElementById("gotImg");
-      if (!gift || !imgEl) return;
-
-      // 毎回リセット：箱を見える状態＆スタンプ非表示に戻す
-      gift.classList.remove("open", "hide");
-      imgEl.classList.remove("stamp-show");
-      imgEl.style.opacity = "0";
-      imgEl.style.transform = "scale(0.8)";
-
-      // リフローしてから open クラスを付ける（アニメ再スタート）
-      void gift.offsetWidth;
-      gift.classList.add("open");
-
-      // フタが開いてキラキラしたあとに、
-      // ・箱本体を消す
-      // ・スタンプをふわっと表示
-      setTimeout(() => {
-        gift.classList.add("hide");
-        imgEl.classList.add("stamp-show");
-
-        imgEl.style.opacity = "1";
-        imgEl.style.transform = "scale(1)";
-      }, 900); // 0.7s(フタ) + 0.2sくらいのタイミング
-    }
-  </script>
 
   <!-- BGM制御 -->
   <script>
@@ -1352,5 +1509,51 @@
       }
     })();
   </script>
+
+  <!-- 🎁 プレゼントを「開く」アニメを走らせる関数 -->
+  <script>
+    function triggerGiftOpen() {
+      const gift = document.querySelector(".gift");
+      const imgEl = document.getElementById("gotImg");
+      const subtitle = document.getElementById("gotSubtitle");
+      const frame = document.getElementById("gotStampFrame");
+
+      if (!gift || !imgEl || !frame) return;
+
+      // STEP1: 箱メイン
+      if (subtitle) {
+        subtitle.textContent =
+          "プレゼントボックスを開封中… そのまま待つとスタンプがあらわれます。";
+      }
+
+      // 毎回リセット
+      gift.classList.remove("open", "hide");
+      frame.classList.remove("stamp-frame-show");
+      imgEl.classList.remove("stamp-show");
+      imgEl.style.opacity = "0";
+      imgEl.style.transform = "scale(0.7) translateY(8px)";
+
+      // リフローしてから open 開始
+      void gift.offsetWidth;
+      gift.classList.add("open");
+
+      // 0.9秒後：箱を消して同じ位置にスタンプ表示
+      setTimeout(() => {
+        gift.classList.add("hide");
+
+        // スタンプ枠＆画像を表示
+        frame.classList.add("stamp-frame-show");
+        imgEl.classList.add("stamp-show");
+        imgEl.style.opacity = "1";
+        imgEl.style.transform = "scale(1) translateY(0)";
+
+        if (subtitle) {
+          subtitle.textContent =
+            "チェックインありがとう！新しいスタンプをゲットしました。";
+        }
+      }, 900);
+    }
+  </script>
+
 </body>
 </html>

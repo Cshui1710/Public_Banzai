@@ -86,6 +86,8 @@
     .page-root {
       padding-top: 1.4rem;
       padding-bottom: 2.4rem;
+      max-width: 960px;
+      margin: 0 auto;
     }
 
     .panel {
@@ -207,12 +209,89 @@
       color:#6b7280;
     }
 
+    /* ▼ スマホ向け調整 ▼ */
     @media (max-width: 576px) {
+      /* ヘッダを縦並びにして窮屈さを減らす */
+      .navbar .container {
+        padding-inline: .75rem;
+      }
+
+      .page-root {
+        padding-top: 1rem;
+        padding-bottom: 1.8rem;
+      }
+
       .panel {
-        padding: 1.1rem 1rem 1.3rem;
+        padding: 1.05rem .9rem 1.2rem;
+        border-radius: 1.1rem;
+      }
+
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .35rem;
+      }
+
+      .page-title h1 {
+        font-size: 1.1rem;
+      }
+
+      #summaryText {
+        font-size: .75rem;
+      }
+
+      .controls-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: .5rem;
+        font-size: .8rem;
+      }
+
+      .controls-row .form-check {
+        margin: 0;
+      }
+
+      .controls-row #reloadBtn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      /* スタンプカードを少し小さく・詰め気味に */
+      .stamp-card {
+        padding: .7rem .5rem .75rem;
+        border-radius: .9rem;
+      }
+
+      .stamp-card img {
+        max-width: 110px;
+        max-height: 110px;
+      }
+
+      .stamp-name {
+        font-size: .85rem;
+      }
+
+      .stamp-meta {
+        font-size: .7rem;
+      }
+
+      /* カラム間隔を少し詰める */
+      #charsGrid {
+        row-gap: .75rem;
+      }
+
+      /* BGM ボタンが邪魔になりにくい位置に */
+      .bgm-floating {
+        right: .75rem;
+        bottom: .75rem;
+      }
+
+      #bgmToggleBtn {
+        padding: .35rem .8rem;
+        font-size: .78rem;
+        border-radius: 999px;
       }
     }
-    
   </style>
 </head>
 <body>
@@ -236,11 +315,12 @@
   <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
   </audio>
-  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+  <div class="bgm-floating" style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
     <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
       🎵 BGM ON
     </button>
   </div>
+
   <main class="container page-root">
     <section class="panel">
       <div class="page-header">
@@ -258,7 +338,7 @@
             所持スタンプのみ表示
           </label>
         </div>
-        <button class="btn btn-outline-secondary btn-sm btn-soft" id="reloadBtn">
+        <button class="btn btn-outline-secondary btn-sm btn-soft d-flex align-items-center justify-content-center" id="reloadBtn">
           🔄 再読み込み
         </button>
       </div>
@@ -361,57 +441,57 @@
       loadChars();
     });
   </script>
+
   <script>
-  (function () {
-    const audio = document.getElementById("bgmAudio");
-    const btn   = document.getElementById("bgmToggleBtn");
-    if (!audio || !btn) return;
+    (function () {
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;
 
-    /* ▼ 音量を50%に設定 ▼ */
-    audio.volume = 0.5;
+      /* ▼ 音量を50%に設定 ▼ */
+      audio.volume = 0.5;
 
-    const STORAGE_KEY = "ifp_bgm_enabled";
+      const STORAGE_KEY = "ifp_bgm_enabled";
 
-    let enabled = localStorage.getItem(STORAGE_KEY);
-    enabled = (enabled === null) ? true : (enabled === "true");
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
 
-    const updateButtonText = () => {
-      btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
-    };
+      const updateButtonText = () => {
+        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+      };
 
-    const playIfAllowed = async () => {
-      if (!enabled) {
-        try { audio.pause(); } catch(e) {}
-        return;
-      }
-      try {
-        await audio.play();
-      } catch (e) {
-        console.log("BGM autoplay blocked:", e);
-      }
-    };
+      const playIfAllowed = async () => {
+        if (!enabled) {
+          try { audio.pause(); } catch(e) {}
+          return;
+        }
+        try {
+          await audio.play();
+        } catch (e) {
+          console.log("BGM autoplay blocked:", e);
+        }
+      };
 
-    updateButtonText();
-
-    // 初回クリックで再生開始（ブラウザ制限対策）
-    const onFirstInteract = () => {
-      document.removeEventListener("click", onFirstInteract);
-      playIfAllowed();
-    };
-    document.addEventListener("click", onFirstInteract);
-
-    btn.addEventListener("click", async () => {
-      enabled = !enabled;
-      localStorage.setItem(STORAGE_KEY, String(enabled));
       updateButtonText();
-      if (enabled) {
-        await playIfAllowed();
-      } else {
-        audio.pause();
-      }
-    });
-  })();
-</script>
 
+      // 初回クリックで再生開始（ブラウザ制限対策）
+      const onFirstInteract = () => {
+        document.removeEventListener("click", onFirstInteract);
+        playIfAllowed();
+      };
+      document.addEventListener("click", onFirstInteract);
+
+      btn.addEventListener("click", async () => {
+        enabled = !enabled;
+        localStorage.setItem(STORAGE_KEY, String(enabled));
+        updateButtonText();
+        if (enabled) {
+          await playIfAllowed();
+        } else {
+          audio.pause();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

@@ -15,18 +15,67 @@
       --indigo-soft: #eef2ff;
       --danger-soft: #fef2f2;
       --slate: #0f172a;
+      --border-subtle: rgba(148,163,184,0.35);
     }
+
+    * { box-sizing: border-box; }
 
     body {
-      background: radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
+      margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #e0f2fe 0, #f5f3ff 30%, #f9fafb 70%);
       color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
 
-    .navbar {
+    /* ブランドロゴ（他ページと共通） */
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      text-decoration: none;
+      color: #0f172a;
+    }
+    .brand-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: conic-gradient(from 160deg, #22c55e, #0ea5e9, #6366f1, #22c55e);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .85rem;
+      color: #fff;
+      box-shadow: 0 0 0 2px #e5e7eb;
+    }
+
+    .nav-glass {
       background: rgba(255,255,255,0.96) !important;
-      border-bottom: 1px solid rgba(148,163,184,0.35);
+      border-bottom: 1px solid var(--border-subtle);
       backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+    }
+
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      color: #0f172a;
+      white-space: nowrap;
+      gap: 4px;
+    }
+    .pill-success {
+      background:#dcfce7;
+      color:#166534;
+      border-color:#86efac;
     }
 
     .card {
@@ -115,7 +164,7 @@
       color: #64748b;
     }
 
-    .pill {
+    .pill-choice {
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -176,38 +225,140 @@
       color: #991b1b;
     }
 
-    /* small helper */
     .text-mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
     }
+
+    main.page-root {
+      flex: 1;
+      padding-top: 1.6rem;
+      padding-bottom: 2.4rem;
+    }
+
+    /* BGM 浮遊ボタン */
+    .bgm-floating {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 2000;
+    }
+
+    @media (max-width: 576px) {
+      /* 全体のベース文字を少し小さく */
+      body {
+        font-size: 0.9rem;
+      }
+
+      main.page-root {
+        padding-top: 1.4rem;
+        padding-bottom: 2rem;
+      }
+
+      .page-header-card .card-body {
+        padding: 1.1rem 1rem 1.1rem;
+      }
+
+      /* 見出しまわりを一回り小さく */
+      .page-header-title {
+        font-size: 1rem;
+      }
+      .page-header-sub {
+        font-size: 0.8rem;
+      }
+      .page-header-meta {
+        font-size: 0.7rem;
+      }
+
+      /* ナビ・ピル・ロールバッジなど */
+      .pill,
+      .badge-role {
+        font-size: 11px;
+        padding: 2px 8px;
+      }
+
+      /* フィルタラベルやフォーム文字 */
+      .filter-label {
+        font-size: 0.7rem;
+      }
+      .form-control-sm,
+      .form-select-sm {
+        font-size: 0.78rem;
+      }
+
+      /* テーブルの文字と余白を少し詰める */
+      .table thead th {
+        font-size: 0.7rem;
+      }
+      .table tbody td {
+        font-size: 0.78rem;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+      }
+      .q-stem {
+        font-size: 0.85rem;
+      }
+      .q-meta {
+        font-size: 0.74rem;
+      }
+      .pill-choice {
+        font-size: 0.68rem;
+        padding: 0.03rem 0.45rem;
+      }
+      .hint-pill {
+        font-size: 0.72rem;
+      }
+
+      /* ボタンまわり（高さ・文字を少し小さく） */
+      .btn.btn-sm {
+        padding: 0.25rem 0.7rem;
+        font-size: 0.78rem;
+      }
+
+      /* BGMボタンを少し小さく＆寄せる */
+      .bgm-floating {
+        right: 0.75rem;
+        bottom: 0.75rem;
+      }
+      #bgmToggleBtn {
+        padding: 0.35rem 0.9rem;
+        font-size: 0.78rem;
+        border-radius: 999px;
+      }
+    }
+
   </style>
 </head>
 <body>
   <!-- ナビ -->
-  <nav class="navbar navbar-expand-lg">
+  <nav class="navbar navbar-expand-lg nav-glass">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="/home">
-        Ishikawa Facilities &amp; Parks
+      <a class="navbar-brand brand-mark" href="/home">
+        <span class="brand-logo">IF</span>
+        <span>Ishikawa Facilities &amp; Parks</span>
       </a>
-      <div class="ms-auto d-flex align-items-center gap-3">
-        <span class="text-muted small">
-          管理者: {{ user.display_name or user.email }}
+      <div class="ms-auto d-flex align-items-center gap-2 flex-wrap">
+        <span class="pill pill-success">
+          👑 管理者: {{ user.display_name or user.email }}
         </span>
-        <a href="/home" class="btn btn-outline-secondary btn-sm">ホームへ戻る</a>
+        <a href="/home" class="btn btn-outline-secondary btn-sm">
+          🏠 ホームへ戻る
+        </a>
       </div>
     </div>
   </nav>
-    <!-- BGM -->
-    <audio id="bgmAudio" loop>
+
+  <!-- BGM -->
+  <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
-    </audio>
-    <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+  </audio>
+  <div class="bgm-floating">
     <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
-        🎵 BGM ON
+      🎵 BGM ON
     </button>
-    </div>
-  
-  <main class="container py-4">
+  </div>
+
+  <main class="container page-root">
     <!-- ヘッダカード -->
     <div class="card page-header-card mb-3">
       <div class="card-body d-flex flex-wrap justify-content-between align-items-start gap-3">
@@ -217,7 +368,7 @@
             <span>作問編集（管理者用）</span>
           </div>
           <p class="page-header-sub mb-0">
-            みんなが作ったクイズ問題を一覧表示し、不適切な問題を削除できます。  
+            みんなが作ったクイズ問題を一覧表示し、不適切な問題を削除できます。<br class="d-none d-md-inline">
             授業やイベントの目的に合わせて、問題プールをメンテナンスできます。
           </p>
         </div>
@@ -364,7 +515,8 @@
       summary.textContent = "全 " + ALL_QUESTIONS.length + " 件中、表示 " + items.length + " 件";
 
       if (!items.length) {
-        tbody.innerHTML = "<tr><td colspan=\"5\" class=\"text-muted small\">該当する問題がありません。</td></tr>";
+        tbody.innerHTML =
+          "<tr><td colspan=\"5\" class=\"text-muted small\">該当する問題がありません。</td></tr>";
         return;
       }
 
@@ -376,7 +528,7 @@
         var choicesHtml = "";
         (q.choices || []).forEach(function(c, i) {
           choicesHtml +=
-            "<span class=\"pill\">" + (i + 1) + "</span>" +
+            "<span class=\"pill-choice\">" + (i + 1) + "</span>" +
             "<span>" + escapeHtml(c) + "</span><br>";
         });
 
@@ -478,57 +630,58 @@
     });
   </script>
 
-    <script>
+  <!-- BGM制御 -->
+  <script>
     (function () {
-        const audio = document.getElementById("bgmAudio");
-        const btn   = document.getElementById("bgmToggleBtn");
-        if (!audio || !btn) return;
+      const audio = document.getElementById("bgmAudio");
+      const btn   = document.getElementById("bgmToggleBtn");
+      if (!audio || !btn) return;
 
-        /* ▼ 音量を50%に設定 ▼ */
-        audio.volume = 0.5;
+      /* ▼ 音量を50%に設定 ▼ */
+      audio.volume = 0.5;
 
-        const STORAGE_KEY = "ifp_bgm_enabled";
+      const STORAGE_KEY = "ifp_bgm_enabled";
 
-        let enabled = localStorage.getItem(STORAGE_KEY);
-        enabled = (enabled === null) ? true : (enabled === "true");
+      let enabled = localStorage.getItem(STORAGE_KEY);
+      enabled = (enabled === null) ? true : (enabled === "true");
 
-        const updateButtonText = () => {
+      const updateButtonText = () => {
         btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
-        };
+      };
 
-        const playIfAllowed = async () => {
+      const playIfAllowed = async () => {
         if (!enabled) {
-            try { audio.pause(); } catch(e) {}
-            return;
+          try { audio.pause(); } catch(e) {}
+          return;
         }
         try {
-            await audio.play();
+          await audio.play();
         } catch (e) {
-            console.log("BGM autoplay blocked:", e);
+          console.log("BGM autoplay blocked:", e);
         }
-        };
+      };
 
-        updateButtonText();
+      updateButtonText();
 
-        // 初回クリックで再生開始（ブラウザ制限対策）
-        const onFirstInteract = () => {
+      // 初回クリックで再生開始（ブラウザ制限対策）
+      const onFirstInteract = () => {
         document.removeEventListener("click", onFirstInteract);
         playIfAllowed();
-        };
-        document.addEventListener("click", onFirstInteract);
+      };
+      document.addEventListener("click", onFirstInteract);
 
-        btn.addEventListener("click", async () => {
+      btn.addEventListener("click", async () => {
         enabled = !enabled;
         localStorage.setItem(STORAGE_KEY, String(enabled));
         updateButtonText();
         if (enabled) {
-            await playIfAllowed();
+          await playIfAllowed();
         } else {
-            audio.pause();
+          audio.pause();
         }
-        });
+      });
     })();
-    </script>
-  
+  </script>
+
 </body>
 </html>

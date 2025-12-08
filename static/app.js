@@ -363,26 +363,61 @@ function autoLocateOnLoad() {
   );
 }
 
-document.getElementById("locateBtn").onclick = () => {
-  if (!navigator.geolocation) return toast("位置情報未対応", false);
+// ------ 位置情報（現在地自動取得） ------
+
+function autoLocateOnLoad() {
+  if (!navigator.geolocation) {
+    console.warn("Geolocation未対応");
+    return;
+  }
   navigator.geolocation.getCurrentPosition(
     (p) => {
+      console.log("初回現在地取得成功:", p.coords);
       updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
     },
-    () => toast("現在地取得失敗", false)
+    (err) => {
+      console.warn("初回現在地取得失敗:", err);
+      toast("現在地の取得に失敗しました", false);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
   );
-};
+}
 
-document.getElementById("toggleParks").onclick = () => {
-  map.hasLayer(layerParks)
-    ? map.removeLayer(layerParks)
-    : layerParks.addTo(map);
-};
-document.getElementById("toggleFacilities").onclick = () => {
-  map.hasLayer(layerFacilities)
-    ? map.removeLayer(layerFacilities)
-    : layerFacilities.addTo(map);
-};
+// locateBtn は今も HTML にあるのでそのまま使う
+const locateBtn = document.getElementById("locateBtn");
+if (locateBtn) {
+  locateBtn.onclick = () => {
+    if (!navigator.geolocation) return toast("位置情報未対応", false);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
+      },
+      () => toast("現在地取得失敗", false)
+    );
+  };
+}
+
+// ▼ ここから2つは「ボタンがあったらだけ動かす」
+//   （HTMLから消したので実質何もしないが、エラーにはならない）
+
+const toggleParksBtn = document.getElementById("toggleParks");
+if (toggleParksBtn) {
+  toggleParksBtn.onclick = () => {
+    map.hasLayer(layerParks)
+      ? map.removeLayer(layerParks)
+      : layerParks.addTo(map);
+  };
+}
+
+const toggleFacilitiesBtn = document.getElementById("toggleFacilities");
+if (toggleFacilitiesBtn) {
+  toggleFacilitiesBtn.onclick = () => {
+    map.hasLayer(layerFacilities)
+      ? map.removeLayer(layerFacilities)
+      : layerFacilities.addTo(map);
+  };
+}
+
 
 // ------ 認証表示（/me 連携） ------
 async function refreshAuthUI() {

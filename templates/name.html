@@ -159,18 +159,51 @@
       margin-top: 1.2rem;
     }
 
+    /* BGM 浮遊ボタン */
+    .bgm-floating {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 2000;
+    }
+
     @media (max-width: 576px) {
       main.page-root {
         padding-top: 1.6rem;
+        padding-bottom: 2.2rem;
       }
       .name-card {
         padding: 1.4rem 1.2rem 1.6rem;
+      }
+      .name-tagline {
+        font-size: .72rem;
+        letter-spacing: .16em;
+      }
+      .name-header h1 {
+        font-size: 1.1rem;
+      }
+      .name-header p {
+        font-size: .82rem;
+      }
+      .chip-tip {
+        font-size: .75rem;
+        padding: .18rem .55rem;
       }
       .actions-row {
         flex-direction: column-reverse;
       }
       .actions-row .btn {
         width: 100%;
+      }
+
+      .bgm-floating {
+        right: .75rem;
+        bottom: .75rem;
+      }
+      #bgmToggleBtn {
+        padding: .35rem .9rem;
+        font-size: .78rem;
+        border-radius: 999px;
       }
     }
   </style>
@@ -198,7 +231,7 @@
   <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
   </audio>
-  <div style="position: fixed; right: 1rem; bottom: 1rem; z-index: 2000;">
+  <div class="bgm-floating">
     <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
       🎵 BGM ON
     </button>
@@ -246,6 +279,7 @@
             1〜20文字。実名である必要はありませんが、他人を不快にさせる表現は避けてください。
           </div>
         </div>
+
         <div class="mb-3">
           <label class="form-label">あなたの年代</label>
 
@@ -295,7 +329,6 @@
             ざっくりした年代でOKです。統計にだけ使われます。
           </div>
         </div>
-
 
         <div class="actions-row">
           <a href="/home" class="btn btn-outline-secondary">

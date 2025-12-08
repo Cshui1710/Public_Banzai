@@ -39,3 +39,9 @@ MAX_PW = 256
 
 AUTH_COOKIE = "nonoji_session"
 
+# config.py の末尾あたりに追加（お好み）
+if JWT_SECRET == "CHANGE_ME":
+    raise RuntimeError("JWT_SECRET が設定されていません (.env で設定してください)")
+
+if SESSION_SECRET == "dev-session-secret-change-me":
+    raise RuntimeError("SESSION_SECRET が設定されていません (.env で設定してください)")
