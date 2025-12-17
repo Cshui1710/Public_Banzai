@@ -324,17 +324,17 @@
       if (body) body.style.display = "none";       // 中身を非表示
     }
     if (stampToggleBtn) {
-      stampToggleBtn.textContent = "ひらく";       // ボタンの初期表示
+      stampToggleBtn.textContent = "開く";       // ボタンの初期表示
       stampToggleBtn.addEventListener("click", () => {
         stampCollapsed = !stampCollapsed;
         const body = stampFloat?.querySelector(".stamp-fab-body");
         if (!body) return;
         if (stampCollapsed) {
           body.style.display = "none";
-          stampToggleBtn.textContent = "ひらく";
+          stampToggleBtn.textContent = "開く";
         } else {
           body.style.display = "block";
-          stampToggleBtn.textContent = "とじる";
+          stampToggleBtn.textContent = "閉じる";
         }
       });
     }

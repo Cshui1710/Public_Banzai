@@ -999,13 +999,6 @@
       }
     }
     /* BGM トグル配置 */
-    .bgm-toggle-wrap {
-      position: fixed;
-      right: 8rem;
-      bottom: 2.9rem;
-      z-index: 2000;
-    }
-
     /* スマホではヘッダー内に収める（固定をやめる） */
 
     /* 共通サイズ（PC） */
@@ -1055,6 +1048,63 @@
         padding: 4px 10px;
       }
     }
+    .credit {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      max-width: 250px;
+      background: rgba(255,255,255,0.94);
+      border-radius: 14px;
+      padding: 8px 10px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #4b5563;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+      z-index: 500;
+      border: 1px solid rgba(148,163,184,0.35);
+      bottom: 16px;
+    }
+
+    /* 中身を横並びにしやすくする */
+    .credit-main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .credit-dot {
+      white-space: nowrap;
+    }
+
+    .credit-meta {
+      margin-top: 2px;
+    }
+
+    /* ▼ スマホ用にぐっとコンパクトにする ▼ */
+    @media (max-width: 640px) {
+      .credit {
+        left: 10px;
+        right: auto;          /* 左寄せの小さなラベルに */
+        bottom: 10px;
+        max-width: 230px;
+        padding: 4px 8px;
+        border-radius: 999px; /* カプセル型 */
+        font-size: 9px;
+        line-height: 1.3;
+        box-shadow: 0 8px 18px rgba(15,23,42,0.25);
+        background: rgba(255,255,255,0.92);
+      }
+
+      .credit-main {
+        gap: 4px;
+      }
+
+      /* 詳細テキストはスマホでは非表示（情報はあるけど邪魔しない） */
+      .credit-meta {
+        display: none;
+      }
+    }
 
   </style>
 </head>
@@ -1081,6 +1131,9 @@
         <!-- 遊び方ボタン -->
         <button class="btn" type="button" onclick="openHowto()">❓ 遊び方</button>
         <button class="btn" onclick="openCharsAll()">🦫 所持スタンプ</button>
+        <button id="bgmToggleBtn" class="btn" type="button">
+          🎵 BGM ON
+        </button>        
       </div>
     </div>
 
@@ -1106,11 +1159,6 @@
   <audio id="bgmAudio" loop>
     <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
   </audio>
-  <div class="bgm-toggle-wrap">
-    <button id="bgmToggleBtn" class="btn btn-sm btn-dark">
-      🎵 BGM ON
-    </button>
-  </div>
   </header>
 
   <div id="map"></div>
@@ -1206,10 +1254,9 @@
 
   <!-- 凡例＆クレジット -->
   <div class="credit">
-    <div>● 公共施設・公園（統一ピン：石川県CSV）</div>
-    <div><span style="color:#0ea5e9;">●</span> 現在地</div>    
-    データ: 石川県全体CSV（{{ 'public_facility.csv' }}） /
-    写真・レポートはユーザー投稿（/uploads 保存）
+    <div class="credit-meta">
+      データ: 石川県全体CSV（{{ 'public_facility.csv' }}）
+    </div>
   </div>
 
   <!-- トースト -->

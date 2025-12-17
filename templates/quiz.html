@@ -177,16 +177,34 @@
     }
 
     /* ===== スタンプUI ===== */
-    .stamp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+    .stamp-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .5rem;
+    }
     .stamp-btn {
       border: 1px solid #e5e7eb;
       border-radius: .5rem;
       background:#ffffff;
       padding:.25rem;
       cursor:pointer;
+      transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
     }
-    .stamp-btn img { width: 100%; height: auto; display:block; }
-    .stamp-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .stamp-btn img {
+      width: 100%;
+      height: auto;
+      display:block;
+    }
+    .stamp-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(15,23,42,0.12);
+    }
+    .stamp-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
 
     .stamp-fx{
       position: fixed;
@@ -207,30 +225,66 @@
       right: 16px;
       bottom: 16px;
       z-index: 2500;
-      width: 280px;
-      background: #ffffff;
+      width: 220px;
+      background: rgba(255,255,255,0.96);
       border: 1px solid rgba(148,163,184,0.7);
-      border-radius: .9rem;
-      box-shadow: 0 16px 40px rgba(15,23,42,.18);
+      border-radius: .95rem;
+      box-shadow: 0 16px 40px rgba(15,23,42,.24);
       overflow: hidden;
       display: none;
+      backdrop-filter: blur(10px);
     }
     .stamp-fab-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: .5rem .75rem;
-      background: #f8fafc;
+      padding: .45rem .75rem;
+      background: linear-gradient(90deg,#eff6ff,#f9fafb);
       border-bottom: 1px solid #e5e7eb;
+      gap: .5rem;
     }
+    .stamp-header-main {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+    }
+    .stamp-header-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      background: radial-gradient(circle at 30% 0%, #fee2e2 0, #fef3c7 40%, #ffffff 100%);
+    }
+    .stamp-header-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+    .stamp-header-title {
+      font-size: .82rem;
+      font-weight: 700;
+    }
+    .stamp-header-sub {
+      font-size: .7rem;
+      color: #6b7280;
+    }
+
     .stamp-fab-body {
-      max-height: 50vh;
+      max-height: 30vh;
       overflow: auto;
-      padding: .75rem;
+      padding: .7rem .75rem .75rem;
       background: #f9fafb;
     }
+
     @media (max-width: 992px) {
-      .stamp-fab { right: 8px; left: 8px; width: auto; }
+      .stamp-fab {
+        right: 8px;
+        left: auto;
+        width: 200px;
+      }
     }
 
     /* ===== チャレンジモード（ボス選択）: 光サークル背景 ===== */
@@ -988,6 +1042,7 @@
       margin: 0 !important;
       padding: 0 !important;
     }  
+    
   </style>
 </head>
 <body>
@@ -1079,13 +1134,12 @@
         <div class="challenge-label">CHALLENGE MODE</div>
         <div class="challenge-title"><span>1 vs 1 ボスバトルに挑戦！</span></div>
         <p class="challenge-sub">
-          ジャック・クイーン・キング、3体のCPUボスがあなたを待っています。  
-          それぞれ「反応速度」と「正解率」が違うので、自分の実力や気分に合わせて難易度を選んでください。
+          ジャック・クイーン・キング、3体のCPUボスがあなたを待っています。それぞれ「反応速度」と「正解率」が違うので、自分の実力や気分に合わせて難易度を選んでください。
         </p>
         <div class="challenge-meta">
-          <span>🎯 先に正解した方がポイント獲得（先着ボーナスあり）</span>
-          <span>🕒 制限時間つきでテンポよく進行</span>
-          <span>🧠 プレイするほど問題の傾向に慣れていきます</span>
+          <span> 先に正解した方がポイント獲得（先着ボーナスあり）</span>
+          <span> 制限時間つきでテンポよく進行</span>
+          <span> プレイするほど問題の傾向に慣れていきます</span>
         </div>
       </div>
 
@@ -1315,11 +1369,11 @@
                 <div class="boss-hud-label">BOSS</div>
                 <div class="boss-hud-name">
                   {% if challenge_level == "jack" %}
-                    <span class="icon">◆</span><span>ジャック</span>
+                    <span class="icon">♠</span><span>ジャック</span>
                   {% elif challenge_level == "queen" %}
                     <span class="icon">♥</span><span>クイーン</span>
                   {% elif challenge_level == "king" %}
-                    <span class="icon">♠</span><span>キング</span>
+                    <span class="icon">◆</span><span>キング</span>
                   {% else %}
                     <span class="icon">🤖</span><span>CPU</span>
                   {% endif %}
@@ -1366,10 +1420,14 @@
       <!-- フローティング・スタンプパネル -->
       <div id="stampFloat" class="stamp-fab">
         <div class="stamp-fab-header">
-          <div class="small fw-bold">スタンプ</div>
+          <div class="stamp-header-main">
+            <div class="stamp-header-icon">✨</div>
+            <div class="stamp-header-text">
+              <div class="stamp-header-title">スタンプ</div>
+            </div>
+          </div>
           <div class="d-flex align-items-center gap-2">
-            <small class="text-muted">クールタイムあり</small>
-            <button id="stampToggleBtn" class="btn btn-sm btn-outline-secondary">たたむ</button>
+            <button id="stampToggleBtn" class="btn btn-sm btn-outline-secondary">開く</button>
           </div>
         </div>
         <div class="stamp-fab-body">
