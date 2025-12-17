@@ -20,6 +20,7 @@ from sqlmodel import Session, select
 from models import engine, Character, UserCharacter
 from datetime import datetime  # ★ 追加
 from models import User, FacilityStat, CityStat 
+from sqlalchemy import func
 
 STAMP_COOLDOWN_SEC     = 1   # 同一ユーザーの連打を抑制
 STAMP_MAX_PER_ROUND    = 100     # 1ラウンドに送れる上限
@@ -1373,19 +1374,33 @@ async def quiz_maker_admin_page(request: Request, user=Depends(get_current_user)
 @router.get("/api/quiz/maker/admin/list")
 async def api_quiz_maker_admin_list(user=Depends(get_current_user)):
     """
-    管理者用：すべての UserQuestion を取得
+    管理者用：すべての UserQuestion を取得（作成者が削除されていても表示する）
     """
     login_required(user, allow_guest=False)
     ensure_admin(user)
 
     with Session(engine) as s:
-        # User と join して作成者名を取得
         rows = s.exec(
-            select(UserQuestion, User).join(User, User.id == UserQuestion.user_id)
+            select(UserQuestion, User)
+            .join(User, User.id == UserQuestion.user_id, isouter=True)  # ★ LEFT JOIN
         ).all()
 
         questions = []
         for uq, u in rows:
+            # 作成者表示（削除済みユーザーでも落ちない）
+            user_name = "(deleted user)"
+            if u is not None:
+                user_name = (u.display_name or u.email or f"User#{u.id}")
+
+            # created_at を str/datetime どっちでも安全に扱う
+            created = getattr(uq, "created_at", None)
+            if created is None:
+                created_s = ""
+            elif hasattr(created, "isoformat"):
+                created_s = created.isoformat()
+            else:
+                created_s = str(created)
+
             questions.append({
                 "id": uq.id,
                 "stem": uq.stem,
@@ -1393,8 +1408,8 @@ async def api_quiz_maker_admin_list(user=Depends(get_current_user)):
                 "correct_idx": uq.correct_idx,
                 "hint": uq.hint or "",
                 "user_id": uq.user_id,
-                "user_name": (u.display_name or u.email),
-                "created_at": uq.created_at,
+                "user_name": user_name,
+                "created_at": created_s,
             })
 
     return {"ok": True, "questions": questions}
