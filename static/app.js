@@ -6,6 +6,7 @@
 // ------ 基本マップ設定 ------
 const CENTER = [36.77, 136.90];
 const map = L.map("map").setView(CENTER, 9);
+window.map = map;
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 20,
@@ -343,25 +344,6 @@ function addMarkers(records, kind, group) {
   });
 }
 
-// ------ 位置情報（現在地自動取得） ------
-
-function autoLocateOnLoad() {
-  if (!navigator.geolocation) {
-    console.warn("Geolocation未対応");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (p) => {
-      console.log("初回現在地取得成功:", p.coords);
-      updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
-    },
-    (err) => {
-      console.warn("初回現在地取得失敗:", err);
-      toast("現在地の取得に失敗しました", false);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
-}
 
 // ------ 位置情報（現在地自動取得） ------
 
@@ -370,18 +352,50 @@ function autoLocateOnLoad() {
     console.warn("Geolocation未対応");
     return;
   }
-  navigator.geolocation.getCurrentPosition(
-    (p) => {
-      console.log("初回現在地取得成功:", p.coords);
-      updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
-    },
-    (err) => {
-      console.warn("初回現在地取得失敗:", err);
-      toast("現在地の取得に失敗しました", false);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+
+  // 二重起動防止
+  if (window.__AUTO_LOCATE_DONE__) return;
+  window.__AUTO_LOCATE_DONE__ = true;
+
+  const tryLocate = (reason = "auto") => {
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        console.log(`現在地取得成功(${reason}):`, p.coords);
+        updateMeMarker(p.coords.latitude, p.coords.longitude, 16);
+      },
+      (err) => {
+        console.warn(`現在地取得失敗(${reason}):`, err);
+
+        // 自動時は「失敗トーストを出しすぎない」方が体験が良いので控えめに
+        if (reason !== "auto") {
+          if (err?.code === err.PERMISSION_DENIED) {
+            toast("位置情報の許可が必要です（ブラウザ設定を確認）", false);
+          } else if (err?.code === err.POSITION_UNAVAILABLE) {
+            toast("位置情報を取得できませんでした", false);
+          } else if (err?.code === err.TIMEOUT) {
+            toast("位置情報の取得がタイムアウトしました", false);
+          } else {
+            toast("現在地の取得に失敗しました", false);
+          }
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  // ① 起動直後に一回試す（許可済み端末はこれで取れる）
+  setTimeout(() => tryLocate("auto"), 400);
+
+  // ② 自動がブロックされる端末向け：最初のユーザー操作で再試行
+  const onFirstInteract = () => {
+    document.removeEventListener("click", onFirstInteract);
+    document.removeEventListener("touchstart", onFirstInteract);
+    tryLocate("user");
+  };
+  document.addEventListener("click", onFirstInteract, { once: true });
+  document.addEventListener("touchstart", onFirstInteract, { once: true });
 }
+
 
 // locateBtn は今も HTML にあるのでそのまま使う
 const locateBtn = document.getElementById("locateBtn");
