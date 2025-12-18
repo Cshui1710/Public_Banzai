@@ -1105,13 +1105,71 @@
         display: none;
       }
     }
+    /* ===== スマホ：みんなのコメント・写真パネルをコンパクト化 ===== */
+    @media (max-width: 640px) {
+      .photo-panel {
+        right: 8px;
+        left: 8px;                 /* 右寄せをやめて左右均等 */
+        width: auto;               /* 94vwより自然に */
+        top: calc(var(--hdr, 56px) + 8px);
+        max-height: 62vh;          /* ← ここで“でかさ”を抑える（好みで 55〜70vh） */
+        padding: 10px;             /* 余白を削減 */
+        border-radius: 14px;
+      }
+
+      .photo-panel__header {
+        margin-bottom: 2px;
+      }
+      .photo-panel__header > div div:first-child {
+        font-size: 14px;           /* タイトル少し小さく */
+      }
+
+      .photo-panel__body {
+        gap: 8px;
+      }
+
+      .photo-section {
+        padding: 7px 8px;          /* セクション余白を削減 */
+        border-radius: 12px;
+      }
+
+      .report-note {
+        font-size: 10px;           /* ガイド文を小さく */
+        padding: 6px 7px;
+      }
+      .report-note ul {
+        margin-top: 2px;
+      }
+
+      /* 写真グリッドを小さくして縦を節約 */
+      .photo-grid {
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        gap: 5px;
+      }
+      .photo-grid img {
+        height: 64px;
+        border-radius: 8px;
+      }
+
+      /* 入力欄も少し薄く */
+      #commentText {
+        font-size: 12px;
+        padding: 7px;
+      }
+
+      /* ボタンを少し小さく */
+      .photo-panel .btn {
+        font-size: 11px;
+        padding: 4px 10px;
+      }
+    }
 
   </style>
 </head>
 <body>
   <header class="topbar">
     <!-- 上段：ロゴ・タイトル・ユーザ・ナビ -->
-    <div class="topbar-row">
+    <div class="topbar-row topbar-row--main">
       <div class="topbar-left">
         <a class="brand-mark" href="/home">
           <span class="brand-logo">IF</span>
@@ -1119,41 +1177,39 @@
         </a>
         <span class="topbar-title">公共施設・公園マップ</span>
       </div>
-      <div class="topbar-right">
-        {% if user and not user.is_guest %}
-          <span class="pill success" id="whoami">
-            ✅ {{ user.display_name or user.email }} さんログイン中
-          </span>
-        {% else %}
-          <span class="pill warn">ゲスト表示中（チェックイン不可）</span>
-        {% endif %}
-        <a class="btn" href="/home">🏠 ホーム</a>
-        <!-- 遊び方ボタン -->
-        <button class="btn" type="button" onclick="openHowto()">❓ 遊び方</button>
-        <button class="btn" onclick="openCharsAll()">🦫 所持スタンプ</button>
-        <button id="bgmToggleBtn" class="btn" type="button">
-          🎵 BGM ON
-        </button>        
+
+      <div class="topbar-right topbar-actions">
+        <div class="topbar-status">
+          {% if user and not user.is_guest %}
+            <span class="pill success" id="whoami">✅ {{ user.display_name or user.email }} さんログイン中</span>
+          {% else %}
+            <span class="pill warn">ゲスト表示中（チェックイン不可）</span>
+          {% endif %}
+        </div>
+
+        <div class="topbar-buttons">
+          <a class="btn" href="/home">🏠 ホーム</a>
+          <button class="btn" type="button" onclick="openHowto()">❓ 遊び方</button>
+          <button id="locateBtn" class="btn">📍 現在地</button>        
+          <button id="bgmToggleBtn" class="btn" type="button">🎵 BGM ON</button>
+        </div>
+      </div>
+    </div>
+    <!-- 下段：地図操作系（ON/OFFボタン削除してスッキリ版） -->
+    <div class="topbar-row topbar-row--controls">
+
+      <div class="controls-right controls-bar">
+        <div class="field field--search">
+          <input id="csvQuery" type="text" placeholder="CSV内を検索（名称/住所で部分一致）" />
+          <button class="btn" onclick="searchCSV()">検索</button>
+        </div>
+
+        <div class="controls-actions">
+          <button id="openDash" class="btn" style="display:none">📊 分析</button>
+        </div>
       </div>
     </div>
 
-    <!-- 下段：地図操作系（ON/OFFボタン削除してスッキリ版） -->
-    <div class="topbar-row">
-      <div class="controls-left">
-        <span class="pill">
-          📏 到達半径 {{ radius_m|int if radius_m is defined else 50 }}m
-        </span>
-        <button id="locateBtn" class="btn">📍 現在地</button>
-      </div>
-      <div class="controls-right">
-        <div class="field">
-          <input id="csvQuery" type="text"
-                 placeholder="CSV内を検索（名称/住所で部分一致）" />
-          <button class="btn" onclick="searchCSV()">検索</button>
-        </div>
-        <button id="openDash" class="btn">📊 分析</button>
-      </div>
-    </div>
 
     <!-- BGM -->
   <audio id="bgmAudio" loop>
