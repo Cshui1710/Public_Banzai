@@ -36,6 +36,58 @@
   let judgeAudioCorrect = null;
   let judgeAudioWrong = null;
 
+// ===== Audio Unlock（スマホの autoplay 制限対策）=====
+  let audioUnlocked = false;
+
+  const unlockAudio = async () => {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+
+    try {
+      // ここで Audio を作っておく（後で使い回す）
+      if (!questionStartAudio) {
+        questionStartAudio = new Audio(SE_QUESTION_START);
+        questionStartAudio.volume = 1.0;
+        questionStartAudio.preload = "auto";
+      }
+      if (!thinkingAudio) {
+        thinkingAudio = new Audio(SE_THINKING);
+        thinkingAudio.volume = 1.0;
+        thinkingAudio.loop = true;
+        thinkingAudio.preload = "auto";
+      }
+
+      // iOS対策：無音(極小音)で一瞬だけ再生→停止して「解禁」する
+      const a = questionStartAudio;
+      const prevVol = a.volume;
+      a.volume = 0.001;
+      a.currentTime = 0;
+      await a.play().catch(() => {});
+      a.pause();
+      a.currentTime = 0;
+      a.volume = prevVol;
+    } catch (e) {
+      // 失敗しても次のユーザー操作でまた解禁される
+      audioUnlocked = false;
+    }
+  };
+
+  // ページ上の「最初のユーザー操作」で解禁（スマホはこれが重要）
+  const bindAudioUnlock = () => {
+    const once = () => {
+      unlockAudio();
+      window.removeEventListener("pointerdown", once);
+      window.removeEventListener("touchstart", once);
+      window.removeEventListener("click", once);
+    };
+    window.addEventListener("pointerdown", once, { passive: true });
+    window.addEventListener("touchstart", once, { passive: true });
+    window.addEventListener("click", once, { passive: true });
+  };
+
+  document.addEventListener("DOMContentLoaded", bindAudioUnlock);
+
+
   // ========= チュートリアルモーダル（全モード共通） =========
   const TUTORIAL_HIDE_KEY = "ifp_quiz_tutorial_hide";
 
@@ -578,7 +630,7 @@
     // ========= 問題レンダリング =========
     const renderQuestion = (q) => {
       j("#qStem").textContent = q.stem;
-
+      unlockAudio();
       // 出題音：Audio を再利用
       try {
         if (!questionStartAudio) {
