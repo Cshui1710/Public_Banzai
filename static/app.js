@@ -57,21 +57,6 @@ let meMarker = L.marker(CENTER, { icon: meIcon(), interactive: false });
 let mePos = null;
 
 // 現在地を更新（マーカー位置だけ合わせる）
-function updateMeMarker(lat, lon, zoom = 16) {
-  mePos = [lat, lon];
-
-  // マーカーを現在地へ
-  meMarker.setLatLng(mePos);
-  if (!map.hasLayer(meMarker)) {
-    meMarker.addTo(map);
-  }
-
-  // 地図中心も移動
-  if (zoom) {
-    map.setView(mePos, zoom);
-  }
-}
-
 
 let meRipple = null;
 let mePulseTimer = null;

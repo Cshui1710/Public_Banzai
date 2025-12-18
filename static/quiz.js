@@ -10,7 +10,7 @@
   const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent || "");
 
   // ★ タイマーの更新間隔（モバイルは少し長めにして軽量化）
-  const TIMER_INTERVAL_MS = IS_MOBILE ? 220 : 120;
+  const TIMER_INTERVAL_MS = IS_MOBILE ? 400 : 200;
 
   const MY_NAME = (() => {
     if (user.display_name) return user.display_name;              // ニックネーム最優先
@@ -805,7 +805,8 @@
 
 
         if (m.type === "answer_result") {
-          renderMembers(m.scores);
+          // renderMembers(m.scores);
+          renderScoreboard(m.scores);
           const mine = m.user_id === user.id;
           if (mine) {
             const list = Array.from(document.querySelectorAll(".choice-btn"));
