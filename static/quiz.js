@@ -735,7 +735,7 @@
       img.style.top   = `${top}px`;
 
       document.body.appendChild(img);
-      setTimeout(() => img.remove(), 900);
+      setTimeout(() => img.remove(), 500);
     };
 
     // ========= ○× ジャッジ画像表示 =========
