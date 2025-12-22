@@ -316,19 +316,26 @@
   };
 
 
-  // ========= 画面中央オーバーレイ =========
+  // ========= 画面中央オーバーレイ（CLS対策：display切替禁止） =========
   const overlay = () => document.getElementById("overlay");
   const overlayContent = () => document.getElementById("overlayContent");
+
   const showOverlay = (html) => {
     const o = overlay(), c = overlayContent();
     if (!o || !c) return;
     c.innerHTML = html;
-    o.style.display = "grid";
+
+    // display は触らない（常設）
+    o.classList.add("active");
+    o.setAttribute("aria-hidden", "false");
   };
+
   const hideOverlay = () => {
     const o = overlay();
     if (!o) return;
-    o.style.display = "none";
+
+    o.classList.remove("active");
+    o.setAttribute("aria-hidden", "true");
   };
 
   // ========= 5→1 カウントダウン =========
@@ -770,71 +777,71 @@
     };
 
     // ========= 問題レンダリング =========
-    // ========= 問題レンダリング（★スマホ安定版） =========
+    // ========= 問題レンダリング（★ラグ対策：描画を挟む版） =========
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
     const renderQuestion = async (q) => {
-      j("#qStem").textContent = q.stem;
+      // 1) まず「前の問題」を軽く片付けてロック
+      current.locked = true;
+      disableAllChoices();
 
-      // ★ 画像プリロード＆Audio解禁が完了するまで待つ（スマホで効く）
-      await unlockAudio();
-
-      // ===== 出題音（安全再生）=====
+      // thinking を一旦止める（競合防止）
       try {
-        if (questionStartAudio) safePlay(questionStartAudio);
+        if (thinkingAudio) {
+          thinkingAudio.pause();
+          thinkingAudio.currentTime = 0;
+        }
       } catch (e) {}
 
-      // ===== シンキング（安全再生 / ループ）=====
-      try {
-        if (thinkingAudio) safePlay(thinkingAudio);
-      } catch (e) {}
+      // 2) 画面の骨組みだけ先に更新（最優先で描画させる）
+      const stemEl = j("#qStem");
+      const box = j("#choices");
+      if (stemEl) stemEl.textContent = q.stem || "";
+      if (box) box.innerHTML = "";
 
-      // ===== ヒント処理 =====
+      // ヒントは一旦非表示（描画コストを後回し）
       const hintBox  = j("#qHintBox");
       const hintText = j("#qHintText");
-
-      if (hintTimer) {
-        clearTimeout(hintTimer);
-        hintTimer = null;
-      }
-
-      if (hintBox && hintText) {
-        const h = (q.hint || "").trim();
-
+      if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
+      if (hintBox) {
         hintBox.style.display = "block";
-
-        if (h) {
-          hintText.textContent = h;
-          hintBox.style.visibility = "hidden";
-          hintBox.style.opacity = "0";
-
-          hintTimer = setTimeout(() => {
-            hintBox.style.visibility = "visible";
-            hintBox.style.opacity = "1";
-          }, 1000);
-        } else {
-          hintText.textContent = "　"; // 全角スペース
-          hintBox.style.visibility = "hidden";
-          hintBox.style.opacity = "0";
-        }
+        hintBox.style.visibility = "hidden";
+        hintBox.style.opacity = "0";
       }
+      if (hintText) hintText.textContent = "　";
 
-      // ===== 選択肢描画 =====
-      const box = j("#choices");
-      box.innerHTML = "";
+      // 3) ここで「1フレーム描画」を通す（重要）
+      await nextFrame();
+
+      // 4) アセット解禁・プリロード完了を待つ（音/画像が落ちにくい）
+      await unlockAudio();
+
+      // 5) 出題音 → 1拍 → シンキング（同時再生の競合を減らす）
+      try { if (questionStartAudio) safePlay(questionStartAudio); } catch (e) {}
+      await sleep(IS_MOBILE ? 70 : 20);  // ★短い遅延だけ（sleepしすぎない）
+      try { if (thinkingAudio) safePlay(thinkingAudio); } catch (e) {}
+
+      // 6) タイマーUIを先に作って、また1フレーム描画を通す
+      ensureTimerUI();
+      await nextFrame();
+
+      // 7) 選択肢ボタンを追加（ここが一番重いので最後に）
       current.qid = q.qid;
-      current.choices = q.choices.slice();
+      current.choices = (q.choices || []).slice();
       current.locked = false;
 
       startQuestionTimer(CLIENT_TIME_LIMIT_SEC);
 
-      q.choices.forEach((text, i) => {
+      (q.choices || []).forEach((text, i) => {
         const btn = document.createElement("button");
         btn.className = "btn btn-outline-primary choice-btn";
         btn.innerHTML = `<b>${"ABCD"[i]}.</b> ${text}`;
 
         btn.addEventListener("click", () => {
           if (current.locked) return;
-
           current.locked = true;
+
           stopQuestionTimer(false);
 
           if (ws.readyState === WebSocket.OPEN) {
@@ -848,7 +855,20 @@
         box.appendChild(btn);
       });
 
-      setTimeout(enableAllChoices, 800);
+      // 8) ヒントは最後に出す（描画後）
+      if (hintBox && hintText) {
+        const h = (q.hint || "").trim();
+        if (h) {
+          hintText.textContent = h;
+          hintTimer = setTimeout(() => {
+            hintBox.style.visibility = "visible";
+            hintBox.style.opacity = "1";
+          }, 1000);
+        }
+      }
+
+      // 9) 反応性を優先して、ボタン有効化は少し後
+      setTimeout(enableAllChoices, IS_MOBILE ? 250 : 120);
     };
 
 
