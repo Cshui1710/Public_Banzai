@@ -290,12 +290,11 @@ oauth.register(
     api_base_url="https://api.line.me/",
 
     client_kwargs={
-        # email が要らなければ "profile" だけでもOK
-        "scope": "profile openid email",
-        # LINEは client_secret_post のほうが安定することが多い
+        "scope": "profile",  # まずはこれでOK（email不要ならこれで十分）
         "token_endpoint_auth_method": "client_secret_post",
     },
 )
+
 
 def _get_or_create_user_for_oidc(provider: str, sub: str, email: str) -> int:
     email = (email or "").strip().lower()
@@ -374,7 +373,7 @@ async def line_callback(request: Request):
     except Exception as e:
         raise HTTPException(400, f"LINE認証エラー: {e}")
 
-    # ★ id_token をパースしない。LINE profile API から userId を取得
+    # id_token を一切使わない（jwks_uri 不要）
     try:
         prof_res = await oauth.line.get("v2/profile", token=token)
         prof = prof_res.json()
@@ -385,8 +384,7 @@ async def line_callback(request: Request):
     if not sub:
         raise HTTPException(400, "LINE: userId が取得できませんでした")
 
-    # email は取れない/空のことが多いので空でOK
-    email = ""  # profには基本入らない
+    email = ""  # LINE profile APIでは基本取れないので空でOK
     user_id = _get_or_create_user_for_oidc("line", sub, email)
 
     from models import User
