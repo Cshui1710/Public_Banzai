@@ -740,15 +740,14 @@
       // シンキングタイム開始（ループ再生）
       // ★ モバイルは負荷軽減のためオフ
       try {
-        if (!IS_MOBILE) {                 // ★これを追加
-          if (!thinkingAudio) {
-            thinkingAudio = new Audio(SE_THINKING);
-            thinkingAudio.volume = 1.0;
-            thinkingAudio.loop = true;
-          }
-          thinkingAudio.currentTime = 0;
-          thinkingAudio.play().catch(() => {});
+        if (!thinkingAudio) {
+          thinkingAudio = new Audio(SE_THINKING);
+          thinkingAudio.volume = 1.0;
+          thinkingAudio.loop = true;
+          thinkingAudio.preload = "auto";
         }
+        thinkingAudio.currentTime = 0;
+        thinkingAudio.play().catch(() => {});
       } catch (e) {}
 
       // ヒント処理
