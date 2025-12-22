@@ -282,10 +282,19 @@ oauth.register(
 )
 oauth.register(
     name="line",
-    server_metadata_url="https://access.line.me/.well-known/openid-configuration",
     client_id=LINE_CLIENT_ID,
     client_secret=LINE_CLIENT_SECRET,
-    client_kwargs={"scope": "openid email profile"},
+
+    authorize_url="https://access.line.me/oauth2/v2.1/authorize",
+    access_token_url="https://api.line.me/oauth2/v2.1/token",
+    api_base_url="https://api.line.me/",
+
+    client_kwargs={
+        # email が要らなければ "profile" だけでもOK
+        "scope": "profile openid email",
+        # LINEは client_secret_post のほうが安定することが多い
+        "token_endpoint_auth_method": "client_secret_post",
+    },
 )
 
 def _get_or_create_user_for_oidc(provider: str, sub: str, email: str) -> int:
@@ -364,14 +373,22 @@ async def line_callback(request: Request):
         token = await oauth.line.authorize_access_token(request)
     except Exception as e:
         raise HTTPException(400, f"LINE認証エラー: {e}")
-    userinfo = token.get("userinfo") or await oauth.line.parse_id_token(request, token)
-    email = str(userinfo.get("email") or "").strip().lower()
-    sub = str(userinfo.get("sub") or "").strip()
+
+    # ★ id_token をパースしない。LINE profile API から userId を取得
+    try:
+        prof_res = await oauth.line.get("v2/profile", token=token)
+        prof = prof_res.json()
+    except Exception as e:
+        raise HTTPException(400, f"LINE profile 取得エラー: {e}")
+
+    sub = str(prof.get("userId") or "").strip()
     if not sub:
-        raise HTTPException(400, "LINE: sub が取得できませんでした")
+        raise HTTPException(400, "LINE: userId が取得できませんでした")
+
+    # email は取れない/空のことが多いので空でOK
+    email = ""  # profには基本入らない
     user_id = _get_or_create_user_for_oidc("line", sub, email)
 
-    # ★ display_name の有無で行き先を決定
     from models import User
     with Session(engine) as s:
         u = s.get(User, user_id)
@@ -387,8 +404,10 @@ async def line_callback(request: Request):
         samesite="lax",
         secure=True,
         max_age=60*60*24*30,
+        path="/",
     )
     return resp
+
 
 
 
