@@ -10,7 +10,7 @@
   const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent || "");
 
   // ★ タイマーの更新間隔（モバイルは少し長めにして軽量化）
-  const TIMER_INTERVAL_MS = IS_MOBILE ? 400 : 200;
+  const TIMER_INTERVAL_MS = IS_MOBILE ? 1000 : 400;
 
   const MY_NAME = (() => {
     if (user.display_name) return user.display_name;              // ニックネーム最優先
@@ -672,13 +672,15 @@
       // シンキングタイム開始（ループ再生）
       // ★ モバイルは負荷軽減のためオフ
       try {
-        if (!thinkingAudio) {
-          thinkingAudio = new Audio(SE_THINKING);
-          thinkingAudio.volume = 1.0;
-          thinkingAudio.loop = true;
+        if (!IS_MOBILE) {                 // ★これを追加
+          if (!thinkingAudio) {
+            thinkingAudio = new Audio(SE_THINKING);
+            thinkingAudio.volume = 1.0;
+            thinkingAudio.loop = true;
+          }
+          thinkingAudio.currentTime = 0;
+          thinkingAudio.play().catch(() => {});
         }
-        thinkingAudio.currentTime = 0;
-        thinkingAudio.play().catch(() => {});
       } catch (e) {}
 
       // ヒント処理
