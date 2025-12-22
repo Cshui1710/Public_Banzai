@@ -1176,38 +1176,6 @@
     #choices .btn:focus-visible{
       box-shadow: 0 0 0 3px rgba(59,130,246,0.25) !important;
     }
-    /* ===== overlay: display切替禁止（CLS/LCP対策） ===== */
-    #overlay{
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      display: grid;              /* 常に確保する */
-      place-items: center;
-      background: rgba(15,23,42,0.35);
-
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .15s ease;
-    }
-
-    #overlay.active{
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    #overlayContent{
-      /* LCPになっても重くならないように、サイズをある程度固定 */
-      min-width: 260px;
-      max-width: min(92vw, 720px);
-      min-height: 120px;
-
-      padding: 1.2rem 1.4rem;
-      border-radius: 1.2rem;
-      background: #fff;           /* いま result-card の見た目に寄せる */
-      color: #0f172a;
-      box-shadow: 0 26px 70px rgba(15,23,42,0.7);
-      border: 1px solid rgba(148,163,184,0.6);
-    }
 
     
   </style>
@@ -1616,8 +1584,12 @@
       {% endif %}
 
       <!-- WIN / LOSE などのオーバーレイ -->
-      <div id="overlay" aria-hidden="true">
-        <div id="overlayContent"></div>
+      <div id="overlay" style="
+        position: fixed; inset: 0; display: none; place-items: center;
+        background: rgba(15,23,42,0.35); z-index: 2000;">
+        <div id="overlayContent" class="text-white fw-bold"
+             style="font-size: clamp(32px,6vw,72px); text-shadow: 0 4px 16px rgba(0,0,0,.6);">
+        </div>
       </div>
     </div>
   </main>

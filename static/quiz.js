@@ -316,26 +316,19 @@
   };
 
 
-  // ========= 画面中央オーバーレイ（CLS対策：display切替禁止） =========
+  // ========= 画面中央オーバーレイ =========
   const overlay = () => document.getElementById("overlay");
   const overlayContent = () => document.getElementById("overlayContent");
-
   const showOverlay = (html) => {
     const o = overlay(), c = overlayContent();
     if (!o || !c) return;
     c.innerHTML = html;
-
-    // display は触らない（常設）
-    o.classList.add("active");
-    o.setAttribute("aria-hidden", "false");
+    o.style.display = "grid";
   };
-
   const hideOverlay = () => {
     const o = overlay();
     if (!o) return;
-
-    o.classList.remove("active");
-    o.setAttribute("aria-hidden", "true");
+    o.style.display = "none";
   };
 
   // ========= 5→1 カウントダウン =========
@@ -394,27 +387,21 @@
     const bar = j("#qTimeBar");
     if (!bar) return;
 
-    // ✅ いまの表示を止める（＝青ゲージも止まる）
-    // 現在幅(px)を取得 → その幅で固定 → transition を切る
-    const curPx = bar.getBoundingClientRect().width;
-    const parentPx = bar.parentElement?.getBoundingClientRect().width || 1;
-    const curPct = Math.max(0, Math.min(100, (curPx / parentPx) * 100));
-
+    // transition を切って現在の見た目で停止（幅計算しない）
     bar.style.transition = "none";
-    bar.style.width = `${curPct}%`;
 
-    // ラベルも同期して止める（0にしない場合）
-    if (label && !toZero) {
-      const remainMs = Math.max(0, qEndAt - performance.now());
-      label.textContent = fmtSeconds(remainMs / 1000);
-    }
-
-    // 0にする指定なら0へ
     if (toZero) {
       if (label) label.textContent = fmtSeconds(0.0);
       bar.style.width = "0%";
+    } else {
+      if (label) {
+        const remainMs = Math.max(0, qEndAt - performance.now());
+        label.textContent = fmtSeconds(remainMs / 1000);
+      }
+      // widthは触らない（見た目そのまま）
     }
   };
+
 
 
   // ========= ランダム待機 =========
@@ -827,33 +814,61 @@
       await nextFrame();
 
       // 7) 選択肢ボタンを追加（ここが一番重いので最後に）
+      // 7) 選択肢ボタンを追加（ここが一番重いので最後に）
       current.qid = q.qid;
       current.choices = (q.choices || []).slice();
       current.locked = false;
 
       startQuestionTimer(CLIENT_TIME_LIMIT_SEC);
 
-      (q.choices || []).forEach((text, i) => {
-        const btn = document.createElement("button");
-        btn.className = "btn btn-outline-primary choice-btn";
-        btn.innerHTML = `<b>${"ABCD"[i]}.</b> ${text}`;
+      // ▼ chunked 追加関数（renderQuestion内でもOKだが、外に出す方が軽い）
+      const appendChoicesChunked = async (choices, onClickFactory) => {
+        const box = j("#choices");
+        if (!box) return;
 
-        btn.addEventListener("click", () => {
-          if (current.locked) return;
-          current.locked = true;
+        const frag = document.createDocumentFragment();
+        const buttons = [];
 
-          stopQuestionTimer(false);
-
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: "answer", qid: current.qid, choice_idx: i }));
-          }
-
-          btn.classList.add("choice-wrong");
-          disableAllChoices();
+        choices.forEach((text, i) => {
+          const btn = document.createElement("button");
+          btn.className = "btn btn-outline-primary choice-btn";
+          btn.innerHTML = `<b>${"ABCD"[i]}.</b> ${text}`;
+          buttons.push({ btn, i });
+          frag.appendChild(btn);
         });
 
-        box.appendChild(btn);
-      });
+        box.appendChild(frag);
+
+        // 1フレーム空ける
+        await new Promise((r) => requestAnimationFrame(r));
+
+        buttons.forEach(({ btn, i }) => {
+          btn.addEventListener(
+            "click",
+            onClickFactory(btn, i),
+            { passive: true }
+          );
+        });
+      };
+
+      // ▼ クリック処理の生成（あなたの元の処理をそのまま移植）
+      const onClickFactory = (btn, i) => () => {
+        if (current.locked) return;
+        current.locked = true;
+
+        stopQuestionTimer(false);
+
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "answer", qid: current.qid, choice_idx: i }));
+        }
+
+        btn.classList.add("choice-wrong");
+        disableAllChoices();
+      };
+
+      // ★ここで呼ぶ（←これがないと何も起きない）
+      await appendChoicesChunked(q.choices || [], onClickFactory);
+
 
       // 8) ヒントは最後に出す（描画後）
       if (hintBox && hintText) {
@@ -1019,35 +1034,44 @@
 
 
         if (m.type === "answer_result") {
-          // renderMembers(m.scores);
+          // 1) まずスコアは即更新（軽い／差分更新になってる前提）
           renderScoreboard(m.scores);
-          const mine = m.user_id === user.id;
-          if (mine) {
-            stopQuestionTimer(true);
-            const list = Array.from(document.querySelectorAll(".choice-btn"));
-            const btn = list[m.choice_idx];
-            if (btn) btn.classList.add(m.correct ? "choice-correct" : "choice-wrong");
 
-            try {
-              if (thinkingAudio) {
-                thinkingAudio.pause();
-                thinkingAudio.currentTime = 0; // ★追加：完全停止（競合減らす）
-              }
-            } catch (e) {}
+          // 2) 自分の結果だけ、UI確定 + 演出を「次フレーム」に分離
+          const mine = (m.user_id === user.id) || (m.name && m.name === MY_NAME);
+          if (!mine) return;
 
-            requestAnimationFrame(() => {
-              // ★判定SE/画像を1拍置いて鳴らす（競合回避）
-              playJudgeFx(!!m.correct);
-            });
+          // ★ タイマーは確実に止める（0表示）
+          stopQuestionTimer(true);
 
-            // ★★★ チャレンジモードのHP減少処理 ★★★
+          // ★ 自分が押したボタンだけ色付け（クラス付与は軽い）
+          const list = document.querySelectorAll(".choice-btn"); // Array化しない（軽量）
+          const btn = list[m.choice_idx];
+          if (btn) {
+            btn.classList.add(m.correct ? "choice-correct" : "choice-wrong");
+          }
+
+          // ★ thinking音は即止める（競合回避）
+          try {
+            if (thinkingAudio) {
+              thinkingAudio.pause();
+              thinkingAudio.currentTime = 0;
+            }
+          } catch (e) {}
+
+          // 3) ○×画像＋SEは「次の描画フレーム」で実行（メインスレッド詰まり回避）
+          requestAnimationFrame(() => {
+            playJudgeFx(!!m.correct);
+
+            // ★★★ チャレンジモードのHP処理も演出側に寄せる（同フレームに詰めない）
             if (IS_CHALLENGE && typeof window.applyBossBattleRound === "function") {
-              // 今のところ「自分が正解 → ボスに攻撃」「自分が不正解 → 自分がダメージ」
               const userFasterAndCorrect = !!m.correct;
               window.applyBossBattleRound(userFasterAndCorrect);
             }
-          }
+          });
         }
+
+
 
         if (m.type === "reveal") {
           try { if (thinkingAudio) thinkingAudio.pause(); } catch(e) {}
