@@ -739,11 +739,15 @@
     };
 
     // ========= ○× ジャッジ画像表示 =========
-    const playJudgeFx = (isCorrect) => {
+    const playJudgeFx = async(isCorrect) => {
       // まず画像：常設要素の src を差し替えて表示
       const img = ensureJudgeEl();
-      img.src = isCorrect ? JUDGE_IMG_CORRECT : JUDGE_IMG_WRONG;
+      img.src = isCorrect ? JUDGE_IMG_CORRECT : JUDGE_IMG_WRONG;   
       img.alt = isCorrect ? "正解！" : "不正解";
+
+      try {
+        if (img.decode) await img.decode();
+      } catch (e) {}
 
       // 表示（再生のたびに同じ要素を動かす）
       img.style.transition = "none";
@@ -778,6 +782,7 @@
         if (thinkingAudio) {
           thinkingAudio.pause();
           thinkingAudio.currentTime = 0;
+          thinkingAudio.src = thinkingAudio.src;
         }
       } catch (e) {}
 
@@ -1056,20 +1061,23 @@
             if (thinkingAudio) {
               thinkingAudio.pause();
               thinkingAudio.currentTime = 0;
+              thinkingAudio.src = thinkingAudio.src;
             }
           } catch (e) {}
 
           // 3) ○×画像＋SEは「次の描画フレーム」で実行（メインスレッド詰まり回避）
           requestAnimationFrame(() => {
-            playJudgeFx(!!m.correct);
+            // ★スマホ安定化：少し待ってから判定演出＆HP処理
+            setTimeout(() => {
+              playJudgeFx(!!m.correct);
 
-            // ★★★ チャレンジモードのHP処理も演出側に寄せる（同フレームに詰めない）
-            if (IS_CHALLENGE && typeof window.applyBossBattleRound === "function") {
-              const userFasterAndCorrect = !!m.correct;
-              window.applyBossBattleRound(userFasterAndCorrect);
-            }
+              if (IS_CHALLENGE && typeof window.applyBossBattleRound === "function") {
+                const userFasterAndCorrect = !!m.correct;
+                window.applyBossBattleRound(userFasterAndCorrect);
+              }
+            }, IS_MOBILE ? 80 : 40); // まずは 60でもOK。iOS弱いなら80推奨
           });
-        }
+      }  
 
 
 
