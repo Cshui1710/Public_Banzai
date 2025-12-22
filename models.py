@@ -64,7 +64,11 @@ class Character(SQLModel, table=True):
     frame_h: int = 256
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+from sqlalchemy import UniqueConstraint
 class UserCharacter(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint("user_id", "character_id", name="uq_user_character"),
+    )    
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: int = Field(index=True)
     character_id: int = Field(index=True)

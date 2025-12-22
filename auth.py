@@ -26,14 +26,14 @@ pwd_ctx = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 # ★ 最初から所持していてほしいキャラクターコード
 #   ※ Character.code に合わせてください（"kitune" ならそこに合わせる）
-DEFAULT_CHAR_CODES = ["marmot", "tanuki", "kitsune"]  # ←必要なら "kitune" に修正
-
+DEFAULT_CHAR_CODES = ["marmot", "naki", "sakebu", "yorosiku"]
 def _ensure_default_characters_for_user(user_id: int):
     """
     ログイン中のユーザーに、デフォルトキャラクター
     (marmot / tanuki / kitsune) を「所持済み」として付与する。
     すでに付与済みなら何もしない。
     """
+    
     if not user_id or user_id <= 0:
         return
 

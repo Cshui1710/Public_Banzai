@@ -125,6 +125,13 @@ ALLOWED_CHAR_CODES = {c["code"] for c in CHAR_CATALOG}
 from sqlmodel import select
 from models import Character
 
+
+
+STARTER_CODES = ["marmot", "naki", "sakebu", "yorosiku"]  # ★ここを好きな3つに
+
+
+
+
 # ===== 安全版ユーティリティ =====
 def safe_seed_character(session: Session, code: str, name: str, sprite: str, w: int = 256, h: int = 256):
     ch = session.exec(select(Character).where(Character.code == code)).first()
@@ -299,11 +306,7 @@ def checkin(req: CheckinIn, request: Request, session: Session = Depends(get_ses
     except Exception as e:
         print("[checkin] seed error:", repr(e))
 
-    # 0.5) ユーザーに最低5個のスタンプを持たせておく
-    try:
-        ensure_min_stamps_for_user(session, user.id, min_count=5)
-    except Exception as e:
-        print("[checkin] ensure_min_stamps_for_user error:", repr(e))
+
 
     # 1) 距離チェック
     dist = haversine_m(req.user_lat, req.user_lon, req.lat, req.lon)

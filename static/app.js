@@ -435,42 +435,83 @@ if (locateBtn) {
 }
 
 // 既存：現在地処理本体を関数化
-  async function locateMe() {
-    // ここに「今 locateBtn クリックでやってる処理」を入れる
-    // 例：
-    if (!navigator.geolocation) {
-      toast("この端末は位置情報に対応していません");
-      return;
-    }
+// ------ 位置情報（現在地取得：安定版） ------
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        async function locateMe() {
-          if (!navigator.geolocation) {
-            toast("この端末は位置情報に対応していません", false);
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(
-            (pos) => updateMeMarker(pos.coords.latitude, pos.coords.longitude, 16),
-            (err) => {
-              toast("現在地の取得に失敗しました", false);
-              console.log(err);
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-          );
-        }
-        window.locateMe = locateMe;
+async function locateMe(opts = {}) {
+  const {
+    zoom = 16,
+    reason = "user",
+    silent = false,
+    timeout = 20000,          // PCは長め推奨（10sだと普通にTIMEOUTあり）
+    highAccuracy = false,     // PCは true だと遅くなる/タイムアウトしやすいことがある
+    maximumAge = 60000,       // キャッシュOK（まずは速く出す）
+  } = opts;
 
-      },
-      (err) => {
-        toast("現在地の取得に失敗しました");
-        console.log(err);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+  if (!navigator.geolocation) {
+    if (!silent) toast("この端末は位置情報に対応していません", false);
+    return;
   }
+
+  // 権限状態をログに出す（デバッグ用）
+  try {
+    if (navigator.permissions?.query) {
+      const st = await navigator.permissions.query({ name: "geolocation" });
+      console.log("[geo permission]", st.state); // granted / prompt / denied
+    }
+  } catch (_) {}
+
+  navigator.geolocation.getCurrentPosition(
+    (p) => {
+      console.log(`現在地取得成功(${reason}):`, p.coords);
+      updateMeMarker(p.coords.latitude, p.coords.longitude, zoom);
+    },
+    (err) => {
+      console.warn(`現在地取得失敗(${reason}):`, err);
+
+      if (silent) return;
+
+      // PCのTIMEOUTは割と起きるので、メッセージを少し具体化
+      if (err?.code === err.PERMISSION_DENIED) {
+        toast("位置情報がブロックされています（URL左の鍵アイコン→位置情報を許可）", false);
+      } else if (err?.code === err.POSITION_UNAVAILABLE) {
+        toast("位置情報が利用できません（PCはWi-Fi接続だと成功しやすいです）", false);
+      } else if (err?.code === err.TIMEOUT) {
+        toast("位置情報の取得がタイムアウトしました（もう一度押す/高精度OFF推奨）", false);
+      } else {
+        toast("現在地の取得に失敗しました", false);
+      }
+    },
+    { enableHighAccuracy: highAccuracy, timeout, maximumAge }
+  );
+}
+window.locateMe = locateMe;
+
+// 起動直後の自動取得（失敗しても静かに）
+  function autoLocateOnLoad() {
+    if (window.__AUTO_LOCATE_DONE__) return;
+    window.__AUTO_LOCATE_DONE__ = true;
+
+    // ① 起動直後：まずは軽い設定で一発（PC向け）
+    setTimeout(() => {
+      locateMe({ reason: "auto", silent: true, highAccuracy: false, timeout: 20000, maximumAge: 120000 });
+    }, 400);
+
+    // ② 最初のユーザー操作で再試行（ここでトースト出してOK）
+    const onFirstInteract = () => {
+      document.removeEventListener("click", onFirstInteract);
+      document.removeEventListener("touchstart", onFirstInteract);
+      locateMe({ reason: "user", silent: false, highAccuracy: false, timeout: 20000, maximumAge: 60000 });
+    };
+    document.addEventListener("click", onFirstInteract, { once: true });
+    document.addEventListener("touchstart", onFirstInteract, { once: true });
+  }
+
+  // ボタン（locateBtn / FAB）も locateMe に統一
+  if (locateBtn) locateBtn.onclick = () => locateMe({ reason: "btn", silent: false });
+
+  const fabLocate = document.getElementById("fabLocate");
+  if (fabLocate) fabLocate.addEventListener("click", () => locateMe({ reason: "fab", silent: false }));
+
 
   // FAB/他から呼べるように公開
   window.locateMe = locateMe;
@@ -479,7 +520,7 @@ if (locateBtn) {
 
 
   // FAB がある場合もここで直結してOK（HTML側の橋渡しが不要になる）
-  const fabLocate = document.getElementById("fabLocate");
+
   if (fabLocate) fabLocate.addEventListener("click", locateMe);
 
 
