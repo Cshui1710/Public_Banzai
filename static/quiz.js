@@ -233,26 +233,68 @@
     renderScoreboard(members);
   };
 
+  // ========= スコアボード（差分更新版） =========
+  const scoreboardCache = new Map(); // userId(or name) -> rowEl
+
+  const keyOfMember = (m) => {
+    if (m && m.id != null) return `id:${m.id}`;
+    if (m && m.user_id != null) return `id:${m.user_id}`;
+    return `name:${m?.name ?? ""}`;
+  };
+
   const renderScoreboard = (members) => {
     const box = j("#scoreboard");
     if (!box) return;
-    box.innerHTML = "";
-    (members || [])
+
+    const list = (members || [])
       .slice()
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-      .forEach((m) => {
-        const row = document.createElement("div");
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+    // まず必要な順序を確定
+    const usedKeys = new Set();
+
+    // DocumentFragmentで一気に並べ替え（レイアウト負荷を減らす）
+    const frag = document.createDocumentFragment();
+
+    for (const m of list) {
+      const k = keyOfMember(m);
+      usedKeys.add(k);
+
+      let row = scoreboardCache.get(k);
+      if (!row) {
+        row = document.createElement("div");
         row.className = "score-row";
-        // ★ スタンプ用に id と name を data-* に入れておく
-        row.dataset.userId = m.id != null ? String(m.id) : "";
+        row.dataset.userId = (m.id ?? m.user_id) != null ? String(m.id ?? m.user_id) : "";
         row.dataset.name = m.name || "";
         row.innerHTML = `
-          <span class="score-name">${m.name}</span>
-          <b>${m.score ?? 0}</b>
+          <span class="score-name"></span>
+          <b></b>
         `;
-        box.appendChild(row);
-      });
+        scoreboardCache.set(k, row);
+      }
+
+      // 値だけ更新（DOM再生成しない）
+      const nameEl = row.querySelector(".score-name");
+      const scoreEl = row.querySelector("b");
+      if (nameEl) nameEl.textContent = m.name || `User${m.id ?? m.user_id ?? ""}`;
+      if (scoreEl) scoreEl.textContent = String(m.score ?? 0);
+
+      frag.appendChild(row);
+    }
+
+    // 使われなくなった行を掃除
+    for (const [k, el] of scoreboardCache.entries()) {
+      if (!usedKeys.has(k)) {
+        scoreboardCache.delete(k);
+        try { el.remove(); } catch (e) {}
+      }
+    }
+
+    // まとめて差し替え
+    box.innerHTML = "";
+    box.appendChild(frag);
   };
+
 
   // ========= 画面中央オーバーレイ =========
   const overlay = () => document.getElementById("overlay");
@@ -320,11 +362,33 @@
   const stopQuestionTimer = (toZero = false) => {
     if (qTimer) clearInterval(qTimer);
     qTimer = null;
+
     const label = j("#qTimeLabel");
     const bar = j("#qTimeBar");
-    if (label && toZero) label.textContent = fmtSeconds(0.0);
-    if (bar && toZero) bar.style.width = "0%";
+    if (!bar) return;
+
+    // ✅ いまの表示を止める（＝青ゲージも止まる）
+    // 現在幅(px)を取得 → その幅で固定 → transition を切る
+    const curPx = bar.getBoundingClientRect().width;
+    const parentPx = bar.parentElement?.getBoundingClientRect().width || 1;
+    const curPct = Math.max(0, Math.min(100, (curPx / parentPx) * 100));
+
+    bar.style.transition = "none";
+    bar.style.width = `${curPct}%`;
+
+    // ラベルも同期して止める（0にしない場合）
+    if (label && !toZero) {
+      const remainMs = Math.max(0, qEndAt - performance.now());
+      label.textContent = fmtSeconds(remainMs / 1000);
+    }
+
+    // 0にする指定なら0へ
+    if (toZero) {
+      if (label) label.textContent = fmtSeconds(0.0);
+      bar.style.width = "0%";
+    }
   };
+
 
   // ========= ランダム待機 =========
   if (mode === "random-wait") {
@@ -474,15 +538,19 @@
       const now = performance.now();
       qEndAt = now + seconds * 1000;
       label.textContent = fmtSeconds(seconds);
+
+      // ★バーはCSSアニメで流す（JSで毎秒width更新しない）
+      bar.style.transition = "none";
       bar.style.width = "100%";
+      // reflowを1回だけ発生させてから
+      bar.getBoundingClientRect();
+      bar.style.transition = `width ${seconds}s linear`;
+      bar.style.width = "0%";
 
       qTimer = setInterval(() => {
         const remainMs = Math.max(0, qEndAt - performance.now());
         const remain = remainMs / 1000;
-        const pct = Math.max(0, Math.min(100, (remain / seconds) * 100));
-
         label.textContent = fmtSeconds(remain);
-        bar.style.width = `${pct}%`;
 
         if (remainMs <= 0) {
           stopQuestionTimer(true);
@@ -728,6 +796,7 @@
         btn.addEventListener("click", () => {
           if (current.locked) return;
           current.locked = true;
+          stopQuestionTimer(False);
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "answer", qid: current.qid, choice_idx: i }));
           }
@@ -891,6 +960,7 @@
           renderScoreboard(m.scores);
           const mine = m.user_id === user.id;
           if (mine) {
+            stopQuestionTimer(true);
             const list = Array.from(document.querySelectorAll(".choice-btn"));
             const btn = list[m.choice_idx];
             if (btn) btn.classList.add(m.correct ? "choice-correct" : "choice-wrong");
