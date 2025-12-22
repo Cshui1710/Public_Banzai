@@ -39,38 +39,66 @@
 // ===== Audio Unlock（スマホの autoplay 制限対策）=====
   let audioUnlocked = false;
 
+  const JUDGE_SE_VOLUME = 0.6;
+  const THINKING_VOLUME = 1.0;
+  const START_VOLUME    = 1.0;
+
   const unlockAudio = async () => {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
     try {
-      // ここで Audio を作っておく（後で使い回す）
+      // ここで Audio を全部作っておく（後で使い回す）
       if (!questionStartAudio) {
         questionStartAudio = new Audio(SE_QUESTION_START);
-        questionStartAudio.volume = 1.0;
+        questionStartAudio.volume = START_VOLUME;
         questionStartAudio.preload = "auto";
       }
       if (!thinkingAudio) {
         thinkingAudio = new Audio(SE_THINKING);
-        thinkingAudio.volume = 1.0;
+        thinkingAudio.volume = THINKING_VOLUME;
         thinkingAudio.loop = true;
         thinkingAudio.preload = "auto";
       }
 
+      // ★追加：正解／不正解SEもここで作る（iOS対策の本命）
+      if (!judgeAudioCorrect) {
+        judgeAudioCorrect = new Audio(JUDGE_SE_CORRECT);
+        judgeAudioCorrect.volume = JUDGE_SE_VOLUME;
+        judgeAudioCorrect.preload = "auto";
+      }
+      if (!judgeAudioWrong) {
+        judgeAudioWrong = new Audio(JUDGE_SE_WRONG);
+        judgeAudioWrong.volume = JUDGE_SE_VOLUME;
+        judgeAudioWrong.preload = "auto";
+      }
+
       // iOS対策：無音(極小音)で一瞬だけ再生→停止して「解禁」する
-      const a = questionStartAudio;
-      const prevVol = a.volume;
-      a.volume = 0.001;
-      a.currentTime = 0;
-      await a.play().catch(() => {});
-      a.pause();
-      a.currentTime = 0;
-      a.volume = prevVol;
+      // なるべく全Audioを一度ずつ解禁しておく
+      const audios = [questionStartAudio, thinkingAudio, judgeAudioCorrect, judgeAudioWrong];
+
+      for (const a of audios) {
+        if (!a) continue;
+        const prevVol = a.volume;
+        try {
+          a.volume = 0.001;
+          a.currentTime = 0;
+          // playが失敗しても次のユーザー操作で再試行できるようにする
+          await a.play().catch(() => {});
+          a.pause();
+          a.currentTime = 0;
+        } catch (e) {
+          // ignore
+        } finally {
+          a.volume = prevVol;
+        }
+      }
     } catch (e) {
       // 失敗しても次のユーザー操作でまた解禁される
       audioUnlocked = false;
     }
   };
+
 
   // ページ上の「最初のユーザー操作」で解禁（スマホはこれが重要）
   const bindAudioUnlock = () => {
@@ -675,7 +703,7 @@
           hintTimer = setTimeout(() => {
             hintBox.style.visibility = "visible";
             hintBox.style.opacity = "1";
-          }, 2000);
+          }, 1000);
         } else {
           hintText.textContent = "　"; // 全角スペース
           hintBox.style.visibility = "hidden";
@@ -865,8 +893,17 @@
             const btn = list[m.choice_idx];
             if (btn) btn.classList.add(m.correct ? "choice-correct" : "choice-wrong");
 
-            try { if (thinkingAudio) thinkingAudio.pause(); } catch(e) {}
-            playJudgeFx(m.correct);
+            try {
+              if (thinkingAudio) {
+                thinkingAudio.pause();
+                thinkingAudio.currentTime = 0; // ★追加：完全停止（競合減らす）
+              }
+            } catch (e) {}
+
+            requestAnimationFrame(() => {
+              // ★判定SE/画像を1拍置いて鳴らす（競合回避）
+              playJudgeFx(!!m.correct);
+            });
 
             // ★★★ チャレンジモードのHP減少処理 ★★★
             if (IS_CHALLENGE && typeof window.applyBossBattleRound === "function") {
