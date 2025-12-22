@@ -43,12 +43,32 @@
   const THINKING_VOLUME = 1.0;
   const START_VOLUME    = 1.0;
 
+
+
+  const preloadImage = (src) => new Promise((res) => {
+    const im = new Image();
+    im.onload = () => res(true);
+    im.onerror = () => res(false);
+    im.src = src;
+  });
+
+  const preloadAssets = async () => {
+    // 画像も先にキャッシュ
+    await Promise.all([
+      preloadImage(JUDGE_IMG_CORRECT),
+      preloadImage(JUDGE_IMG_WRONG),
+    ]);
+
+    // 音は unlockAudio() が担当
+  };
+    
   const unlockAudio = async () => {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
     try {
       // ここで Audio を全部作っておく（後で使い回す）
+      await preloadAssets();
       if (!questionStartAudio) {
         questionStartAudio = new Audio(SE_QUESTION_START);
         questionStartAudio.volume = START_VOLUME;
@@ -444,6 +464,34 @@
     return;
   }
 
+  const safePlay = (audio) => {
+    if (!audio) return;
+    try {
+      audio.pause();              // ★競合を減らす
+      audio.currentTime = 0;
+      const p = audio.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          // ★一瞬待って再試行（端末が詰まってるときに効く）
+          setTimeout(() => {
+            try {
+              audio.pause();
+              audio.currentTime = 0;
+              audio.play().catch(() => {});
+            } catch (e) {}
+          }, 80);
+        });
+      }
+    } catch (e) {}
+  };
+
+  const safePlayJudgeSe = (isCorrect) => {
+    // すでに unlockAudio で生成済みを使う前提
+    const a = isCorrect ? judgeAudioCorrect : judgeAudioWrong;
+    safePlay(a);
+  };
+    
+
   // ========= プレイ画面 =========
   if (mode === "play") {
     const code = window.__ROOM_CODE__;
@@ -462,6 +510,30 @@
     // ▼ スタンプパネル表示/非表示（パネルそのもの）
     // ▼ 最初は「畳んである」状態にする
     let stampCollapsed = true;  // ← 初期値を true に変更
+
+    // ===== ジャッジ画像：1枚だけ常設して使い回す（軽い） =====
+    let judgeEl = null;
+    const ensureJudgeEl = () => {
+      if (judgeEl) return judgeEl;
+
+      const img = document.createElement("img");
+      img.id = "judgeFx";
+      img.alt = "";
+      img.style.position = "fixed";
+      img.style.zIndex = "2200";
+      img.style.left = "50%";
+      img.style.top = "50%";
+      img.style.transform = "translate(-50%, -50%) scale(0.9)";
+      img.style.opacity = "0";
+      img.style.width = "min(480px, 80vw)";
+      img.style.pointerEvents = "none";
+      img.style.transition = "opacity 0.18s ease-out, transform 0.18s ease-out";
+      img.style.willChange = "opacity, transform"; // ★GPU最適化
+
+      document.body.appendChild(img);
+      judgeEl = img;
+      return img;
+    };
 
     if (stampFloat) {
       const body = stampFloat.querySelector(".stamp-fab-body");
@@ -674,83 +746,48 @@
 
     // ========= ○× ジャッジ画像表示 =========
     const playJudgeFx = (isCorrect) => {
-      // ★ Audio を再利用
-      try {
-        if (isCorrect) {
-          if (!judgeAudioCorrect) {
-            judgeAudioCorrect = new Audio(JUDGE_SE_CORRECT);
-            judgeAudioCorrect.volume = 0.6;
-          }
-          judgeAudioCorrect.currentTime = 0;
-          judgeAudioCorrect.play().catch(() => {});
-        } else {
-          if (!judgeAudioWrong) {
-            judgeAudioWrong = new Audio(JUDGE_SE_WRONG);
-            judgeAudioWrong.volume = 0.6;
-          }
-          judgeAudioWrong.currentTime = 0;
-          judgeAudioWrong.play().catch(() => {});
-        }
-      } catch (e) {}
-
-      const src = isCorrect ? JUDGE_IMG_CORRECT : JUDGE_IMG_WRONG;
-      if (!src) return;
-
-      const img = document.createElement("img");
-      img.src = src;
+      // まず画像：常設要素の src を差し替えて表示
+      const img = ensureJudgeEl();
+      img.src = isCorrect ? JUDGE_IMG_CORRECT : JUDGE_IMG_WRONG;
       img.alt = isCorrect ? "正解！" : "不正解";
-      img.style.position = "fixed";
-      img.style.zIndex = "2200";
-      img.style.left = "50%";
-      img.style.top = "50%";
-      img.style.transform = "translate(-50%, -50%) scale(0.8)";
+
+      // 表示（再生のたびに同じ要素を動かす）
+      img.style.transition = "none";
       img.style.opacity = "0";
-      img.style.width = "min(480px, 80vw)";
-      img.style.pointerEvents = "none";
-      img.style.transition = "opacity 0.2s ease-out, transform 0.2s ease-out";
-
-      document.body.appendChild(img);
-
-      requestAnimationFrame(() => {
-        img.style.opacity = "1";
-        img.style.transform = "translate(-50%, -50%) scale(1.0)";
-      });
+      img.style.transform = "translate(-50%, -50%) scale(0.9)";
+      img.getBoundingClientRect(); // reflow 1回
+      img.style.transition = "opacity 0.18s ease-out, transform 0.18s ease-out";
+      img.style.opacity = "1";
+      img.style.transform = "translate(-50%, -50%) scale(1.0)";
 
       setTimeout(() => {
         img.style.opacity = "0";
         img.style.transform = "translate(-50%, -50%) scale(1.05)";
-        setTimeout(() => img.remove(), 250);
-      }, 550);
+      }, 520);
+
+      // 次に音（後述の “安全再生” を使う）
+      safePlayJudgeSe(isCorrect);
     };
 
     // ========= 問題レンダリング =========
-    const renderQuestion = (q) => {
+    // ========= 問題レンダリング（★スマホ安定版） =========
+    const renderQuestion = async (q) => {
       j("#qStem").textContent = q.stem;
-      unlockAudio();
-      // 出題音：Audio を再利用
+
+      // ★ 画像プリロード＆Audio解禁が完了するまで待つ（スマホで効く）
+      await unlockAudio();
+
+      // ===== 出題音（安全再生）=====
       try {
-        if (!questionStartAudio) {
-          questionStartAudio = new Audio(SE_QUESTION_START);
-          questionStartAudio.volume = 1.0;
-        }
-        questionStartAudio.currentTime = 0;
-        questionStartAudio.play().catch(() => {});
+        if (questionStartAudio) safePlay(questionStartAudio);
       } catch (e) {}
 
-      // シンキングタイム開始（ループ再生）
-      // ★ モバイルは負荷軽減のためオフ
+      // ===== シンキング（安全再生 / ループ）=====
       try {
-        if (!thinkingAudio) {
-          thinkingAudio = new Audio(SE_THINKING);
-          thinkingAudio.volume = 1.0;
-          thinkingAudio.loop = true;
-          thinkingAudio.preload = "auto";
-        }
-        thinkingAudio.currentTime = 0;
-        thinkingAudio.play().catch(() => {});
+        if (thinkingAudio) safePlay(thinkingAudio);
       } catch (e) {}
 
-      // ヒント処理
+      // ===== ヒント処理 =====
       const hintBox  = j("#qHintBox");
       const hintText = j("#qHintText");
 
@@ -780,6 +817,7 @@
         }
       }
 
+      // ===== 選択肢描画 =====
       const box = j("#choices");
       box.innerHTML = "";
       current.qid = q.qid;
@@ -792,21 +830,27 @@
         const btn = document.createElement("button");
         btn.className = "btn btn-outline-primary choice-btn";
         btn.innerHTML = `<b>${"ABCD"[i]}.</b> ${text}`;
+
         btn.addEventListener("click", () => {
           if (current.locked) return;
+
           current.locked = true;
           stopQuestionTimer(false);
+
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "answer", qid: current.qid, choice_idx: i }));
           }
+
           btn.classList.add("choice-wrong");
           disableAllChoices();
         });
+
         box.appendChild(btn);
       });
 
       setTimeout(enableAllChoices, 800);
     };
+
 
     const markReveal = (correctIdx) => {
       const list = Array.from(document.querySelectorAll(".choice-btn"));
@@ -1120,7 +1164,8 @@
 
 
     // ========= ボタンイベント =========
-    j("#startBtn")?.addEventListener("click", () => {
+    j("#startBtn")?.addEventListener("click", async () => {
+      await unlockAudio(); // ★保険
       if (isRandom) return;
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "start" }));
