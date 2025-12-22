@@ -796,7 +796,7 @@
         btn.addEventListener("click", () => {
           if (current.locked) return;
           current.locked = true;
-          stopQuestionTimer(False);
+          stopQuestionTimer(false);
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "answer", qid: current.qid, choice_idx: i }));
           }
