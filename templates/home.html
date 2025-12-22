@@ -820,6 +820,308 @@
         display: none !important;
       }
     }
+
+/* =========================================
+   HOME: station-card を “少しだけ華やか” に
+   （HTML変更なしでOK）
+========================================= */
+
+    /* 1) カード全体：グラデ枠＋ほんのりハイライト */
+    .station-card{
+      background:
+        linear-gradient(#ffffff, #ffffff) padding-box,
+        linear-gradient(135deg, rgba(99,102,241,.55), rgba(34,197,94,.45), rgba(249,115,22,.45)) border-box;
+      border: 1px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 2) 右上に“光”を足す（派手すぎない） */
+    .station-card::before{
+      content:"";
+      position:absolute;
+      top:-60px; right:-60px;
+      width:180px; height:180px;
+      border-radius:999px;
+      background: radial-gradient(circle at 30% 30%, rgba(99,102,241,.18), transparent 60%);
+      filter: blur(0px);
+      pointer-events:none;
+    }
+
+    /* 3) hover時：少しだけキレよく */
+    .station-card:hover{
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(15,23,42,0.18);
+    }
+
+    /* 4) 見出し行：アイコンを“バッジ化”して視線を集める */
+    .station-icon{
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(99,102,241,.10);
+      box-shadow: 0 10px 20px rgba(99,102,241,.12);
+    }
+
+    /* 5) station-sign（RANDOM / CPU / MAP など）を発色UP */
+    .station-sign{
+      border: 1px solid rgba(148,163,184,0.55);
+      box-shadow: 0 8px 16px rgba(15,23,42,0.06);
+    }
+
+    /* 6) ボタンを少しだけ“ぷるん”と：影・境界 */
+    .station-actions .btn{
+      box-shadow: 0 10px 22px rgba(15,23,42,0.10);
+    }
+    .station-actions .btn:hover{
+      box-shadow: 0 16px 30px rgba(15,23,42,0.16);
+    }
+
+    /* =========================================
+      ここから：カード種類ごとの“テーマ色”
+      （station-random / station-challenge / station-map / station-char など）
+    ========================================= */
+
+    /* RANDOM：青紫 */
+    .station-random{
+      background:
+        radial-gradient(circle at 0% 0%, rgba(99,102,241,.14), transparent 45%),
+        linear-gradient(#ffffff, #ffffff);
+    }
+    .station-random .station-icon{
+      background: rgba(99,102,241,.14);
+    }
+
+    /* CHALLENGE：橙〜黄 */
+    .station-challenge{
+      background:
+        radial-gradient(circle at 0% 0%, rgba(249,115,22,.16), transparent 48%),
+        linear-gradient(#ffffff, #ffffff);
+    }
+    .station-challenge .station-icon{
+      background: rgba(249,115,22,.16);
+    }
+
+    /* MAP：ピンク */
+    .station-map{
+      background:
+        radial-gradient(circle at 0% 0%, rgba(236,72,153,.14), transparent 48%),
+        linear-gradient(#ffffff, #ffffff);
+    }
+    .station-map .station-icon{
+      background: rgba(236,72,153,.14);
+    }
+
+    /* STAMP / MAKE：紫 */
+    .station-char{
+      background:
+        radial-gradient(circle at 0% 0%, rgba(139,92,246,.14), transparent 48%),
+        linear-gradient(#ffffff, #ffffff);
+    }
+    .station-char .station-icon{
+      background: rgba(139,92,246,.14);
+    }
+
+    /* （任意）カードの本文を少し読みやすく */
+    .station-body{
+      color: #475569;          /* いまより少し濃く */
+      line-height: 1.55;
+    }
+
+    /* （任意）node（駅の丸）も少し“光らせる” */
+    .station-node{
+      box-shadow: 0 0 0 5px rgba(191,219,254,0.95), 0 10px 22px rgba(79,70,229,0.18);
+    }
+/* =========================================
+   pill-btn を上品なグラデに（やりすぎ注意）
+   - 既存の btn-primary / btn-warning / btn-outline-* を自然に強化
+========================================= */
+
+    /* 共通：丸み・影・押し込み */
+    .pill-btn{
+      border-radius: 999px !important;
+      position: relative;
+      overflow: hidden;
+      transform: translateZ(0);
+      transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
+      box-shadow: 0 10px 22px rgba(15,23,42,0.12);
+    }
+    .pill-btn:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 16px 30px rgba(15,23,42,0.16);
+    }
+    .pill-btn:active{
+      transform: translateY(0px) scale(0.99);
+      box-shadow: 0 8px 18px rgba(15,23,42,0.12);
+    }
+
+    /* うっすら光（テカりすぎ防止で薄め） */
+    .pill-btn::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(120deg, rgba(255,255,255,.35), rgba(255,255,255,0) 55%);
+      opacity: .55;
+      pointer-events:none;
+    }
+
+    /* ---- primary：青紫グラデ ---- */
+    .pill-btn.btn-primary{
+      border: 0 !important;
+      background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+    }
+    .pill-btn.btn-primary:hover{
+      filter: brightness(1.03) saturate(1.02);
+    }
+
+    /* ---- warning：橙〜黄（落ち着きめ） ---- */
+    .pill-btn.btn-warning{
+      border: 0 !important;
+      color: #111827 !important;
+      background: linear-gradient(135deg, #f59e0b, #fbbf24) !important;
+    }
+    .pill-btn.btn-warning:hover{
+      filter: brightness(1.02) saturate(1.02);
+    }
+
+    /* ---- outline-primary：淡いグラデ枠＋薄背景 ---- */
+    .pill-btn.btn-outline-primary{
+      background: rgba(99,102,241,0.06) !important;
+      border: 1px solid rgba(99,102,241,0.40) !important;
+      color: #4338ca !important;
+    }
+    .pill-btn.btn-outline-primary:hover{
+      background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(34,197,94,0.08)) !important;
+      border-color: rgba(99,102,241,0.55) !important;
+    }
+
+    /* ---- outline-dark（作問）：控えめ紫グラデ ---- */
+    .pill-btn.btn-outline-dark{
+      background: rgba(15,23,42,0.04) !important;
+      border: 1px solid rgba(15,23,42,0.25) !important;
+      color: #0f172a !important;
+    }
+    .pill-btn.btn-outline-dark:hover{
+      background: linear-gradient(135deg, rgba(139,92,246,0.10), rgba(99,102,241,0.08)) !important;
+      border-color: rgba(99,102,241,0.30) !important;
+    }
+
+    /* ---- outline-secondary（CSVなど）：少しだけ綺麗に ---- */
+    .pill-btn.btn-outline-secondary{
+      background: rgba(148,163,184,0.10) !important;
+      border: 1px solid rgba(148,163,184,0.55) !important;
+      color: #334155 !important;
+    }
+    .pill-btn.btn-outline-secondary:hover{
+      background: linear-gradient(135deg, rgba(226,232,240,0.85), rgba(248,250,252,0.95)) !important;
+      border-color: rgba(148,163,184,0.70) !important;
+    }
+    /* 1) カードの作法：白ベース + 左上ににじみ（ランダム〜作問と同じ） */
+    .station-analytics,
+    .station-admin{
+      background:
+        linear-gradient(#ffffff, #ffffff) padding-box;
+      border: 1px solid rgba(148,163,184,0.40);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 右上の光（共通。ランダム側の station-card::before と同じ感じ） */
+    .station-analytics::before,
+    .station-admin::before{
+      content:"";
+      position:absolute;
+      top:-60px; right:-60px;
+      width:180px; height:180px;
+      border-radius:999px;
+      pointer-events:none;
+      opacity: .95;
+      background: radial-gradient(circle at 30% 30%, rgba(99,102,241,.16), transparent 60%);
+    }
+
+    /* 2) 左上の“にじみ”を追加（種類別に色だけ変える） */
+    .station-analytics::after,
+    .station-admin::after{
+      content:"";
+      position:absolute;
+      top:-80px; left:-80px;
+      width:220px; height:220px;
+      border-radius:999px;
+      pointer-events:none;
+      opacity: .95;
+    }
+
+    /* ANALYTICS：水色〜青のにじみ */
+    .station-analytics{
+      background:
+        radial-gradient(circle at 0% 0%, rgba(56,189,248,.16), transparent 48%),
+        linear-gradient(#ffffff, #ffffff);
+    }
+    .station-analytics::after{
+      background: radial-gradient(circle at 35% 35%, rgba(56,189,248,.18), transparent 62%);
+    }
+
+    /* ADMIN：赤のにじみ（怖くならないよう薄め） */
+    .station-admin{
+      background:
+        radial-gradient(circle at 0% 0%, rgba(239,68,68,.14), transparent 48%),
+        linear-gradient(#ffffff, #ffffff);
+    }
+    .station-admin::after{
+      background: radial-gradient(circle at 35% 35%, rgba(239,68,68,.16), transparent 62%);
+    }
+
+    /* 3) アイコンバッジ（ランダム〜作問と同じ“バッジ化”の思想） */
+    .station-analytics .station-icon{
+      width: 38px; height: 38px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius: 12px;
+      background: rgba(56,189,248,.14);
+      box-shadow: 0 10px 20px rgba(56,189,248,.18);
+    }
+
+    .station-admin .station-icon{
+      width: 38px; height: 38px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius: 12px;
+      background: rgba(239,68,68,.12);
+      box-shadow: 0 10px 20px rgba(239,68,68,.18);
+    }
+
+    /* 4) station-sign（DATA/ADMIN/ROLE）の“発色UP”を統一 */
+    .station-analytics .station-sign{
+      background:#e0f2fe; color:#075985;
+      border: 1px solid rgba(56,189,248,.35);
+    }
+    .station-admin .station-sign{
+      background:#fee2e2; color:#7f1d1d;
+      border: 1px solid rgba(239,68,68,.30);
+    }
+
+    /* 5) hoverの動きも統一（station-cardと同じ） */
+    .station-analytics:hover,
+    .station-admin:hover{
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(15,23,42,0.18);
+      border-color: rgba(99,102,241,.45); /* 枠は共通トーンに寄せる */
+    }
+    .station-admin:hover{
+      border-color: rgba(239,68,68,.38);
+    }
+
+    /* 6) node（駅丸）も少し“統一感”が出るように */
+    .station-analytics .station-node{
+      border-color: rgba(56,189,248,0.9);
+      box-shadow: 0 0 0 4px rgba(224,242,254,0.95);
+    }
+    .station-admin .station-node{
+      border-color: rgba(239,68,68,0.75);
+      box-shadow: 0 0 0 4px rgba(254,226,226,0.95);
+    }         
+
     
   </style>
 </head>
