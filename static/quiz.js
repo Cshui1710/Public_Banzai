@@ -675,7 +675,7 @@
           hintTimer = setTimeout(() => {
             hintBox.style.visibility = "visible";
             hintBox.style.opacity = "1";
-          }, 4000);
+          }, 2000);
         } else {
           hintText.textContent = "　"; // 全角スペース
           hintBox.style.visibility = "hidden";

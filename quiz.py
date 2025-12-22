@@ -36,7 +36,7 @@ NEEDED_PLAYERS = 4         # 目標人数（ここまでCPUで補充）
 CPU_CORRECT_PROB = 0.25    # CPUの正解確率
 CPU_MIN_DELAY = 6.0        # 回答遅延（秒） 最小
 CPU_MAX_DELAY = 8.0        # 回答遅延（秒） 最大
-MM_GRACE_SEC = 10.0          # ← ここを追加：待機者が揃わなくてもこの秒数で切り上げ
+MM_GRACE_SEC = 15.0          # ← ここを追加：待機者が揃わなくてもこの秒数で切り上げ
 AUTO_START_ON_FIRST_HUMAN = False# ← ここを追加：最初の人が入ったら自動開始
 # ==== 自動開始（4人そろったらカウントダウンして開始） ====
 READY_HUMANS = 4                 # 人間がこの人数に到達したら
