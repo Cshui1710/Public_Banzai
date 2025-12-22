@@ -1042,6 +1042,141 @@
       margin: 0 !important;
       padding: 0 !important;
     }  
+
+/* 通常プレイカード（左：問題カード） */
+    .play-card{
+      border: 1px solid rgba(59,130,246,0.18);
+      background:
+        radial-gradient(circle at 0% 0%,
+          rgba(191,219,254,0.55) 0,
+          rgba(255,255,255,1) 55%,
+          rgba(239,246,255,0.9) 100%);
+      box-shadow: 0 16px 44px rgba(59,130,246,0.18);
+      overflow: hidden;
+    }
+
+    /* 上部に“青い光”ライン（通常のみ） */
+    .play-card::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:0;
+      height:6px;
+      background: linear-gradient(90deg,#60a5fa,#3b82f6,#22c55e);
+      opacity:.9;
+    }
+
+    /* 通常モードの見出し周りを少し爽やかに */
+    .play-card .quiz-tagline-sm{
+      color:#2563eb;
+    }
+    .play-card h1.h5{
+      color:#0f172a;
+    }
+    .play-card .text-muted{
+      color:#475569 !important;
+    }
+
+    /* 右側（スコア/参加者）カード：白×青 */
+    .col-lg-4 .card.p-3{
+      border: 1px solid rgba(59,130,246,0.16);
+      background:
+        linear-gradient(180deg,
+          rgba(239,246,255,0.95) 0,
+          rgba(255,255,255,1) 35%,
+          rgba(255,255,255,1) 100%);
+      box-shadow: 0 14px 36px rgba(59,130,246,0.12);
+    }
+
+    /* スコア「線路」：青〜水色に寄せる（通常でもボスでも見た目OK） */
+    .score-line{
+      background: linear-gradient(to bottom, #3b82f6, #06b6d4);
+    }
+
+    /* スコア行を少し爽やかに */
+    .score-row{
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(59,130,246,0.18);
+    }
+    .score-row::before{
+      border-color:#3b82f6;
+      box-shadow: 0 0 0 3px rgba(191,219,254,0.85);
+    }
+
+    /* 参加者ピルも青寄りに */
+    .member-pill{
+      background: rgba(239,246,255,0.9);
+      border: 1px solid rgba(59,130,246,0.18);
+      color:#0f172a;
+    }
+
+    /* 選択肢ボタン（通常プレイの見た目を明るく） */
+    #choices .btn{
+      border: 1px solid rgba(59,130,246,0.22);
+      background: rgba(255,255,255,0.98);
+      box-shadow: 0 6px 18px rgba(15,23,42,0.06);
+      transition: transform .08s ease-out, box-shadow .12s ease-out, border-color .12s ease-out;
+    }
+    #choices .btn:hover{
+      border-color: rgba(59,130,246,0.45);
+      box-shadow: 0 10px 24px rgba(59,130,246,0.14);
+      transform: translateY(-1px);
+    }
+
+    /* 正解・不正解の見せ方（既存を活かしつつ軽く調整） */
+    .choice-correct{
+      box-shadow: 0 0 0 2px rgba(34,197,94,0.25);
+    }
+    .choice-wrong{
+      opacity: 0.55;
+    }
+
+    /* 通常モードの区切り線を少し淡く */
+    #playHeaderHr{
+      border-top-color: rgba(59,130,246,0.18) !important;
+    }
+
+    /* スマホ時：影を少しだけ弱めて軽く */
+    @media (max-width: 576px){
+      .play-card{
+        box-shadow: 0 12px 28px rgba(59,130,246,0.14);
+      }
+      .col-lg-4 .card.p-3{
+        box-shadow: 0 10px 24px rgba(59,130,246,0.10);
+      }
+    }
+/* ===== 選択肢ボタン：押下/フォーカス時に白文字になって消えるのを防ぐ ===== */
+    #choices .btn,
+    #choices .btn:focus,
+    #choices .btn:active,
+    #choices .btn:hover,
+    #choices .btn:focus-visible{
+      color: #0f172a !important; /* ←文字色を常に濃色で固定 */
+    }
+
+    /* Bootstrapのbtn-primary等が混ざっても白文字化しないように上書き */
+    #choices .btn.btn-primary,
+    #choices .btn.btn-success,
+    #choices .btn.btn-danger,
+    #choices .btn.btn-warning,
+    #choices .btn.btn-info,
+    #choices .btn.btn-dark{
+      color: #0f172a !important;
+    }
+
+    /* クリック中に真っ白にフラッシュするのを抑える */
+    #choices .btn:active{
+      background: rgba(239,246,255,0.95) !important;
+      border-color: rgba(59,130,246,0.45) !important;
+    }
+
+    /* フォーカスの輪郭も青系に（見た目が安定） */
+    #choices .btn:focus,
+    #choices .btn:focus-visible{
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.25) !important;
+    }
+
     
   </style>
 </head>

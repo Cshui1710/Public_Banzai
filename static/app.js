@@ -8,10 +8,11 @@ const CENTER = [36.77, 136.90];
 const map = L.map("map").setView(CENTER, 9);
 window.map = map;
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
   maxZoom: 20,
-  attribution: "&copy; OpenStreetMap contributors",
+  attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
 }).addTo(map);
+
 
 // 到達半径（サーバ側から埋め込み）
 const ARRIVAL_RADIUS = Number(window.ARRIVAL_RADIUS ?? 50);
@@ -108,12 +109,29 @@ function updateMeMarker(lat, lon, zoom = 16) {
 
 // ------ レイヤー（クラスタ） ------
 const layerParks = L.markerClusterGroup({
-  maxClusterRadius: 60,
+  maxClusterRadius: 80,
+  disableClusteringAtZoom: 17,      // 近づいたら展開
+  animate: false,                    // ★アニメ切ると軽くなる
+  chunkedLoading: true,              // ★大量でも固まらない
+  chunkInterval: 50,
+  chunkDelay: 10,
+  removeOutsideVisibleBounds: true,  // ★視界外を積極的に間引く
   spiderfyOnEveryZoom: false,
+  spiderfyDistanceMultiplier: 1.4,
 });
+
 const layerFacilities = L.markerClusterGroup({
-  maxClusterRadius: 60,
+  maxClusterRadius: 80,
+  disableClusteringAtZoom: 17,
+  animate: false,
+  chunkedLoading: true,
+  chunkInterval: 50,
+  chunkDelay: 10,
+  removeOutsideVisibleBounds: true,
+  spiderfyOnEveryZoom: false,
+  spiderfyDistanceMultiplier: 1.4,
 });
+
 
 map.addLayer(layerParks);
 map.addLayer(layerFacilities);
@@ -157,20 +175,38 @@ function esc(s) {
 // ------ ピンアイコン ------
 function pinSVGIcon() {
   const html = `
-  <svg class="fancy-pin" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#3b82f6"/></linearGradient></defs>
+  <svg class="fancy-pin fancy-pin-3d" viewBox="0 0 64 80" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4f46e5"/>
+        <stop offset="100%" stop-color="#3b82f6"/>
+      </linearGradient>
+      <!-- ハイライト -->
+      <radialGradient id="shine" cx="30%" cy="25%" r="60%">
+        <stop offset="0%" stop-color="rgba(255,255,255,0.65)"/>
+        <stop offset="60%" stop-color="rgba(255,255,255,0.10)"/>
+        <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+      </radialGradient>
+    </defs>
+
+    <!-- 影の“地面” -->
+    <ellipse cx="32" cy="74" rx="15" ry="4" fill="rgba(15,23,42,0.22)"/>
+
     <path d="M32 2c-14 0-25 11-25 25 0 17 20 36 24 40a 2 2 0 0 0 2.8 0c4-4 24-23 24-40C58 13 46 2 32 2z" fill="url(#g)"/>
-    <circle cx="32" cy="28" r="9" fill="white" fill-opacity=".9"/>
+    <!-- つや -->
+    <path d="M32 2c-14 0-25 11-25 25 0 17 20 36 24 40a 2 2 0 0 0 2.8 0c4-4 24-23 24-40C58 13 46 2 32 2z" fill="url(#shine)"/>
+
+    <circle cx="32" cy="28" r="9" fill="white" fill-opacity=".92"/>
   </svg>`;
   return L.divIcon({
     className: "",
     html,
-    iconSize: [34, 42],
-    iconAnchor: [17, 42],
-    popupAnchor: [0, -42],
+    iconSize: [34, 46],
+    iconAnchor: [17, 46],
+    popupAnchor: [0, -46],
   });
 }
+
 
 // チェックイン済みの黄色ピン（✔入り）
 function checkedPinSVGIcon() {
@@ -311,6 +347,9 @@ async function loadCheckedPlaces() {
 }
 
 // ------ マーカー追加 ------
+const ICON_NORMAL = pinSVGIcon();
+const ICON_CHECKED = checkedPinSVGIcon();
+
 
 function addMarkers(records, kind, group) {
   group.clearLayers();
@@ -318,9 +357,8 @@ function addMarkers(records, kind, group) {
     if (typeof r.lat !== "number" || typeof r.lon !== "number") return;
     const rid = r.id ?? r["ID"] ?? `${kind}-${r.lat}-${r.lon}`;
 
-    const icon = checkedPlaces.has(String(rid))
-      ? checkedPinSVGIcon()
-      : pinSVGIcon();
+    const icon = checkedPlaces.has(String(rid)) ? ICON_CHECKED : ICON_NORMAL;
+
 
     const m = L.marker([r.lat, r.lon], { icon });
     m.bindPopup(popHtml(r, kind));
@@ -395,6 +433,55 @@ if (locateBtn) {
     );
   };
 }
+
+// 既存：現在地処理本体を関数化
+  async function locateMe() {
+    // ここに「今 locateBtn クリックでやってる処理」を入れる
+    // 例：
+    if (!navigator.geolocation) {
+      toast("この端末は位置情報に対応していません");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        async function locateMe() {
+          if (!navigator.geolocation) {
+            toast("この端末は位置情報に対応していません", false);
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            (pos) => updateMeMarker(pos.coords.latitude, pos.coords.longitude, 16),
+            (err) => {
+              toast("現在地の取得に失敗しました", false);
+              console.log(err);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        }
+        window.locateMe = locateMe;
+
+      },
+      (err) => {
+        toast("現在地の取得に失敗しました");
+        console.log(err);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+
+  // FAB/他から呼べるように公開
+  window.locateMe = locateMe;
+
+  // 既存 locateBtn が残っている場合だけ紐付け（null安全）
+
+
+  // FAB がある場合もここで直結してOK（HTML側の橋渡しが不要になる）
+  const fabLocate = document.getElementById("fabLocate");
+  if (fabLocate) fabLocate.addEventListener("click", locateMe);
+
 
 // ▼ ここから2つは「ボタンがあったらだけ動かす」
 //   （HTMLから消したので実質何もしないが、エラーにはならない）
@@ -560,9 +647,7 @@ async function checkin(id, lat, lon, name, kind) {
   const clientDist = haversineM(mePos[0], mePos[1], lat, lon);
   if (clientDist > ARRIVAL_RADIUS + 5) {
     return toast(
-      `チェックインできる距離にいません（現在 約${Math.round(
-        clientDist
-      )}m / 必要 ${ARRIVAL_RADIUS}m 以内）`,
+      `チェックインできる距離にいません`,
       false
     );
   }
@@ -615,7 +700,7 @@ async function checkin(id, lat, lon, name, kind) {
   checkedPlaces.add(idStr);
   const mk = markerIndex.get(idStr);
   if (mk) {
-    mk.setIcon(checkedPinSVGIcon());
+    mk.setIcon(ICON_CHECKED);
   }
 
   // スタンプ獲得モーダル
@@ -725,7 +810,7 @@ async function loadPhotos(placeId) {
   const list = document.getElementById("photoList");
   if (js.count === 0) {
     list.innerHTML =
-      '<div style="padding:12px;color:#475569;">まだ写真がありません。最初の一枚を投稿しませんか？</div>';
+      '<div style="padding:12px;color:#475569;">まだ写真がありません。</div>';
   } else {
     list.innerHTML = js.items.map((it) => `<img src="${it.url}" alt="">`).join(
       ""
@@ -938,7 +1023,8 @@ function renderCharsModalAll(data) {
 }
 
 // ------ 分析モーダル（ヒートマップ＋グラフ） ------
-document.getElementById("openDash").onclick = () => openDash();
+const openDashBtn = document.getElementById("openDash");
+if (openDashBtn) openDashBtn.onclick = () => openDash();
 
 let heatmapLayer,
   heatmapMap,
@@ -1203,6 +1289,22 @@ window.openGotModal = openGotModal;
 window.closeGotModal = closeGotModal;
 window.shareGot = shareGot;
 
+function bindLocateFab() {
+  const fab = document.getElementById("locateFab");
+  const btn = document.getElementById("locateBtn");
+  if (fab && btn) fab.addEventListener("click", () => btn.click());
+}
+
+function scalePinsByZoom() {
+  const z = map.getZoom();
+  const s = Math.max(0.9, Math.min(1.15, 0.85 + (z - 9) * 0.04)); // 9→基準
+
+  document.documentElement.style.setProperty("--pinScale", s.toFixed(2));
+}
+map.on("zoomend", scalePinsByZoom);
+scalePinsByZoom();
+
+
 
 // ------ 初期化 ------
 async function init() {
@@ -1230,7 +1332,7 @@ async function init() {
   refreshAuthUI();
   autoLocateOnLoad();
 }
-
+bindLocateFab();
 if (document.readyState === "loading") {
   window.addEventListener("DOMContentLoaded", init);
 } else {

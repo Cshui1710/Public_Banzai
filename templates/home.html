@@ -806,6 +806,21 @@
       }
     }
     
+    .station-friend { display: none !important; }
+    .station-name { display: none !important; }   
+    /* ===== スマホでは左パネル＆殿堂入り（ランキング）を非表示 ===== */
+    @media (max-width: 767.98px) {
+      /* 「クイズでつなぐ石川のまち」全体パネル */
+      .panel-left {
+        display: none !important;
+      }
+
+      /* 「プレイ数・キングを倒した人」ランキング（殿堂入りエリア） */
+      .hall-of-fame {
+        display: none !important;
+      }
+    }
+    
   </style>
 </head>
 <body>

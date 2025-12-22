@@ -2,7 +2,6 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>石川県 公共施設・公園マップ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Leaflet 本体 -->
@@ -232,7 +231,7 @@
 
     #map {
       width: 100%;
-      height: calc(100vh - var(--hdr, 56px));
+      height: 100vh;
     }
 
     .legend,
@@ -311,7 +310,7 @@
       display: none;
       flex-direction: column;
       gap: 10px;
-      z-index: 4000;
+      z-index: 4600;
       border: 1px solid rgba(148,163,184,0.35);
       overflow: hidden;
     }
@@ -1164,58 +1163,161 @@
       }
     }
 
+/* =========================
+   Map UI polish (Leaflet)
+========================= */
+
+    /* Leaflet controlsを“アプリUI”にする */
+    .leaflet-control-zoom,
+    .leaflet-control-layers,
+    .leaflet-bar {
+      border: none !important;
+      box-shadow: 0 14px 32px rgba(15,23,42,0.22) !important;
+      border-radius: 14px !important;
+      overflow: hidden;
+    }
+
+    .leaflet-bar a,
+    .leaflet-control-zoom a {
+      width: 42px !important;
+      height: 42px !important;
+      line-height: 42px !important;
+      background: rgba(255,255,255,0.92) !important;
+      color: #0f172a !important;
+      border-bottom: 1px solid rgba(148,163,184,0.35) !important;
+      backdrop-filter: blur(10px);
+    }
+
+    .leaflet-bar a:hover {
+      background: #ffffff !important;
+    }
+
+    .leaflet-control-zoom a:first-child { border-top-left-radius: 14px; border-top-right-radius: 14px; }
+    .leaflet-control-zoom a:last-child  { border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; border-bottom: none !important; }
+
+    /* ポップアップをモダンなカードに */
+    .leaflet-popup-content-wrapper {
+      border-radius: 16px !important;
+      box-shadow: 0 18px 50px rgba(15,23,42,0.28) !important;
+      border: 1px solid rgba(148,163,184,0.30);
+    }
+    .leaflet-popup-tip {
+      box-shadow: 0 10px 20px rgba(15,23,42,0.14) !important;
+    }
+    .leaflet-popup-content {
+      margin: 10px 12px !important;
+      font-family: inherit;
+    }
+    .leaflet-container a.leaflet-popup-close-button {
+      width: 34px !important;
+      height: 34px !important;
+      line-height: 34px !important;
+      border-radius: 999px !important;
+      margin: 6px !important;
+      background: rgba(15,23,42,0.05);
+      color: #111827 !important;
+    }
+
+    /* マーカー/クラスターが“おもちゃ感”出やすいので引き締め */
+    .marker-cluster-small,
+    .marker-cluster-medium,
+    .marker-cluster-large {
+      background: rgba(99,102,241,0.18) !important;
+    }
+    .marker-cluster-small div,
+    .marker-cluster-medium div,
+    .marker-cluster-large div {
+      background: rgba(99,102,241,0.88) !important;
+      color: #fff !important;
+      border-radius: 999px !important;
+      box-shadow: 0 12px 26px rgba(15,23,42,0.25);
+      font-weight: 800;
+    }
+
+    /* 地図に軽い“ガラス感”のトーン */
+    #map {
+      filter: saturate(1.05) contrast(1.02);
+    }
+
+    /* FAB（右下の丸ボタン） */
+    .fab{
+      position: fixed;
+      right: 14px;
+      bottom: 14px;
+      z-index: 4500;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .fab-btn{
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.35);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 16px 40px rgba(15,23,42,0.25);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      font-size: 20px;
+      display: grid;
+      place-items: center;
+      transition: transform .08s ease, box-shadow .12s ease, background .12s ease;
+    }
+
+    .fab-btn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.98);
+      box-shadow: 0 18px 50px rgba(15,23,42,0.28);
+    }
+
+    .fab-btn.primary{
+      background: linear-gradient(135deg, #6366f1, #f97316);
+      color: #fff;
+      border-color: transparent;
+    }
+    @media (max-width: 640px) {
+      header.topbar{
+        padding: 8px 10px;
+        gap: 6px;
+      }
+      .topbar-row--controls{
+        display: none; /* 下段は非表示 */
+      }
+      .topbar-status .pill{
+        display: none; /* スマホはログイン表示は省略（必要なら残す） */
+      }
+      .topbar-buttons .btn{
+        padding: 4px 10px;
+        font-size: 11px;
+      }
+      /* “現在地/BGM”を残して、他はFABに逃がすと地図が映える */
+    }
+    /* ピン全体を“浮かせる” */
+    .fancy-pin-3d{
+      filter: drop-shadow(0 10px 10px rgba(15,23,42,0.25));
+      transform: translateZ(0);
+    }
+
+    /* ホバー時に少し浮く（PCだけ効く） */
+    .leaflet-marker-icon:hover .fancy-pin-3d{
+      filter: drop-shadow(0 14px 14px rgba(15,23,42,0.30));
+    }
+
+    .leaflet-popup-content-wrapper{
+      border-radius: 14px;
+      box-shadow: 0 18px 45px rgba(15,23,42,0.18);
+    }
+
+    .leaflet-popup-tip{
+      box-shadow: 0 12px 22px rgba(15,23,42,0.12);
+    }
+    :root{ --pinScale: 1; }
+    .fancy-pin-3d{ transform: scale(var(--pinScale)); transform-origin: 50% 100%; }
+
   </style>
 </head>
 <body>
-  <header class="topbar">
-    <!-- 上段：ロゴ・タイトル・ユーザ・ナビ -->
-    <div class="topbar-row topbar-row--main">
-      <div class="topbar-left">
-        <a class="brand-mark" href="/home">
-          <span class="brand-logo">IF</span>
-          <span>Ishikawa Facilities &amp; Parks</span>
-        </a>
-        <span class="topbar-title">公共施設・公園マップ</span>
-      </div>
-
-      <div class="topbar-right topbar-actions">
-        <div class="topbar-status">
-          {% if user and not user.is_guest %}
-            <span class="pill success" id="whoami">✅ {{ user.display_name or user.email }} さんログイン中</span>
-          {% else %}
-            <span class="pill warn">ゲスト表示中（チェックイン不可）</span>
-          {% endif %}
-        </div>
-
-        <div class="topbar-buttons">
-          <a class="btn" href="/home">🏠 ホーム</a>
-          <button class="btn" type="button" onclick="openHowto()">❓ 遊び方</button>
-          <button id="locateBtn" class="btn">📍 現在地</button>        
-          <button id="bgmToggleBtn" class="btn" type="button">🎵 BGM ON</button>
-        </div>
-      </div>
-    </div>
-    <!-- 下段：地図操作系（ON/OFFボタン削除してスッキリ版） -->
-    <div class="topbar-row topbar-row--controls">
-
-      <div class="controls-right controls-bar">
-        <div class="field field--search">
-          <input id="csvQuery" type="text" placeholder="CSV内を検索（名称/住所で部分一致）" />
-          <button class="btn" onclick="searchCSV()">検索</button>
-        </div>
-
-        <div class="controls-actions">
-          <button id="openDash" class="btn" style="display:none">📊 分析</button>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- BGM -->
-  <audio id="bgmAudio" loop>
-    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
-  </audio>
-  </header>
 
   <div id="map"></div>
 
@@ -1288,7 +1390,7 @@
         </div>
 
         <div class="comment-helper-text">
-          例：「〇〇のすべり台が割れていて危ない」「ベンチが壊れている」「トイレが暗くて怖い」など、<br>
+          例：「ベンチが壊れている」「トイレが暗くて怖い」など、<br>
           現地で気づいたこと・改善してほしい点・良かった点を自由に書いてください。
         </div>
 
@@ -1527,14 +1629,26 @@
     </div>
   </div>
 
+  <audio id="bgmAudio" loop>
+    <source src="/static/bgm/home_bgm2.mp3" type="audio/mpeg">
+  </audio>
+    
+  <div class="fab">
+    <button class="fab-btn" id="fabHome" title="ホーム">🏠</button>
+    <button class="fab-btn" id="fabLocate" title="現在地">📍</button>
+    <button class="fab-btn" id="fabChars" title="スタンプ">🦫</button>
+    <button class="fab-btn" id="fabHowto" title="遊び方">❓</button>
+    <button class="fab-btn primary" id="fabBgm" title="BGM">🎵</button>
+  </div>
+
   <!-- 外部JS -->
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js" defer></script>
 
   <!-- BGM制御 -->
   <script>
     (function () {
       const audio = document.getElementById("bgmAudio");
-      const btn   = document.getElementById("bgmToggleBtn");
+      const btn   = document.getElementById("fabBgm");
       if (!audio || !btn) return;
 
       audio.volume = 0.5;
@@ -1544,7 +1658,7 @@
       enabled = (enabled === null) ? true : (enabled === "true");
 
       const updateButtonText = () => {
-        btn.textContent = enabled ? "🎵 BGM ON" : "🔇 BGM OFF";
+        btn.textContent = enabled ? "🎵" : "🔇";
       };
 
       const playIfAllowed = async () => {
@@ -1656,6 +1770,56 @@
         }
       }, 900);
     }
+  </script>
+
+  <script>
+    // ===== FAB handlers =====
+    (function () {
+      const $ = (id) => document.getElementById(id);
+
+      // Home
+      const home = $("fabHome");
+      if (home) home.addEventListener("click", () => location.href = "/home");
+
+      // Locate (既存 locateBtn と同じ処理を呼ぶ)
+      const locate = $("fabLocate");
+      if (locate) locate.addEventListener("click", () => {
+        // locateBtn が app.js でイベント登録されているなら、それを発火させる
+        const old = $("locateBtn");
+        if (old) { old.click(); return; }
+
+        // もし locateBtn を消した場合に備えて、関数があるなら呼ぶ
+        if (typeof window.locateMe === "function") window.locateMe();
+      });
+
+      // Search（検索パネルを開く＋入力にフォーカス）
+      const search = $("fabSearch");
+      if (search) search.addEventListener("click", () => {
+        const panel = $("searchPanel");
+        if (panel) panel.style.display = "block";
+        const q = $("csvQuery");
+        if (q) q.focus();
+      });
+
+      // Chars
+      const chars = $("fabChars");
+      if (chars) chars.addEventListener("click", () => {
+        // 既存関数があるならそれを使う（あなたのHTML内に openCharsAll がある）
+        if (typeof window.openCharsAll === "function") window.openCharsAll();
+        else if (typeof window.openChars === "function") window.openChars();
+        else console.warn("openCharsAll/openChars が見つかりません");
+      });
+
+      // Howto
+      const howto = $("fabHowto");
+      if (howto) howto.addEventListener("click", () => {
+        if (typeof window.openHowto === "function") window.openHowto();
+        else {
+          const m = $("howtoModal");
+          if (m) m.style.display = "flex";
+        }
+      });
+    })();
   </script>
 
 </body>
