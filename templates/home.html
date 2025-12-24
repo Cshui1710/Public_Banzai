@@ -1122,7 +1122,47 @@
       box-shadow: 0 0 0 4px rgba(254,226,226,0.95);
     }         
 
-    
+/* ===== HOME tutorial: スマホのフッター崩れ対策 ===== */
+    @media (max-width: 575.98px) {
+      .home-tutorial-footer{
+        flex-direction: column;
+        align-items: stretch;
+        gap: .6rem;
+      }
+
+      /* 左側（チェック＋ステップ）は上段に */
+      .home-tutorial-footer > div:first-child{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: .6rem;
+        flex-wrap: wrap;
+      }
+
+      /* 右側（ボタン群） */
+      .home-tutorial-actions{
+        display: grid;
+        grid-template-columns: 1fr 1fr; /* 2列 */
+        gap: .5rem;
+      }
+
+      /* ボタンを幅いっぱいに */
+      .home-tutorial-actions button{
+        width: 100%;
+        min-width: 0;
+      }
+
+      /* 「OK、はじめる」（最終ページ）は横幅いっぱいで押しやすく */
+      #homeTutorialCloseBtn{
+        grid-column: 1 / -1; /* 2列ぶち抜き */
+      }
+
+      /* 「次回から自動表示しない」が長いので詰める */
+      .home-tutorial-footer .form-check-label{
+        font-size: .78rem;
+      }
+    }
+        
   </style>
 </head>
 <body>
@@ -1622,8 +1662,8 @@
           <button id="homeTutorialNextBtn" class="btn btn-sm btn-primary">
             次へ →
           </button>
-          <button id="homeTutorialCloseBtn" class="btn btn-sm btn成功" style="display:none;">
-            OK、はじめる
+          <button id="homeTutorialCloseBtn" class="btn btn-sm btn-success" style="display:none;">
+            はじめる
           </button>
         </div>
       </div>

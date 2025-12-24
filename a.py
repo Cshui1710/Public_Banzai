@@ -1,15 +1,23 @@
-# delete_user.py 的な一時スクリプト
-from sqlmodel import Session, select
-from models import engine, User
+import sqlite3
 
-TARGET_EMAIL = "c1204247@gmail.com"  # ←消したいメールに変える
+conn = sqlite3.connect("../nonoji.db")
+cur = conn.cursor()
 
-with Session(engine) as s:
-    u = s.exec(select(User).where(User.email == TARGET_EMAIL)).first()
-    if not u:
-        print("ユーザーが見つかりませんでした")
-    else:
-        print("削除するユーザー:", u.id, u.email)
-        s.delete(u)
-        s.commit()
-        print("削除完了")
+cur.execute("""
+SELECT name
+FROM sqlite_master
+WHERE type='table'
+AND name NOT LIKE 'sqlite_%'
+""")
+
+tables = [row[0] for row in cur.fetchall()]
+
+for table in tables:
+    cur.execute(f"PRAGMA table_info({table})")
+    columns = cur.fetchall()
+    print(f"{table}: レコード数 = ", end="")
+    cur.execute(f"SELECT COUNT(*) FROM {table}")
+    print(cur.fetchone()[0], end="")
+    print(f" 件 / 属性数 = {len(columns)}")
+
+conn.close()

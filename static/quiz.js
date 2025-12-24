@@ -225,11 +225,14 @@
     // 🔹 自動表示（初回のみ）※ random-wait のときは自動表示しない
     try {
       const hide = localStorage.getItem(TUTORIAL_HIDE_KEY) === "true";
-      if (!hide && mode !== "random-wait") {
+      const isRandomBattle = (mode === "play" && isRandom === true);
+
+      if (!hide && mode !== "random-wait" && !isRandomBattle) {
         openTutorial(1);
       }
     } catch (e) {
-      if (mode !== "random-wait") {
+      const isRandomBattle = (mode === "play" && isRandom === true);
+      if (mode !== "random-wait" && !isRandomBattle) {
         openTutorial(1);
       }
     }
@@ -1075,7 +1078,7 @@
                 const userFasterAndCorrect = !!m.correct;
                 window.applyBossBattleRound(userFasterAndCorrect);
               }
-            }, IS_MOBILE ? 80 : 40); // まずは 60でもOK。iOS弱いなら80推奨
+            }, IS_MOBILE ? 150 : 80); // まずは 60でもOK。iOS弱いなら80推奨
           });
       }  
 
