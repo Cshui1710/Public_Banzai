@@ -1177,6 +1177,58 @@
       box-shadow: 0 0 0 3px rgba(59,130,246,0.25) !important;
     }
 
+    /* countdown unlock UI */
+    /* countdown unlock UI */
+    .countdown-unlock {
+      margin-top: 18px;              /* ← 少しだけ下に */
+      display: inline-flex;
+      flex-direction: column;
+      gap: 10px;                     /* ← 間隔を微増 */
+      align-items: center;
+    }
+
+    .countdown-unlock-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.55);
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      font-weight: 800;
+      font-size: 14px;               /* ← 13 → 14 */
+      padding: 10px 16px;            /* ← 少し大きく */
+      border-radius: 999px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.20);
+      transition:
+        transform .08s ease,
+        background .12s ease,
+        border-color .12s ease,
+        opacity .12s ease;
+    }
+
+    .countdown-unlock-btn:active {
+      transform: translateY(1px);
+    }
+
+    .countdown-unlock-btn:hover {
+      background: rgba(255,255,255,0.20);
+      border-color: rgba(255,255,255,0.75);
+    }
+
+    .countdown-unlock-note {
+      font-size: 13px;               /* ← 12 → 13 */
+      opacity: .8;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .countdown-unlock-ok {
+      font-size: 14px;               /* ← 少しだけ */
+      font-weight: 800;
+      opacity: .9;
+      color: rgba(255,255,255,0.95);
+    }
+
     
   </style>
 </head>

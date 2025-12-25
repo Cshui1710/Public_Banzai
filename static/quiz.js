@@ -44,6 +44,112 @@
   const START_VOLUME    = 1.0;
 
 
+// =======================
+// Audio Unlock Overlay
+// =======================
+  let __AUDIO_UNLOCKED__ = false;
+
+  function ensureAudioUnlockedOnce() {
+    if (__AUDIO_UNLOCKED__) return Promise.resolve(true);
+
+    const tryPlay = async () => {
+      // ★あなたの unlockAudio() を呼ぶ（ここが本命）
+      try {
+        await unlockAudio();
+        __AUDIO_UNLOCKED__ = true;
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+
+    return tryPlay();
+  }
+
+
+  function showAudioUnlockOverlay(msg = "🔊 画面をタップすると音が出ます") {
+    // 既に unlock 済みなら出さない
+    if (__AUDIO_UNLOCKED__) return;
+
+    // 既存オーバーレイがあれば再利用
+    let ov = document.getElementById("audioUnlockOverlay");
+    if (!ov) {
+      ov = document.createElement("div");
+      ov.id = "audioUnlockOverlay";
+      ov.style.position = "fixed";
+      ov.style.inset = "0";
+      ov.style.zIndex = "9999";
+      ov.style.display = "flex";
+      ov.style.alignItems = "center";
+      ov.style.justifyContent = "center";
+      ov.style.background = "rgba(0,0,0,0.45)";
+      ov.style.backdropFilter = "blur(2px)";
+      ov.style.webkitBackdropFilter = "blur(2px)";
+      ov.style.padding = "16px";
+
+      const card = document.createElement("div");
+      card.style.maxWidth = "520px";
+      card.style.width = "100%";
+      card.style.background = "white";
+      card.style.borderRadius = "16px";
+      card.style.boxShadow = "0 12px 30px rgba(0,0,0,0.25)";
+      card.style.padding = "16px 18px";
+      card.style.textAlign = "center";
+
+      const title = document.createElement("div");
+      title.style.fontSize = "16px";
+      title.style.fontWeight = "700";
+      title.style.marginBottom = "8px";
+      title.textContent = msg;
+
+      const sub = document.createElement("div");
+      sub.style.fontSize = "13px";
+      sub.style.opacity = "0.75";
+      sub.style.marginBottom = "12px";
+      sub.textContent = "※ iPhone等では最初の1回だけ操作が必要です";
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = "タップして音を有効化";
+      btn.style.border = "0";
+      btn.style.borderRadius = "12px";
+      btn.style.padding = "10px 14px";
+      btn.style.fontWeight = "700";
+      btn.style.cursor = "pointer";
+
+      card.appendChild(title);
+      card.appendChild(sub);
+      card.appendChild(btn);
+      ov.appendChild(card);
+      document.body.appendChild(ov);
+
+      const onUnlock = async () => {
+        const ok = await ensureAudioUnlockedOnce();
+        if (ok) {
+          hideAudioUnlockOverlay();
+        } else {
+          // 失敗したら文言を少し変える
+          title.textContent = "もう一度タップしてください（音の許可が必要です）";
+        }
+      };
+
+      // ボタンでも、オーバーレイ全体タップでもOKにする
+      btn.addEventListener("click", onUnlock, { passive: true });
+      ov.addEventListener("click", onUnlock, { passive: true });
+
+      // iOS対策：touchstart でも拾う
+      ov.addEventListener("touchstart", onUnlock, { passive: true });
+    } else {
+      ov.style.display = "flex";
+      const t = ov.querySelector("div > div");
+      if (t) t.textContent = msg;
+    }
+  }
+
+  function hideAudioUnlockOverlay() {
+    const ov = document.getElementById("audioUnlockOverlay");
+    if (ov) ov.style.display = "none";
+  }
 
   const preloadImage = (src) => new Promise((res) => {
     const im = new Image();
@@ -336,21 +442,117 @@
 
   // ========= 5→1 カウントダウン =========
   let prestartTimer = null;
+  let __countdownUnlockBound__ = false;
+
   const playCountdown = (seconds = 5) => {
     clearInterval(prestartTimer);
+
     let n = seconds;
-    showOverlay(String(n));
+
+    const render = (text) => {
+      const needUnlock = !(__AUDIO_UNLOCKED__ || audioUnlocked);
+
+      // ★カウントダウンの中に「音を有効化」UIを埋め込む
+      const unlockHtml = needUnlock ? `
+        <div class="countdown-unlock">
+          <button id="countdownUnlockBtn" class="countdown-unlock-btn" type="button">
+            🔊 タップで音を最初から有効化
+          </button>
+          <div class="countdown-unlock-note">
+            ※ iPhone等では最初の1回だけ必要です
+          </div>
+        </div>
+      ` : `
+        <div class="countdown-unlock-ok">🔊 音ON</div>
+      `;
+
+      showOverlay(`
+        <div style="text-align:center;line-height:1.05;">
+          <div style="
+            font-size:64px;
+            font-weight:900;
+            letter-spacing:1px;
+            color:#fff;
+            text-shadow: 0 10px 30px rgba(0,0,0,0.35);
+          ">${text}</div>
+          ${unlockHtml}
+        </div>
+      `);
+
+
+      // ★イベントは一度だけ仕込む（overlayの中身は毎秒書き換わるので）
+      if (!__countdownUnlockBound__) {
+        __countdownUnlockBound__ = true;
+
+        // overlay全体で「ボタンタップ」を拾う（中身が入れ替わってもOK）
+        const ov = document.getElementById("overlay");
+        const handler = async (ev) => {
+          const t = ev.target;
+          if (!t) return;
+
+          // ボタン以外のタップでは反応させない
+          if (!(t.id === "countdownUnlockBtn")) return;
+
+          if (__AUDIO_UNLOCKED__ || audioUnlocked) return;
+
+          try {
+            await unlockAudio();
+            __AUDIO_UNLOCKED__ = true;
+
+            // ★即座に表示を更新（次の1秒まで待たない）
+            render(n > 0 ? n : "スタート！");
+          } catch (e) {
+            // 失敗したら文言だけ変える（必要なら）
+            // render(n > 0 ? n : "スタート！");
+          }
+        };
+
+        ov?.addEventListener("click", handler, { passive: true });
+        ov?.addEventListener("pointerdown", handler, { passive: true });
+        ov?.addEventListener("touchstart", handler, { passive: true });
+      }
+    };
+
+    // 初回描画
+    render(n);
+
+    // カウントダウン進行
     prestartTimer = setInterval(() => {
       n -= 1;
+
       if (n > 0) {
-        showOverlay(String(n));
+        render(n);
       } else {
         clearInterval(prestartTimer);
-        showOverlay("スタート！");
-        setTimeout(hideOverlay, 700);
+        render("スタート！");
+        setTimeout(() => {
+          hideOverlay();
+          __countdownUnlockBound__ = false; // 次回prestartのために戻す
+        }, 700);
       }
     }, 1000);
   };
+
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const ov = document.getElementById("overlay");
+    if (!ov) return;
+
+    const onTap = async () => {
+      if (__AUDIO_UNLOCKED__ || audioUnlocked) return;
+      try {
+        await unlockAudio();
+        __AUDIO_UNLOCKED__ = true; // どっちかに統一したいならこれだけでもOK
+      } catch (e) {}
+      // 次の1秒更新を待たずに、今の表示を更新したいなら：
+      // （簡易） overlay を一度 hide→show するのはやりすぎなので、放置でもOK
+    };
+
+    ov.addEventListener("pointerdown", onTap, { passive: true });
+    ov.addEventListener("touchstart", onTap, { passive: true });
+    ov.addEventListener("click", onTap, { passive: true });
+  });
+
 
   // ========= 回答時間タイマー（問題ごと） =========
   const CLIENT_TIME_LIMIT_SEC = 12; // quiz.pyのQUESTION_TIME_LIMIT_SECと合わせる
@@ -958,7 +1160,7 @@
           }
         }
 
-        if (m.type === "prestart") {
+        if (m.type === "prestart") {  
           playCountdown(m.seconds ?? 5);
         }
         if (m.type === "prestart_cancel") {
@@ -966,6 +1168,7 @@
           hideOverlay();
         }
         if (m.type === "game" && m.event === "started") {
+          hideAudioUnlockOverlay();   // ★追加
           clearInterval(prestartTimer);
           hideOverlay();
         }
@@ -1014,6 +1217,7 @@
 
         if (m.type === "q") {
           // ★ 問題が来たタイミングでも念のため非表示にしておく
+          hideAudioUnlockOverlay();   // ★追加
           const intro = document.getElementById("playIntro");
           if (intro) {
             intro.classList.add("d-none");
