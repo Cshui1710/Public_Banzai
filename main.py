@@ -21,9 +21,32 @@ from recognition import router as recognition_router
 from admin_roles import router as admin_roles_router
 from auth import get_current_user, _SimpleUser, login_required  # ★まとめてimport
 from app_feedback import router as app_feedback_router
+from starlette.middleware.base import BaseHTTPMiddleware
+
 
 app = FastAPI(title="Ishikawa Facilities & Parks")
+
+class StaticCacheControlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+
+        path = request.url.path
+
+        # static / uploads にキャッシュ方針を付ける
+        if path.startswith("/static/") or path.startswith("/uploads/"):
+            # まずは確実に安定させる（スマホの謎挙動対策）
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+
+            # 念のため（中間キャッシュ回避）
+            response.headers["Expires"] = "0"
+
+        return response
+    
 app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax", https_only=True)
+app.add_middleware(StaticCacheControlMiddleware)
+
+
 
 # Mount static & uploads
 app.mount("/static", StaticFiles(directory="static"), name="static")
