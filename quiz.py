@@ -49,6 +49,9 @@ FIRST_CORRECT_POINTS    = 2          # 先着正解
 LATER_CORRECT_POINTS    = 1          # 2人目以降の正解
 WRONG_POINTS            = 0          # 誤答
 
+MM_MIN_WAIT_SEC = 10.0
+MM_MAX_WAIT_SEC = 15.0
+
 HEAD_START_STAMP_KEYS = {
     "marmot.png",
     "2.png",
@@ -536,7 +539,7 @@ class Room:
     stats_recorded: bool = False 
     round_end_scheduled: bool = False
     finished: bool = False
-    
+    db_sem: asyncio.Semaphore = field(default_factory=lambda: asyncio.Semaphore(2))
     
     async def start_with_countdown(self, seconds: int = PRESTART_COUNTDOWN_SEC):
         async with self.lock:
@@ -560,6 +563,7 @@ class Room:
                 except asyncio.CancelledError:
                     return
             self.prestart_task = asyncio.create_task(_go())
+            
     async def broadcast(self, payload: dict):
         dead = []
         for uid, pc in list(self.players.items()):
@@ -570,6 +574,12 @@ class Room:
                     dead.append(uid)
         for uid in dead:
             self.players.pop(uid, None)
+
+    async def _db_write(self, fn, *args):
+        # 同時DB書き込み数を制限してから別スレッドへ
+        async with self.db_sem:
+            return await asyncio.to_thread(fn, *args)
+
 
     def member_list(self):
         return [{"id": uid, "name": pc.name, "score": self.scores.get(uid,0)} for uid, pc in self.players.items()]
@@ -589,16 +599,18 @@ class Room:
         async with self.lock:
             self.players[conn.user_id] = conn
             self.scores.setdefault(conn.user_id, 0)
-            # ホスト未設定かつ人間ならホストに
             if not conn.is_bot and self.host_id is None:
                 self.host_id = conn.user_id
-            await self.broadcast({
+            payload = {
                 "type":"system","event":"join","user_id":conn.user_id,"name":conn.name,
                 "members":self.member_list(),"host_id": self.host_id, "is_random": self.is_random
-            })
+            }
+        await self.broadcast(payload)
         await self._maybe_auto_prestart()
+
         
     async def leave(self, user_id: int):
+        payload = None
         async with self.lock:
             if user_id in self.players:
                 name = self.players[user_id].name
@@ -606,11 +618,14 @@ class Room:
                 if self.host_id == user_id:
                     humans = [uid for uid, pc in self.players.items() if not pc.is_bot]
                     self.host_id = humans[0] if humans else None
-                await self.broadcast({
+                payload = {
                     "type":"system","event":"leave","user_id":user_id,"name":name,
                     "members":self.member_list(),"host_id": self.host_id, "is_random": self.is_random
-                })
+                }
+        if payload:
+            await self.broadcast(payload)
         await self._maybe_auto_prestart()
+
 
         
     # ---- CPU補充 ----
@@ -773,9 +788,11 @@ class Room:
                 # ★ ここで「このラウンドのタイマーは終わった」とマークする
                 self.round_timer_task = None
 
+                need_save = False
                 if not self.stats_recorded:
-                    self._save_recognition_stats()
                     self.stats_recorded = True
+                    need_save = True
+
 
                 # ★ すでに他の経路（receive_answer）でラウンド終了が予約されていないか確認
                 if not self.round_end_scheduled:
@@ -784,6 +801,9 @@ class Room:
 
                 reveal = {"type": "reveal", "qid": qid, "correct_idx": self.current_q.correct_idx}
 
+            if 'need_save' in locals() and need_save:
+                await self._db_write(self._save_recognition_stats)
+                
             # ロック解放後にブロードキャスト
             await self.broadcast(reveal)
 
@@ -829,6 +849,9 @@ class Room:
 
 
     async def receive_answer(self, user_id: int, qid: str, idx: int):
+        q_for_db = None
+        correct_for_db = False        
+        need_save2 = False 
         async with self.lock:
             # 問題が違う / 未設定
             if not self.current_q or self.current_q.qid != qid:
@@ -845,7 +868,8 @@ class Room:
             self.answered.add(user_id)
 
             correct = int(idx) == int(self.current_q.correct_idx)
-            _update_recognition_stat_for_answer(self.current_q, correct)
+            q_for_db = self.current_q
+            correct_for_db = correct
             # ★先着加点：first_correct_user が未設定で、今回が正解なら 2点
             if correct:
                 self.correct_users.add(user_id)
@@ -878,9 +902,11 @@ class Room:
             human_answered = len(human_ids & set(self.answered))
             everyone = (len(human_ids) > 0) and (human_answered >= len(human_ids))
             if everyone:
+                need_save2 = False
                 if not self.stats_recorded:
-                    self._save_recognition_stats()
-                    self.stats_recorded = True                
+                    self.stats_recorded = True
+                    need_save2 = True
+          
 
                 # ★締切タスクを止める
                 if self.round_timer_task and not self.round_timer_task.done():
@@ -898,6 +924,14 @@ class Room:
             else:
                 reveal = None
                 extra_wait = 0.0
+
+        if need_save2:
+            await self._db_write(self._save_recognition_stats)
+            
+        # ★ DB書き込みはロック外で to_thread
+        if q_for_db and getattr(q_for_db, "facility_key", None):
+            await self._db_write(_update_recognition_stat_for_answer, q_for_db, correct_for_db)
+
 
         await self.broadcast(result)
 
@@ -979,31 +1013,36 @@ class Room:
 
 
     async def _maybe_auto_prestart(self):
-        """人間が READY_HUMANS に達したらカウントダウンを開始／割れたら中止"""
+        payload = None
+        cancel_payload = None
+        start_task = False
+        cancel_task = False
+
         async with self.lock:
             if self.running:
                 return
             humans = len(self._human_ids())
-            # 条件満たす & 未開始なら → prestart
+
             if humans >= READY_HUMANS and not self.is_prestarting:
                 self.is_prestarting = True
-                # 既存のタスクがあれば念のためキャンセル
                 if self.prestart_task and not self.prestart_task.done():
                     self.prestart_task.cancel()
-                # クライアントにカウントダウン開始を通知
-                await self.broadcast({"type": "prestart", "seconds": PRESTART_COUNTDOWN_SEC})
-                # カウントダウン終了で start_game
+                payload = {"type": "prestart", "seconds": PRESTART_COUNTDOWN_SEC}
                 self.prestart_task = asyncio.create_task(self._prestart_countdown_start())
-                return
+                start_task = True
 
-            # 条件割れ & カウントダウン中なら → 中止
-            if humans < READY_HUMANS and self.is_prestarting:
+            elif humans < READY_HUMANS and self.is_prestarting:
                 self.is_prestarting = False
                 if self.prestart_task and not self.prestart_task.done():
                     self.prestart_task.cancel()
-                # 中止通知（必要なら）
-                await self.broadcast({"type": "prestart_cancel"})
-                return
+                cancel_payload = {"type": "prestart_cancel"}
+                cancel_task = True
+
+        if payload and start_task:
+            await self.broadcast(payload)
+        if cancel_payload and cancel_task:
+            await self.broadcast(cancel_payload)
+
 
     async def _prestart_countdown_start(self):
         try:
@@ -1143,26 +1182,47 @@ class MatchQueue:
     async def run_matchmaker(self):
         while True:
             async with self.cv:
-                # まずは規定人数を待つ。ダメならグレースタイムで切り上げ
+                start_ts = asyncio.get_event_loop().time()
+
+                # ---------- 最小待機（10秒） ----------
                 try:
-                    await asyncio.wait_for(self.cv.wait_for(lambda: len(self.waiting) >= self.need), timeout=MM_GRACE_SEC)
-                    # ここに来たら self.need 人揃った
-                    group = self.waiting[: self.need]
-                    self.waiting = self.waiting[self.need :]
+                    await asyncio.wait_for(
+                        self.cv.wait(),
+                        timeout=MM_MIN_WAIT_SEC
+                    )
                 except asyncio.TimeoutError:
-                    # タイムアウト：待機者がいればその人数で開始（1〜need-1）
+                    pass  # 10秒経過
+
+                # ---------- 残り時間で「4人そろうか」を待つ ----------
+                remain = MM_MAX_WAIT_SEC - (asyncio.get_event_loop().time() - start_ts)
+                group = None
+
+                if remain > 0:
+                    try:
+                        await asyncio.wait_for(
+                            self.cv.wait_for(lambda: len(self.waiting) >= self.need),
+                            timeout=remain
+                        )
+                        # 4人そろった
+                        group = self.waiting[: self.need]
+                        self.waiting = self.waiting[self.need :]
+                    except asyncio.TimeoutError:
+                        pass
+
+                # ---------- 最大15秒到達時の処理 ----------
+                if group is None:
                     if len(self.waiting) >= 1:
                         take = min(self.need, len(self.waiting))
                         group = self.waiting[: take]
                         self.waiting = self.waiting[take :]
                     else:
-                        # 誰もいないので次ループ
-                        continue
+                        continue  # 誰もいない → 次ループ
 
-            # ルーム作成し、全員にコードを割当
+            # ---------- ルーム作成 ----------
             room = await ROOMS.create_room(is_random=True)
             for uid, _name in group:
                 self.matched[uid] = room.code
+
 
     def ensure_started(self):
         if not self._loop_task or self._loop_task.done():
@@ -1259,7 +1319,9 @@ async def quiz_challenge_play(request: Request, level: str, user=Depends(get_cur
 @router.get("/quiz/random", response_class=HTMLResponse)
 async def quiz_random(request: Request, user=Depends(get_current_user)):
     login_required(user, allow_guest=True)
+    MATCH.clear_for(user.id)  # ★追加：過去マッチ結果を必ず消す
     return templates.TemplateResponse("quiz.html", {"request": request, "mode": "random-wait", "code": "", "user": user})
+
 
 @router.get("/quiz/room/new", response_class=HTMLResponse)
 async def quiz_room_new(request: Request, user=Depends(get_current_user)):
