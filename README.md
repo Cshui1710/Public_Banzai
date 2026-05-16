@@ -1,6 +1,7 @@
 # Ishikawa Facilities & Parks
 
-🏆 Urban Data Challenge 2025 銀賞 受賞作品（チーム金工大）
+🏆 Urban Data Challenge 2025 銀賞 受賞作品（チーム金工大）  
+🔗 https://www.kanazawa-it.ac.jp/kitnews/2026/0407_data-dreamers.html
 
 ![UDC2025 Silver Award](images/udc_award.jpg)
 
