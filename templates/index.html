@@ -24,7 +24,7 @@
 
   <!-- 到達半径（サーバから渡す） -->
   <script>
-    window.ARRIVAL_RADIUS = {{ (radius_m | default(100, true) | int) | tojson }};
+    window.ARRIVAL_RADIUS = {{ (radius_m | default(1000, true) | int) | tojson }};
   </script>
 
   <!-- heatmap.js + Leaflet.heat -->
